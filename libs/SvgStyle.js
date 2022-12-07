@@ -1,0 +1,170 @@
+import { UtilFuncs } from './UtilFuncs.js';
+
+class SvgStyle{
+	styleCatalog = new Array("stroke" , "stroke-width" , "stroke-linejoin" , "stroke-linecap" , "fill" , "fill-rule" , "fill-opacity" , "opacity" , "vector-effect" , "display" , "font-size" , "stroke-dasharray" , "marker-end" , "visibility" ,"image-rendering"); 
+	
+	constructor(getNonScalingOffset){
+		this.getNonScalingOffset = getNonScalingOffset;
+	}
+	
+	getNonScalingOffset;
+	
+	getStyle( svgNode , defaultStyle , hasHyperLink ){
+		// 親のスタイルを継承して該当要素のスタイルを生成する
+		// hasUpdateはその要素自身にスタイルattrが付いていたときに設定される
+		var hasStyle=false , hasUpdate=false;
+		var style = new Array();
+		style.fill = null; // Array.prototype.fill()があるので、バッティングしておかしいことがあり得る・・ 2016.12.1
+		
+		// "style"属性の値を取る
+		var styleAtt = this.getStyleAttribute( svgNode );
+		
+		for ( var i = 0 ; i < this.styleCatalog.length ; i++ ){
+			var st = this.getStyleOf( this.styleCatalog[i] , svgNode , styleAtt);
+			if ( st ){
+				style[this.styleCatalog[i]] = st;
+				hasStyle = true;
+				hasUpdate = true;
+			} else if ( defaultStyle && defaultStyle[this.styleCatalog[i]] ){
+				style[this.styleCatalog[i]] = defaultStyle[this.styleCatalog[i]];
+				hasStyle = true;
+			}
+		}
+		
+		// add "visibleMin/MaxZoom" 2013/8/19 とても出来が悪い・・・
+		if ( svgNode.getAttribute("visibleMinZoom")){
+			style.minZoom = Number(svgNode.getAttribute("visibleMinZoom"))/100.0;
+			hasUpdate = true;
+			hasStyle = true;
+		} else if ( defaultStyle && defaultStyle.minZoom ){
+			style.minZoom = defaultStyle.minZoom;
+			hasStyle = true;
+		}
+		if ( svgNode.getAttribute("visibleMaxZoom")){
+			style.maxZoom = Number(svgNode.getAttribute("visibleMaxZoom"))/100.0;
+			hasUpdate = true;
+			hasStyle = true;
+		} else if ( defaultStyle && defaultStyle.maxZoom ){
+			style.maxZoom = defaultStyle.maxZoom;
+			hasStyle = true;
+		}
+		
+		style.hasUpdate = hasUpdate;
+		
+		if ( hasHyperLink ){
+			var hyperLink = svgNode.getAttribute("xlink:href");
+			var hyperLinkTarget = svgNode.getAttribute("target");
+			if ( hyperLink ){
+				style.hyperLink = hyperLink;
+				style.target = hyperLinkTarget;
+				hasStyle = true;
+			}
+		}
+		
+		if ( svgNode.getAttribute("transform") ){ // <g>の svgt1.2ベースのnon-scaling機能のオフセット値を"スタイル"として設定する・・ 2014.5.12
+			style.nonScalingOffset = this.getNonScalingOffset( svgNode );
+			hasStyle = true;
+		} else if ( defaultStyle && defaultStyle.nonScalingOffset ){ // 2017.1.17 debug
+			style.nonScalingOffset = defaultStyle.nonScalingOffset;
+			hasStyle = true;
+		}
+		
+		if ( defaultStyle && defaultStyle.usedParent ){ // use要素のためのhittest用情報・・・ 2017.1.17
+			style.usedParent = defaultStyle.usedParent;
+		}
+		
+		if ( hasStyle ){
+			return ( style );
+		} else {
+			return ( null );
+		}
+	}
+	
+	getStyleAttribute( svgElement ){
+		var styles=null;
+		if ( svgElement.getAttribute("style")){
+			styles = new Array();
+			var stylesa = svgElement.getAttribute("style").split(";");
+			if ( stylesa ){
+				for ( var i = 0 ; i < stylesa.length ; i++ ){
+					var style = stylesa[i].split(":");
+					if ( style && style.length > 1 ){
+						var name = UtilFuncs.trim(style[0]);
+						var value = UtilFuncs.trim(style[1]);
+						if ( name == "fill" || name == "stroke" ){
+							if ( value.length==6 && value.match(/^[0-9A-F]/)){
+								value = "#"+value;
+							}
+						}
+						styles[name] = value;
+					}
+				}
+			}
+		}
+		return ( styles );
+	}
+
+	getStyleOf( styleName , svgElement , styleAtt ){
+		var style;
+		if (  svgElement.getAttribute(styleName) ){ 
+			style = svgElement.getAttribute(styleName);
+		} else if ( styleAtt && styleAtt[styleName]){
+			style = styleAtt[styleName];
+		}
+		return ( style );
+	}
+
+	setCanvasStyle(style , context){
+		// var styleCatalog = new Array("stroke" , "stroke-width" , "stroke-linejoin" , "stroke-linecap" , "fill" , "fill-rule" , "fill-opacity" , "opacity" , "vector-effect");
+		// http://www.html5.jp/canvas/ref/method/beginPath.html
+		
+		if ( style ){
+			if (style["stroke"]){
+				if ( style["stroke"] == "none" ){
+					context.strokeStyle = "rgba(0, 0, 0, 0)"; 
+				} else {
+					context.strokeStyle = style["stroke"];
+				}
+			} else {
+				context.strokeStyle = "rgba(0, 0, 0, 0)"; 
+			}
+			if (style.fill){
+				if ( style.fill == "none" ){
+					context.fillStyle = "rgba(0, 0, 0, 0)"; 
+				} else {
+					context.fillStyle = style.fill;
+				}
+			}
+			if ( style["stroke-width"] ){ // 2014.2.26
+				if ( style["vector-effect"] ){
+					if ( style["stroke-width"] ){
+						context.lineWidth = style["stroke-width"];
+					} else {
+						context.lineWidth = 0;
+					}
+				} else { // if none then set lw to 1 .... working
+					context.lineWidth = 1;
+				}
+			} else {
+			 context.lineWidth = 0;
+			}
+			if (style["stroke-dasharray"] ){
+				var dashList = style["stroke-dasharray"].split(/\s*[\s,]\s*/);
+				context.setLineDash(dashList);
+			}
+			if (style["stroke-linejoin"] ){
+				context.lineJoin = style["stroke-linejoin"];
+			}
+			if (style["stroke-linecap"] ){
+				context.lineCap = style["stroke-linecap"];
+			}
+			if (style.opacity){
+				context.globalAlpha = style.opacity;
+			}
+			if (style["fill-opacity"]){
+				context.globalAlpha = style["fill-opacity"];
+			}
+		}
+	}
+}
+export { SvgStyle };

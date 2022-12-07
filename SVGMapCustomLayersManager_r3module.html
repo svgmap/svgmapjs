@@ -1,0 +1,172 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>SVGMap Custom Layers Manager</title>
+</head>
+<style>
+/* 奇数行のスタイル */
+table tr:nth-child(odd){
+  background-color:#c0c0ff;
+}
+ 
+/* 偶数行のスタイル */
+table tr:nth-child(even){
+  background-color:#e0e0e0;
+}
+</style>
+
+<style>
+/* タブのCSS */
+/* https://bagelee.com/design/css/create_tabs_using_only_css/ */
+/*タブ切り替え全体のスタイル*/
+.tabs {
+  margin-top: 5px;
+  padding-bottom: 5px;
+  background-color: #fff;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  margin: 0 auto;}
+
+/*タブのスタイル*/
+.tab_item {
+  width: calc(100%/3);
+  height: 20px;
+  border-bottom: 3px solid #5ab4bd;
+  background-color: #d9d9d9;
+  line-height: 20px;
+  font-size: 13px;
+  text-align: center;
+  color: #565656;
+  display: block;
+  float: left;
+  text-align: center;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+.tab_item:hover {
+  opacity: 0.75;
+}
+
+/*ラジオボタンを全て消す*/
+input[name="tab_item"] {
+  display: none;
+}
+
+/*タブ切り替えの中身のスタイル*/
+.tab_content {
+  display: none;
+  padding: 5px 5px 0;
+  clear: both;
+  overflow: hidden;
+}
+
+
+/*選択されているタブのコンテンツのみを表示*/
+#layers_t:checked ~ #layers_content,
+#startup_t:checked ~ #startup_content,
+#others_t:checked ~ #others_content {
+  display: block;
+}
+
+/*選択されているタブのスタイルを変える*/
+.tabs input:checked + .tab_item {
+  background-color: #5ab4bd;
+  color: #fff;
+}
+</style>
+
+<!--
+<script type="module" >
+import { SvgMapCustomLayersManagerClient } from './SvgMapCustomLayersManagerClient.js';
+
+var svgMapCustomLayersManagerClient = new SvgMapCustomLayersManagerClient();
+window.svgMapCustomLayersManagerClient = svgMapCustomLayersManagerClient;
+
+</script>
+-->
+
+<!-- 上記ライブラリを用いてレイヤー管理アプリを作るコード 将来的に上記ライブラリと統合するかも？-->
+<script type="module" src="./SVGMapCustomLayersManagerApp_r3module.js"></script> 
+
+<body>
+<h3>SVGMap Setting Panel</h3>
+<div class="tabs">
+  
+  <input id="startup_t" type="radio" name="tab_item" checked>
+  <label class="tab_item" for="startup_t">Startup Setting</label>
+  
+  <input id="layers_t" type="radio" name="tab_item" >
+  <label class="tab_item" for="layers_t">Custom Layers Setting</label>
+  
+  <input id="others_t" type="radio" name="tab_item">
+  <label class="tab_item" for="others_t">Others</label>
+
+  <div class="tab_content" id="startup_content">
+    <div class="tab_content_description">
+    <ul>
+      <li><input id="defaultVbRadio" type="radio" name="startupSelect" value="0" onclicX="selectStartupSetting(event)">
+        Use the default Viewbox
+      <li><input id="keepVbRadio" type="radio" name="startupSelect" value="1" onclicX="selectStartupSetting(event)">
+        Keep Previous Viewbox and Layers Visibilities
+      <li><input id="customVbRadio" type="radio" name="startupSelect" value="2" onclicX="selectStartupSetting(event)">
+        Use Custom Viewbox
+      <ul>
+        <li><input id="addVbButton" type="button" value="Add current viewbox" onclicX="addCurrentMapViewBox()"></input>
+        <table style="font-size:12px" border="1" id="viewboxTable">
+        </table>
+      </ul>
+	</ul>
+    </div>
+  </div>
+  
+  <div class="tab_content" id="layers_content">
+    <div class="tab_content_description">
+		<!--
+		Make Table, 
+		<input type="button" value="from Initial Map View" onclicX="reset()"></input>
+
+		<input type="button" value="from Current Map View" onclicX="buildFromCurrentMap()"></input>
+		-->
+
+		Selected Setting: 
+		<select id="settingList"></select>
+
+		<input id="renameButton" type="button" value="Rename this Setting" onclicX="renameSetting()"></input>
+		<input id="deleteButton" type="button" value="Delete this Setting" onclicX="deleteSetting()" style="background-color:orange"></input>
+
+
+		<hr>
+		<input id="saveButton" type="button" value="Save and Reflect as New Setting" onclicX="buildCustomLayersSettingFromUI()"></input>
+
+		<table style="font-size:10px" border="1" id="layerTable">
+		</table>
+		<!--
+		<input style="background-color:red" type="button" value="Delete All Custom Layers Settings" onclicX="deleteAllSetting(event)"></input>-->
+    </div>
+  </div>
+
+
+  <div class="tab_content" id="others_content">
+    <div class="tab_content_description">
+    <table>
+    	<tr ><td rowspan="2">Setting File</td>
+    		<td>Backup settings</td>
+			<td><input id="downloadButton" type="button" value="Save File" onclicX="saveSetting()">
+			<a id="downloadAnchor" href="" download="customSetting.json" style="display:none" >hiddenDL</a></td>
+		</tr>
+		<tr>
+			<td>Restore settings</td>
+			<td><input type="file" id="loadFile" onchangeX="loadSetting(event)" /></td>
+		</tr>
+		<tr>
+			<td colspan="1" >RESET</td>
+			<td colspan="2" ><input id="removeAllButton" type="button" value="Clear ALL Custom Settings" onclicX="removeAllSettings()" style="background-color:#ff7070"></td>
+		</tr>
+	</table>
+    </div>
+  </div>
+</div>
+<div id="modalDiv" ></div>
+</body>
+</html>
