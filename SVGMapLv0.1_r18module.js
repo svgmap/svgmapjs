@@ -240,7 +240,7 @@
 import { SvgMapLayerUI } from './SVGMapLv0.1_LayerUI2_r5module.js';
 import { SvgMapAuthoringTool } from './SVGMapLv0.1_Authoring_r8_module.js';
 import { SvgMapCustomLayersManager } from './SVGMapLv0.1_CustomLayersManager_r3module.js';
-import { SvgMapCesiumWrapper } from '/devinfo/devkddi/lvl0.1/cesiumSvgMap/rev4_esm/SVGMapLv0.1_CesiumWrapper_r4module.js';
+import { SvgMapCesiumWrapper } from './3D_extension/SVGMapLv0.1_CesiumWrapper_r4module.js';
 
 // coreJsの部品群
 import { MatrixUtil, Mercator } from './libs/TransformLib.js';
@@ -264,6 +264,7 @@ import { GPS } from './libs/GPS.js';
 import { ImgRenderer } from './libs/ImgRenderer.js';
 import { EssentialUIs } from './libs/EssentialUIs.js';
 import { MapViewerProps } from './libs/MapViewerProps.js';
+import { ResourceLoadingObserver } from './libs/ResourceLoadingObserver.js';
 
 
 
@@ -318,6 +319,7 @@ class SvgMap {
 	#gps;
 	#imgRenderer;
 	#essentialUIs;
+	#resourceLoadingObserver;
 
 	constructor(){
 		this.#mapViewerProps=new MapViewerProps()
@@ -339,14 +341,17 @@ class SvgMap {
 		this.#svgMapAuthoringTool = new SvgMapAuthoringTool(this);
 		this.#svgMapLayerUI = new SvgMapLayerUI(this, this.#svgMapAuthoringTool);
 		this.#svgMapCustomLayersManager = new SvgMapCustomLayersManager(this, this.#svgMapLayerUI.getLayersCustomizer );
-		this.#layerManager = new LayerManager(this.#svgImagesProps, this.#svgImages, this.#loadingImgs, this.#refreshScreen);
-		this.#mapTicker = new MapTicker(this, this.#matUtil, this.#layerManager.isEditingLayer, this.#layerManager.getLayerName, this.#setLoadCompleted, this.#svgMapAuthoringTool); // 照準があるときは、Ticker機能をONにする 2013/1/11
+		this.#resourceLoadingObserver = new ResourceLoadingObserver(this.#mapViewerProps, this.#svgImagesProps, this.#svgImages, this.#refreshScreen, this.#viewBoxChanged);
+		
+		this.#layerManager = new LayerManager(this.#svgImagesProps, this.#svgImages, this.#resourceLoadingObserver.loadingImgs, this.#refreshScreen);
+		this.#mapTicker = new MapTicker(this, this.#matUtil, this.#layerManager.isEditingLayer, this.#layerManager.getLayerName, this.#resourceLoadingObserver.setLoadCompleted, this.#svgMapAuthoringTool); // 照準があるときは、Ticker機能をONにする 2013/1/11
 		this.#customModal = new CustomModal( this.#mapTicker );
 		
 		this.#svgMapCesiumWrapper= new SvgMapCesiumWrapper(this);
 		this.#geometryCapturer = new GeometryCapture(this, UtilFuncs.getImageURL);
 		this.#pathRenderer = new PathRenderer(this.#geometryCapturer, this.#matUtil , this.#mapTicker, this.#mapViewerProps);
-		this.#imgRenderer = new ImgRenderer(this, this.#loadingImgs, this.#proxyManager, this.#loadingTransitionTimeout, this.#mapViewerProps, this.#matUtil, this.#checkLoadCompleted, this.#loadErrorStatistics );
+		this.#imgRenderer = new ImgRenderer(this, this.#resourceLoadingObserver.loadingImgs, this.#proxyManager, this.#loadingTransitionTimeout, this.#mapViewerProps, this.#matUtil, this.#resourceLoadingObserver.checkLoadCompleted, this.#loadErrorStatistics );
+		this.#resourceLoadingObserver.init(this.#imgRenderer, this.#mapTicker, this.#geometryCapturer); //resourceLoadingObserverの第二初期化・・
 		this.#resumeManager = new ResumeManager(this, this.#svgMapCustomLayersManager, 
 			function(documentElement, symbols){
 				this.#parseSVG( documentElement , "root" , this.#mapViewerProps.mapCanvas , false , symbols , null , null , true); 
@@ -408,7 +413,7 @@ class SvgMap {
 		
 		this.#zoomPanManager = new ZoomPanManager(
 			this.#mapTicker.hideTicker, 
-			this.#checkLoadCompleted, 
+			this.#resourceLoadingObserver.checkLoadCompleted, 
 			this.#mapTicker.getObjectAtPoint, 
 			this.#getIntValue, 
 			this.#getRootSvg2Canvas,
@@ -463,7 +468,7 @@ class SvgMap {
 			
 			if ( httpObj ) {
 	//			console.log(" path:" + path);
-				this.#loadingImgs[id] = true;
+				this.#resourceLoadingObserver.loadingImgs[id] = true;
 				
 				// 強制的にキャッシュを除去するオプションを実装 2017.9.29
 				// rootLayersProps[thisDoc's rootLayer=].noCacheがtrueの場合に発動する
@@ -489,7 +494,7 @@ class SvgMap {
 			}
 	//		console.log("make XHR : ", id);
 		} else { // 過去にロードしていて、svgImagesに残っている場合(editableレイヤー)はそれを使う(handleResultを飛ばしてdynamicLoadする) 2013/7/2x
-			delete this.#loadingImgs[id];
+			delete this.#resourceLoadingObserver.loadingImgs[id];
 			this.#setLayerDivProps( id, parentElem, parentSvgDocId ); // 2017.10.04
 			this.#dynamicLoad( id , parentElem );
 			
@@ -499,7 +504,7 @@ class SvgMap {
 
 	#handleErrorResult( docId , docPath, httpRes, isTimeout){
 		// ERR404時や、timeout時に行う処理(2020/2/13 timeout処理を追加)
-		delete this.#loadingImgs[docId]; // debug 2013.8.22
+		delete this.#resourceLoadingObserver.loadingImgs[docId]; // debug 2013.8.22
 		console.log( "File get failed: Err:",httpRes.status," Path:",docPath," id:",docId);
 		if ( this.#svgImagesProps[docId] ){ // 2020/2/13 removeUnusedDocs() により恐らく以下の処理は不要 じゃなかった(2021/2/17)
 			this.#svgImagesProps[docId].loadError = true; // 2021/2/17
@@ -509,7 +514,7 @@ class SvgMap {
 		} else {
 			++this.#loadErrorStatistics.otherSvgDocCount;
 		}
-		this.#checkLoadCompleted();
+		this.#resourceLoadingObserver.checkLoadCompleted();
 		return;
 	}
 	
@@ -519,8 +524,8 @@ class SvgMap {
 			if ( !this.#svgImagesProps[docId]){
 				// 読み込み途中でそのタイルが不要になるケースがある(高速にスクロールすると、removeUnused..で消される) 2020/1/24
 				console.log("NO svgImagesProps[docId] : docId:",docId, "  skip processing");
-				delete this.#loadingImgs[docId];
-				this.#checkLoadCompleted();
+				delete this.#resourceLoadingObserver.loadingImgs[docId];
+				this.#resourceLoadingObserver.checkLoadCompleted();
 				return;
 			}
 			if ( httpRes.status == 403 || httpRes.status == 404 || httpRes.status == 500 || httpRes.status == 503 ){
@@ -583,7 +588,6 @@ class SvgMap {
 	}}
 	*/
 	
-	#usedImages=[]; // DOM操作によるsvgmapドキュメントやそのプロパティのメモリリークのチェック用 2019.5.22
 	#existNodes = new Object();; // 存在するノードのidをハッシュキーとしたテーブル
 
 	#dynamicLoad( docId , parentElem ){ // アップデートループのルート：ほとんど機能がなくなっている感じがする・・
@@ -597,7 +601,7 @@ class SvgMap {
 		parentElem.setAttribute("property",this.#svgImagesProps[docId].metaSchema); // added 2012/12
 		var symbols = UtilFuncs.getSymbols(svgDoc); // シンボルの登録を事前に行う(2013.7.30)
 		if ( docId == "root" ){
-			this.#usedImages=[];
+			this.#resourceLoadingObserver.usedImages={};
 			this.#mapTicker.pathHitTester.setCentralVectorObjectsGetter(); // 2018.1.18 checkTicker()の二重パースの非効率を抑制する処理を投入
 			if ( !this.#layerManager.setRootLayersPropsPostprocessed ){ // 2021/10/14 updateLayerListUIint()必須し忘れ対策
 				if ( typeof this.#updateLayerListUIint == "function" ){
@@ -622,7 +626,7 @@ class SvgMap {
 			this.#clearLoadErrorStatistics();
 		}
 		this.#parseSVG( svgDoc.documentElement , docId , parentElem , false , symbols , null , null);
-		delete this.#loadingImgs[docId];
+		delete this.#resourceLoadingObserver.loadingImgs[docId];
 		
 		if ( docId == "root" ){
 			if ( typeof this.#setLayerUI == "function" ){
@@ -638,7 +642,7 @@ class SvgMap {
 			}
 		}
 		if ( !this.#mapTicker.pathHitTester.enable ){ // 2017.8.18 debug pathHitTestのときは"画面の描画完了"確認もやってはまずい・・ geojsonの獲得に関しても同様と思うが、こちらはscreenrefreshedイベントを起点に処理しているのでできない・・ pathHitTestとgeojson取得でロジックが違うのが気になる・・・
-			this.#checkLoadCompleted(); // 読み込みがすべて完了したらtoBeDelのデータを消去する
+			this.#resourceLoadingObserver.checkLoadCompleted(); // 読み込みがすべて完了したらtoBeDelのデータを消去する
 		}
 	}
 	
@@ -706,7 +710,7 @@ class SvgMap {
 
 	#prevRootViewBox={}; // ワンステップ前のrootViewBoxが設定される。
 
-	#viewBoxChanged(docId){ //  2020/6/8 修正 ただ、この関数、あまり筋が良いとは言えないので改修すべき・・
+	#viewBoxChanged=function(docId){ //  2020/6/8 修正 ただ、この関数、あまり筋が良いとは言えないので改修すべき・・
 		if ( !docId ){
 			docId = "allMaps";
 		}
@@ -723,7 +727,7 @@ class SvgMap {
 		}
 		this.#prevRootViewBox[docId] = { x: this.#mapViewerProps.rootViewBox.x , y: this.#mapViewerProps.rootViewBox.y , width: this.#mapViewerProps.rootViewBox.width , height: this.#mapViewerProps.rootViewBox.height };
 		return ( ans );
-	}
+	}.bind(this);
 
 
 
@@ -750,7 +754,7 @@ class SvgMap {
 		
 		if ( svgElem.nodeName=="svg"){
 			this.#updateMetaSchema(docId); // 2018.2.28 metaSchemaがDOM操作で変更されることがある・・・
-			this.#usedImages[docId]=true; // 2019.5.22 メモリリーク防止用　今描画されてるドキュメントのID表を作る
+			this.#resourceLoadingObserver.usedImages[docId]=true; // 2019.5.22 メモリリーク防止用　今描画されてるドキュメントのID表を作る
 		}
 		
 		var beforeElem = null;
@@ -1107,7 +1111,7 @@ class SvgMap {
 				} else { // ロードすべきでないイメージの場合
 					if ( imgElem ){ // ロードされているとき
 						// 消す
-						this.#requestRemoveTransition( imgElem , parentElem ); //遅延消去処理 2013.6
+						this.#resourceLoadingObserver.requestRemoveTransition( imgElem , parentElem ); //遅延消去処理 2013.6
 						if ( childCategory == SvgMapElementType.EMBEDSVG ){ // animation|iframe要素の場合
 							this.#removeChildDocs( imageId );
 						}
@@ -1291,10 +1295,10 @@ class SvgMap {
 			return;
 		}
 		if ( this.#svgImages[imageId] && this.#svgImagesProps[imageId] ){
-			this.#loadingImgs[imageId]=true;
+			this.#resourceLoadingObserver.loadingImgs[imageId]=true;
 			var symbols =  UtilFuncs.getSymbols(this.#svgImages[imageId]);
 			this.#parseSVG( this.#svgImages[imageId].documentElement , imageId , imgElem , false , symbols , null , null );
-			delete this.#loadingImgs[imageId];
+			delete this.#resourceLoadingObserver.loadingImgs[imageId];
 		} else {
 			if ( ct < 20 ){
 				++ct;
@@ -1329,18 +1333,8 @@ class SvgMap {
 			}
 		}
 		for ( var i = 0 ; i < toBeDelNodes.length ; i++ ){ // debug 2013.8.21
-			this.#requestRemoveTransition( toBeDelNodes[i] , parentNode );
+			this.#resourceLoadingObserver.requestRemoveTransition( toBeDelNodes[i] , parentNode );
 		}
-	}
-	
-	#removeEmptyTiles( parentNode ){ // カラのcanvasを削除する[summarizedのときには効かない？]
-		var cv = parentNode.getElementsByTagName("canvas");
-		for ( var i = cv.length - 1 ; i >= 0 ; i-- ){
-			if ( cv[i].getAttribute("hasdrawing") != "true" ){
-				cv[i].parentNode.removeChild(cv[i]);
-			}
-		}
-		this.#checkEmptySpans(parentNode);
 	}
 
 	#resetSummarizedCanvas(){
@@ -1358,29 +1352,6 @@ class SvgMap {
 		}
 	}
 	
-	#checkEmptySpans( parentNode ){
-		var ret = true; //再帰呼び出し時,消して良い時はtrue
-		for ( var i = parentNode.childNodes.length - 1 ; i >= 0 ; i -- ){
-			var oneNode = parentNode.childNodes.item(i);
-			if ( oneNode.nodeType == 1 ){
-				if ( oneNode.nodeName != "DIV" ){
-					ret = false; // div以外の要素がひとつでもあった場合には削除しない
-				} else if ( oneNode.hasChildNodes()){ // divだと思う　そしてそれが子ノードを持っている
-					var ans = this.#checkEmptySpans( oneNode );
-					if ( ans && !oneNode.getAttribute("data-layerNode")){ // ansがtrueだったらそのノードを削除する
-						oneNode.parentNode.removeChild(oneNode);
-					} else {
-						ret = false;
-					}
-				} else if (!oneNode.getAttribute("data-layerNode")){ // devだけれどそれが子ノードを持っていない
-					oneNode.parentNode.removeChild(oneNode);
-				}
-			}
-		}
-		return ( ret );
-	}
-	
-
 	// ルートSVG⇒画面キャンバスの変換マトリクス
 	#getRootSvg2Canvas = function( rootViewBox , mapCanvasSize_ ){
 		if ( !rootViewBox){
@@ -1426,8 +1397,6 @@ class SvgMap {
 			span : p2 - p1
 		}
 	}
-
-	#loadingImgs = new Array(); // 読み込み途上のimgのリストが入る　2021/1/26 通常booleanだがビットイメージの場合非線形変換用の情報が入る
 
 
 	#getSpanTextElement( x, y, cdx, cdy, text , id , opacity , transform , style , areaHeight , nonScaling){ // 2014.7.22
@@ -1712,53 +1681,6 @@ class SvgMap {
 		}
 	}
 
-	// DOM操作などでdocが追加削除されると、上の関数だけではメモリリークする可能性がある(インターバルrefreshなど) 2019.5.22
-	// usedImages[]を使って使われていないドキュメントを消していく
-	#removeUnusedDocs(){
-		var delKeys=[];
-		for ( var key in this.#svgImages ){
-			if ( !this.#usedImages[key] ){
-				delete this.#svgImages[key];
-				delete this.#svgImagesProps[key];
-				this.#geometryCapturer.removeDocGeometries(key); // 2020/01/23 added
-				delKeys.push(key);
-			}
-		}
-		if ( delKeys.length > 0 ){
-			console.log("removeUnusedDocs : docId:",delKeys," are no longer used. Delete it.");
-		}
-	}
-
-	#delContainerId = 0;
-	#requestRemoveTransition( imgElem , parentElem2 ){ // 2013.7.31 debug まだバグがあると思う・・
-		var parentElem = imgElem.parentNode;
-		// 遅延削除処理のph1
-		var delContainer = null; // テンポラリspan要素
-		if ( parentElem.childNodes ){ // すでにtoBeDel* idの要素があればそれをdelContainerとする
-			for ( var i = 0 ; i < parentElem.childNodes.length ; i++ ){ // 普通は0で終わりのはず・・・
-				if ( parentElem.childNodes[i].nodeType == 1 && parentElem.childNodes[i].id.indexOf("toBeDel")==0 ){ // ELEMENT NODEでidがtoBeDel*
-					delContainer = parentElem.childNodes[i];
-					break;
-				}
-			}
-			
-		}
-		
-		if ( !delContainer  ){
-			// テンポラリspan要素が無い場合は親要素の先頭に設置する
-			delContainer = document.createElement("div");
-			delContainer.id = "toBeDel" + this.#delContainerId;
-	//		delContainer.style.display="none"; // for debug 2013.8.20 canvasで遷移中におかしなことになる(原因はほぼ判明)
-			parentElem.insertBefore( delContainer , parentElem.firstChild );
-			++ this.#delContainerId;
-	//	} else {
-	//		delContainer = parentElem.firstChild;
-		}
-		// 指定した要素をテンポラリspan要素に移動する
-		parentElem.removeChild(imgElem);
-		delContainer.appendChild(imgElem);
-	}
-
 
 	#loadErrorStatistics={};
 	#clearLoadErrorStatistics(){
@@ -1773,98 +1695,6 @@ class SvgMap {
 	#getLoadErrorStatistics(){
 		return ( this.#loadErrorStatistics );
 	}
-
-	#loadCompleted = true; // このグローバル変数はcheckLoadCompleted以外では本来セットしてはいけない（mapTicker.pathHitTester.getVectorObjectsAtPointと、refreshScreenが例外的処理してる・・）
-	#setLoadCompleted = function(stat){
-		this.#loadCompleted = stat;
-	}.bind(this);
-	
-	#checkLoadCompleted=function( forceDel ){ // 読み込み完了をチェックし、必要な処理を起動する。
-	// 具体的には、読み込み中のドキュメントをチェックし、もうなければ遅延img削除処理を実行、読み込み完了イベントを発行
-		var hl = this.#getHashLength(this.#loadingImgs);
-		if ( hl == 0  || forceDel ){
-			//遅延img削除処理を動かす
-			for ( var i = 0 ; i < this.#delContainerId ; i++ ){
-				var delSpan = document.getElementById("toBeDel"+i);
-				if ( delSpan ){
-					delSpan.parentNode.removeChild(delSpan);
-				}
-			}
-			this.#delContainerId = 0;
-			this.#removeEmptyTiles(  this.#mapViewerProps.mapCanvas ); // added 2013.9.12
-			
-			if ( this.#mapViewerProps.uaProps.Edge ){
-				this.#imgRenderer.buildPixelatedImages4Edge(this.#mapViewerProps.mapCanvas);
-			}
-			
-			// zoomPanMap||screenRefreshed イベントを発行する
-	//		if ( !forceDel &&  !loadCompleted ){} // forceDelの時もイベントだすべきでは？
-	//		if ( !loadCompleted ){} // forceDelの時もイベントだすべきでは？
-			if ( !this.#loadCompleted && !this.#mapTicker.pathHitTester.enable ){ // forceDelの時もイベントだすべきでは？ ただしpathHitTest.enableのサーチで出すのはおかしいのでは？
-	//			console.log("loading Completed");
-	//			loadCompleted = true; // これ意味ない
-				this.#removeUnusedDocs(); // 2019.5.22 メモリリーク対策
-				if ( this.#viewBoxChanged() ){ // 2017.3.16 本当にviewboxが変化したときのみzoomPanMap ev出す
-					var customEvent = document.createEvent("HTMLEvents");
-					customEvent.initEvent("zoomPanMap", true , false );
-	//				console.log("dispatchEvent zoomPanMap");
-					document.dispatchEvent(customEvent);
-				} else {
-				// それ以外では新設のscreenRefreshed ev 出す
-					var customEvent2 = document.createEvent("HTMLEvents");
-					customEvent2.initEvent("screenRefreshed", true , false );
-	//				console.log("dispatchEvent screenRefreshed");
-					document.dispatchEvent(customEvent2);
-				}
-			}
-			this.#loadCompleted = true;
-			this.#startRefreshTimeout(); // 要確認：2016.10.14 この処理、複数のレイヤーでリフレッシュが起こっていたり一旦ロードされた後、消されたりした場合におかしなことが起きないでしょうか？
-			
-	//		console.log("Load Complete");
-			return ( true );
-		} else {
-			if ( hl == 0 ){
-				this.#loadCompleted = true;
-			} else {
-				this.#loadCompleted = false;
-			}
-			return ( false );
-		}
-	}.bind(this);
-
-	#startRefreshTimeout(){
-		for ( var layerId in this.#svgImagesProps ){
-			if ( this.#svgImagesProps[layerId].refresh && this.#svgImagesProps[layerId].refresh.timeout >0 ){
-				if ( this.#svgImagesProps[layerId].refresh.start == false ){
-					this.#svgImagesProps[layerId].refresh.start = true;
-					this.#svgImagesProps[layerId].refresh.loadScript = true;
-					setTimeout(function(layerId){this.#refreshLayer(layerId)}.bind(this), this.#svgImagesProps[layerId].refresh.timeout * 1000 , layerId );
-					
-				} else {
-	//				console.log("Already Started Refresh:",layerId,svgImagesProps[layerId]);
-				}
-			}
-		}
-	}
-
-	#refreshLayer( layerId ){
-		if ( this.#svgImagesProps[layerId] ){
-			this.#svgImagesProps[layerId].refresh.start = false;
-			this.#refreshScreen();
-		}
-	}
-
-	#getHashLength(arr){ // Arrayの個数を調べる( hashのため )
-		var cnt=0;
-		for(var key in arr){
-			cnt++;
-		}
-		if ( this.#mapViewerProps.uaProps.verIE < 9 ){ // polyfillでindexOfを追加してるため・・
-			--cnt;
-		}
-		return cnt;
-	}
-
 
 
 	// html文書中のimg要素(POI)を入力すると、対応するSVG文書の文書番号とその要素(use)が出力される。対応するuse要素を持つsvg文書事態を取得したい場合は.ownerDocumentする。
@@ -1901,8 +1731,8 @@ class SvgMap {
 		}
 		
 		var rsCaller;
-		console.log("called refreshScreen", this.#loadCompleted ? "" : " : now loading");
-		if ( this.#loadCompleted == false){ // loadCompletedしてないときに実行すると破綻するのを回避 2019/11/14
+		console.log("called refreshScreen", this.#resourceLoadingObserver.getLoadCompleted() ? "" : " : now loading");
+		if ( this.#resourceLoadingObserver.getLoadCompleted() == false){ // loadCompletedしてないときに実行すると破綻するのを回避 2019/11/14
 			if ( !noRetry ){
 //				console.log( "NOW LOADING:: delay and retry refreshScreen" );
 				var that = this;
@@ -1917,7 +1747,7 @@ class SvgMap {
 		} else {
 			this.#retryingRefreshScreen = false;
 		}
-		this.#setLoadCompleted(false) ; // 2016.11.24 debug この関数が呼ばれるときは少なくとも(描画に変化がなくとも) loadCompletedをfalseにしてスタートさせないと、あらゆるケースでの描画完了を検知できない
+		this.#resourceLoadingObserver.setLoadCompleted(false) ; // 2016.11.24 debug この関数が呼ばれるときは少なくとも(描画に変化がなくとも) loadCompletedをfalseにしてスタートさせないと、あらゆるケースでの描画完了を検知できない
 		this.#dynamicLoad( "root" , this.#mapViewerProps.mapCanvas ); // 以前はrefreshScreenのためにこの関数を生で呼んでいたが、上のいろんな処理が加わったので、それは廃止している（はず）
 	}.bind(this);
 	

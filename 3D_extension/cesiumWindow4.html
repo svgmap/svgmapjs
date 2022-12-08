@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<!-- 2018.04.05 jsを外部ライブラリ化して、環境依存の定数のみを残しました -->
+	<!-- Use correct character set. -->
+	<meta charset="utf-8">
+	<!-- Tell IE to use the latest, best version. -->
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<!-- Make the application on mobile take up the full browser screen and disable user scaling. -->
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+	<title>SVGMap3DView using CESIUM</title>
+	<!-- ?? いつからか(2019/8/1?)バージョン指定でアクセスする格好に変わった？？ これにしないとGeoJsonが表示されない。コード見てもライセンストークン部以外下と変わらないが・・2019/8/22-->
+	<script src="https://cesium.com/downloads/cesiumjs/releases/1.62/Build/Cesium/Cesium.js"></script>
+	<link href="https://cesium.com/downloads/cesiumjs/releases/1.62/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+	<style>
+	html, body, #cesiumContainer {
+		width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+	}
+	</style>
+<!--	<script src="../JapanGSITerrainProvider.js"></script> -->
+	<script src="./JapanGSITerrainProviderImg.js"></script>
+	<script src="./JapanGSIImageryProvider.js"></script>
+
+	<script type="module">
+	import { CesiumWindow } from './cesiumWindow4_module.js';
+
+	
+	var accessTokens={
+		bing:'SET YOUR BING MAPS TOKEN',
+		ion:'SET YOUR CESIUM ION TOKEN'
+	}
+	//var accessTokens=null;
+	
+	window.addEventListener("load",function(){
+		var cesiumWindow = new CesiumWindow( window.Cesium, window.opener, accessTokens ); // cesiumWindowの初期化処理呼び出し
+	});
+	</script>
+</head>
+<body>
+	<div id="cesiumContainer"></div>
+</body>
+</html>
