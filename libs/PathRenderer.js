@@ -141,7 +141,7 @@ class PathRenderer{
 		var command = d[i];
 		var cp;
 		var closed = false;
-		
+		/**
 		var hitPoint = new Object(); // pathのhitPoint(線のためのhitTestエリア)を追加してみる(2013/11/28)
 		
 		function getHitPoint( hp , cp , isEdgePoint, that){ // 2019/4/16 なるべく端を設定しないように改良中　今後は選択したら選択した線を明示する機能が必要だね
@@ -178,7 +178,7 @@ class PathRenderer{
 			hp.prevIsEdgePoint = isEdgePoint;
 			return ( hp );
 		}
-		
+		**/
 		while ( i < d.length ){
 			if ( cp ){
 				prevX = cp.x;
@@ -358,7 +358,7 @@ class PathRenderer{
 				}
 				if ( clickable ){
 					// console.log("clk:",i,d.length-1);
-					hitPoint = getHitPoint(hitPoint, cp , (i==2 || i == (d.length-1)) , this); // これは要るのでしょうか？ 2022/05/24
+	//				hitPoint = getHitPoint(hitPoint, cp , (i==2 || i == (d.length-1)) , this); // これは要るのでしょうか？ 2022/05/24
 				}
 			}
 			
@@ -399,7 +399,7 @@ class PathRenderer{
 			}
 		}
 		
-		if ( clickable && canvasNonFillFlag && hitPoint.x && !this.#mapTicker.pathHitTester.pointPrevent ){ 
+		if ( clickable && canvasNonFillFlag &&  !this.#mapTicker.pathHitTester.pointPrevent ){ 
 			var tmpLineWidth = context.lineWidth;
 			var tmpStrokeStyle = context.strokeStyle;
 			if ( context.lineWidth < 6 ){ // 細すぎる線はヒットテスト用のダミー太線を隠して配置する 6pxは決め打値
@@ -418,13 +418,14 @@ class PathRenderer{
 					context.stroke();
 				}
 			}
+			/**
 			// 線の場合　疑似ヒットポイントを設置(旧版との互換維持のため) ToDo消せるようにもしようね 2022/4/12
 			context.beginPath();
 			context.strokeStyle = 'rgba(255,00,00,0.8)';
 			context.lineWidth = 3;
 			context.arc(hitPoint.x,hitPoint.y,2,0,2*Math.PI,true);
 			context.stroke();
-			
+			**/
 			context.lineWidth = tmpLineWidth;
 			context.strokeStyle = tmpStrokeStyle;
 			

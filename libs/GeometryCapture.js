@@ -145,7 +145,7 @@ class GeometryCapture{
 			// console.log("addGeometry0 setCoverage:", GISgeometry,imgElem,imgElem.naturalHeight);
 
 			GISgeometry.href = this.#getImageURL(GISgeometry.href,docDir);
-			if ( (imgElem && imgElem.naturalHeight > 0) || GISgeometry.href.indexOf("data:")==0){ // ロードできてないイメージは外す。 cesiumのimageryではerr404imgで動作が停止する・・　何とかしてよねぇ‥
+			if ( (imgElem && imgElem.naturalHeight > 0) || GISgeometry.href.indexOf("data:")==0 || GISgeometry.href.indexOf("blob:") == 0){ // ロードできてないイメージは外す。 cesiumのimageryではerr404imgで動作が停止する・・　何とかしてよねぇ‥
 				// ただし、ロード済みでないとこの値はセットされないので・・　ロード中にgisgeomを呼ぶパターンでは使えないはず・・ 2018.2.27
 				// dataURLの場合は、データは実存するにもかかわらずnaturalHeightの設定が遅延するので・・・なんか、こういう話じゃなかも・・(これだと本当にロードが遅延してるdataURLじゃないコンテンツの場合にどうするかがわからない感じもするが・) 2019/12/26
 				this.#GISgeometries[docId].push(GISgeometry);

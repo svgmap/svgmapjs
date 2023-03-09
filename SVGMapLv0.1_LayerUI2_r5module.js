@@ -1329,22 +1329,26 @@ class SvgMapLayerUI {
 		// layerUIでXHRが走っている間はまだ再描画がかかる可能性があり、これを検知して完全な描画完了をできるだけ判定できるようにしたい。これを通知する新しいイベントを作る。
 		
 		// fetchのためのフック
-		
+		// 2023/01/13 Response自体をフックするように改修(ERR404対策)
 		var fetchRes=["blob","text","arrayBuffer","formData","json"];
 		var sip = this.#svgMap.getSvgImagesProps();
 		
 		//console.log("setXHRhooks:this:",this,this.location);
 		var that = this;
 		ifWin.fetch = function (fetch) {
-		    return function () {
+			return async function () {
 		//    	console.log("fetch v1:",v1);
 		    	//console.log("[layerUI] fetch HOOK arguments:",arguments);
 				that.#registLoadingFlag(ifWin.layerID,sip);
 	//	        return fetch.apply(this, arguments); // これはコンテキストが間違っていました‥ 2021/6/17
-		        return fetch.apply(ifWin, arguments);
-		    };
+	//	        return fetch.apply(ifWin, arguments); // Response自体をフックしてreleaseLoadingFlagするようにする 2023/1/13
+				const resp = await fetch.apply(ifWin, arguments);
+				that.#releaseLoadingFlag(ifWin.layerID,sip);
+				return resp;
+			};
 		}(ifWin.fetch);
 		
+		/** 2023/01/13 Response自体をフックするように改修(ERR404対策)
 		for ( var i = 0 ; i < fetchRes.length ; i++ ){
 			(function(frf){
 				ifWin.Response.prototype[fetchRes[i]] = function () {
@@ -1354,6 +1358,7 @@ class SvgMapLayerUI {
 				}
 			}(ifWin.Response.prototype[fetchRes[i]]));
 		}
+		**/
 		
 		// XHRのためのフック
 		(function(send) {
@@ -1384,12 +1389,12 @@ class SvgMapLayerUI {
 	}
 
 	#registLoadingFlag(layerId,sip){
-		//console.log("registLoadingFlag:caller:",registLoadingFlag.caller,"  id:",layerId,"  sip:",sip);
 		if ( sip[layerId].xhrLoading ){
 			++sip[layerId].xhrLoading;
 		} else {
 			sip[layerId].xhrLoading=1;
 		}
+		//console.log("registLoadingFlag: id:",layerId,"  count:",sip[layerId].xhrLoading);
 		this.#aboutToFireXHRCevent=false;
 	}
 
@@ -1399,6 +1404,7 @@ class SvgMapLayerUI {
 		} else {
 			console.error("svgImagesProps["+layerId+"].xhrLoading flag is inconsistent.");
 		}
+		//console.log("releaseLoadingFlag: id:",layerId,"  count:",sip[layerId].xhrLoading);
 	//	setTimeout( function(){checkLoadingFlag(sip);}, totalLoadCompletedGuardTime );
 		this.#checkLoadingFlag(sip);
 	}

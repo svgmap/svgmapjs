@@ -128,7 +128,8 @@ class UtilFuncs {
 		if (
 			href.lastIndexOf("http://", 0) == 0 ||
 			href.lastIndexOf("https://", 0) == 0 ||
-			href.lastIndexOf("data:", 0) == 0
+			href.lastIndexOf("data:", 0) == 0 ||
+			href.lastIndexOf("blob:", 0) == 0
 		) {
 			// 2016.5.10 debug  2019.10.10 add dataURL
 			imageURL = href;

@@ -6,7 +6,7 @@
 //  
 // Programmed by Satoru Takagi
 //  
-// Copyright (C) 2012-2021 by Satoru Takagi @ KDDI CORPORATION
+// Copyright (C) 2012-2022 by Satoru Takagi @ KDDI CORPORATION
 //  
 // Contributors:
 //  jakkyfc
@@ -189,6 +189,7 @@
 // 2022/10/31 : Shift + drag zoom実装 from rev17
 // 2022/12/05 : PCでもタッチ対応 from rev17
 // 2022/05/24- ESM&class化 作業中・・
+// 2023/02/15 : 線のヒットテスト改善し、getHitPoint廃止(PathRenderer)
 //
 // Issues:
 // 2022/03/17 getVectorObjectsAtPointの作法が良くない
@@ -1839,6 +1840,7 @@ class SvgMap {
 	getRootViewBox( ){ return (this.#mapViewerProps.rootViewBox) };
 	getSvgImages( ){ return (this.#svgImages) };
 	getSvgImagesProps( ){ return (this.#svgImagesProps) };
+	getSvgMapLayerUI(){ return ( this.#svgMapLayerUI)};
 	getSvgTarget(...params){ return (this.#getSvgTarget(...params)) };
 	getSwLayers(...params){ return (this.#layerManager.getSwLayers(...params)) };
 	getSymbols(...params){ return (UtilFuncs.getSymbols(...params)) };

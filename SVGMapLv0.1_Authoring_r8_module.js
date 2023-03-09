@@ -282,12 +282,12 @@ class SvgMapAuthoringTool {
 	this.#removeChildren(targetDiv);
 	
 	var uiDoc = targetDiv.ownerDocument;
-	uiDoc.removeEventListener("hideFrame", clearTools, false);
-	uiDoc.removeEventListener("closeFrame", clearTools, false);
-	uiDoc.removeEventListener("appearFrame", setTools, false);
-	uiDoc.addEventListener('hideFrame',clearTools);
-	uiDoc.addEventListener('closeFrame',clearTools);
-	uiDoc.addEventListener('appearFrame',setTools);
+	uiDoc.removeEventListener("hideFrame", this.#clearTools, false);
+	uiDoc.removeEventListener("closeFrame", this.#clearTools, false);
+	uiDoc.removeEventListener("appearFrame", this.#setTools, false);
+	uiDoc.addEventListener('hideFrame',this.#clearTools);
+	uiDoc.addEventListener('closeFrame',this.#clearTools);
+	uiDoc.addEventListener('appearFrame',this.#setTools);
 	
 	console.log("called initPOItools: docId:",poiDocId);
 	this.#svgMap.setRootLayersProps(poiDocId, true , true ); // 子docの場合もあり得ると思う・・
@@ -297,6 +297,7 @@ class SvgMapAuthoringTool {
 	var symbols = this.#svgMap.getSymbols(this.#svgImages[poiDocId]);
 	var metaSchema = this.#getMetaSchema(poiDocId);
 	
+	var symbolCount = 0;
 	for ( var key in symbols ){ 
 		++symbolCount;
 	}
@@ -308,8 +309,7 @@ class SvgMapAuthoringTool {
 		ihtml += '<tr style="display:none"><td colspan="2" id="iconselection" >';
 	}
 	
-	firstSymbol = true;
-	var symbolCount = 0;
+	var firstSymbol = true;
 	for ( var key in symbols ){ // srcに相対パスが正しく入っているか？
 		if ( symbols[key].type=="symbol"){
 	//		console.log(key , poiHref);
@@ -1156,7 +1156,7 @@ class SvgMapAuthoringTool {
 	}
 	
 	function updateCursorGeo(event){
-		console.log("updateCursor:",cursorGeoPoint, "  ev:",event, " caller",updateCursorGeo.caller);
+		console.log("updateCursor:",cursorGeoPoint, "  ev:",event);
 		if ( document.getElementById("centerSight") ){
 			var screenPoint = this.#svgMap.geo2Screen( cursorGeoPoint.lat , cursorGeoPoint.lng );
 			if ( ! document.getElementById("POIeditCursor") ){
@@ -1689,7 +1689,7 @@ class SvgMapAuthoringTool {
 			this.#pointAddMode = false;
 			
 			
-			hilightEditingPoint( e.target , targetDoc );
+			this.#hilightEditingPoint( e.target , targetDoc );
 			
 			if ( !this.#uiMapping.editingGraphicsElement){
 				this.#uiMapping.editingGraphicsElement = true;
@@ -1817,7 +1817,7 @@ class SvgMapAuthoringTool {
 
 #clearTools_with_UI(){
 	console.log("clearTools_with_UI:",this.#uiMapping.uiPanel);
-	clearTools();
+	this.#clearTools();
 	if ( this.#uiMapping.uiPanel && (this.#uiMapping.uiPanel).nodeType && (this.#uiMapping.uiPanel).nodeType===1 ){
 		removeChildren(this.#uiMapping.uiPanel);
 	}
