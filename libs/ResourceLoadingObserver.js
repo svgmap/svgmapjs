@@ -169,6 +169,9 @@ class ResourceLoadingObserver{
 		var delKeys=[];
 		for ( var key in this.#svgImages ){
 			if ( !this.usedImages[key] ){
+				if ( this.#svgImagesProps[key].domMutationObserver ){
+					this.#svgImagesProps[key].domMutationObserver.disconnect()
+				}
 				delete this.#svgImages[key];
 				delete this.#svgImagesProps[key];
 				this.#geometryCapturer.removeDocGeometries(key); // 2020/01/23 added

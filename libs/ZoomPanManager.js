@@ -96,6 +96,7 @@ class ZoomPanManager{
 		var mxy = this.getMouseXY(evt);
 		this.#mouseX0 = mxy.x;
 		this.#mouseY0 = mxy.y;
+		this.#initialTouchDisance = 0;
 		if ( !this.#mapViewerProps.uaProps.isIE &&  evt.type.indexOf("touch")>=0 &&  evt.touches.length > 1){
 					this.#zoomingTransitionFactor = 1; // スマホのときのピンチでのズーム
 					this.#initialTouchDisance = this.#getTouchDistance( evt );
@@ -443,14 +444,21 @@ class ZoomPanManager{
 				mapImgs.item(i).parentNode.removeChild(mapImgs.item(i)); // 何の工夫もせず単に全部消す。これが一番早い感じで表示もまずまず・・・
 			}
 		} else {
+			// リフロー多発を抑制 2023/4/3
+			// https://ui.appleple.blog/entry-109.html
+			var xds=[];
+			var yds=[];
 			for ( var i = mapImgs.length - 1 ; i >= 0 ; i-- ){
 				var il = Number(mapImgs.item(i).style.left.replace("px",""));
 				var it = Number(mapImgs.item(i).style.top.replace("px",""));
 				var iw = Number(mapImgs.item(i).width);
 				var ih = Number(mapImgs.item(i).height);
-				var xd = this.#getIntValue( (il - mapCanvasSize.width * 0.5) * zoomFactor + mapCanvasSize.width * 0.5 + sftX  , iw * zoomFactor );
-				var yd = this.#getIntValue( (it - mapCanvasSize.height * 0.5) * zoomFactor + mapCanvasSize.height * 0.5 + sftY  , ih * zoomFactor );
-				
+				xds[i] = this.#getIntValue( (il - mapCanvasSize.width * 0.5) * zoomFactor + mapCanvasSize.width * 0.5 + sftX  , iw * zoomFactor );
+				yds[i] = this.#getIntValue( (it - mapCanvasSize.height * 0.5) * zoomFactor + mapCanvasSize.height * 0.5 + sftY  , ih * zoomFactor );
+			}
+			for ( var i = mapImgs.length - 1 ; i >= 0 ; i-- ){
+				var xd = xds[i];
+				var yd = yds[i];
 				var imgRect = new Object();
 				imgRect.x = xd.p0;
 				imgRect.y = yd.p0;

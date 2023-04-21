@@ -190,6 +190,8 @@
 // 2022/12/05 : PCでもタッチ対応 from rev17
 // 2022/05/24- ESM&class化 作業中・・
 // 2023/02/15 : 線のヒットテスト改善し、getHitPoint廃止(PathRenderer)
+// 2023/04/07 : ビットイメージアイコンを中心としたパフォーマンスチューニング
+// 2023/04/21 : ベクトルグラフィックスのパフォーマンスチューニング(XML属性キャッシュ)
 //
 // Issues:
 // 2022/03/17 getVectorObjectsAtPointの作法が良くない
@@ -561,6 +563,23 @@ class SvgMap {
 			this.#svgImagesProps[docId].Path = docPath;
 			this.#svgImagesProps[docId].CRS = this.#getCrs( this.#svgImages[docId] ,docId);
 			this.#svgImagesProps[docId].refresh = UtilFuncs.getRefresh( this.#svgImages[docId] );
+			
+			// 2023/4/18 ベクタ描画性能向上策
+			this.#svgImagesProps[docId].styleMap = new WeakMap();
+			this.#svgImagesProps[docId].altdMap = new WeakMap();
+			var mutationObs = new MutationObserver( function(mutations){
+				// 2023/4/19 MutationObserverで、キャッシュ不整合の解消を実施
+				mutations.forEach(function(mutation){
+					if(mutation.type=="attributes"){
+//							console.log("Detect attr change, delete parsed cache for : ",mutation.target);
+						this.#svgImagesProps[docId].styleMap.delete(mutation.target);
+						this.#svgImagesProps[docId].altdMap.delete(mutation.target);
+					}
+				}.bind(this));
+			}.bind(this));
+			mutationObs.observe(this.#svgImages[docId].documentElement, { subtree:true, childList : true, attributes:true, characterData:true});
+			this.#svgImagesProps[docId].domMutationObserver=mutationObs; // delete 直前にsvgImagesProps[docId].domMutationObserver を.disconnect();したほうが良いのかも？
+			
 			this.#updateMetaSchema(docId); // added 2017.8.10  2018.2.26 関数化
 			this.#svgImagesProps[docId].isSVG2 = this.#svgImagesProps[docId].CRS.isSVG2; // ちょっとむりやり 2014.2.10
 			this.#svgImagesProps[docId].parentDocId = parentSvgDocId; // 親の文書IDを格納
@@ -756,6 +775,7 @@ class SvgMap {
 		if ( svgElem.nodeName=="svg"){
 			this.#updateMetaSchema(docId); // 2018.2.28 metaSchemaがDOM操作で変更されることがある・・・
 			this.#resourceLoadingObserver.usedImages[docId]=true; // 2019.5.22 メモリリーク防止用　今描画されてるドキュメントのID表を作る
+			inCanvas = {};
 		}
 		
 		var beforeElem = null;
@@ -902,10 +922,6 @@ class SvgMap {
 			
 			if ( ( !this.#mapTicker.pathHitTester.enable && ( childCategory == SvgMapElementType.POI || childCategory == SvgMapElementType.BITIMAGE || childCategory == SvgMapElementType.EMBEDSVG || childCategory == SvgMapElementType.TEXT ) ) || ( this.#mapTicker.pathHitTester.enable && childCategory == SvgMapElementType.EMBEDSVG ) ){ // image||animation,iframe||use(add201210)要素の場合
 				// Point||Coverage的要素のパース。ただし hittest時はsvgの埋め込みのパースのみ(その他のヒットテストはhtml表示のonClickなどのイベントで処理している)
-				if ( !this.#summarizeCanvas && inCanvas ){
-					// vector2dデータが前にないのでcanvas統合はここで打ち止め
-					inCanvas = null;
-				}
 				var imageId = svgNode.getAttribute("iid");
 				// 読み込んだSVG Image,(iframe|Animation),use要素に共通　通し番のIDを付ける
 				if ( ! imageId || imageId.indexOf("i")!=0 ){ // idの無い要素にidを付ける (元々idが付いていると破綻するかも・・)2013/1 (とりあえず的な対応を実施・・後程もっと良い対策をしたい) .. idの代わりに"iid"を使うようにしてベターな対策を打った 2014.8
@@ -1008,7 +1024,7 @@ class SvgMap {
 							img = this.#imgRenderer.getImgElement(xd.p0 , yd.p0, xd.span , yd.span , imageURL , imageId , ip.opacity , childCategory , ip.metadata , ip.title , elmTransform , ip.href_fragment , ip.pixelated , ip.imageFilter, isNoCache, ip.crossorigin, {docId:docId,svgNode:svgNode}, ip.commonQuery || this.#svgImagesProps[this.#svgImagesProps[docId].rootLayer]?.commonQuery);
 							
 						} else if ( childCategory == SvgMapElementType.TEXT ){ // text要素の場合(2014.7.22)
-							var cStyle = this.#svgStyle.getStyle( svgNode , pStyle );
+							var cStyle = this.#svgStyle.getStyle(svgNode, pStyle, null, this.#svgImagesProps[docId].styleMap);
 							img = this.#getSpanTextElement(xd.p0 , yd.p0 , ip.cdx , ip.cdy , ip.text , imageId , ip.opacity , elmTransform , cStyle , yd.span , ip.nonScaling);
 						} else { // animation|iframe要素の場合
 							img = document.createElement("div");
@@ -1128,19 +1144,13 @@ class SvgMap {
 						hasHyperLink = true;
 					}
 						
-					var cStyle = this.#svgStyle.getStyle(  svgNode , pStyle , hasHyperLink);
+					var cStyle = this.#svgStyle.getStyle(svgNode, pStyle, hasHyperLink, this.#svgImagesProps[docId].styleMap);
 					
 					if ( childSubCategory == SvgMapElementType.SYMBOL ){ // 2017.1.17 group use : beforeElemがどうなるのか要確認
 						cStyle.usedParent = svgNode;
 						svgNode = symbols[useHref].node;
 					}
-					if ( inCanvas && cStyle){ // スタイルを設定する。
-						this.#svgStyle.setCanvasStyle(cStyle , inCanvas.getContext('2d'));
-					}
 					beforeElem = this.#parseSVG( svgNode , docId , parentElem , false , symbols , inCanvas , cStyle , dontChildResLoading);
-					if ( inCanvas && cStyle){ // スタイルを元に戻す
-						this.#svgStyle.setCanvasStyle(pStyle , inCanvas.getContext('2d'));
-					}
 				}
 			} else if ( childCategory == SvgMapElementType.VECTOR2D ){
 	//			console.log("VECTOR2D",svgNode,pStyle);
@@ -1148,111 +1158,53 @@ class SvgMap {
 					continue;
 				}
 				// canvas (inCanvas)を用意する (これ以下のブロック　例えばgetCanvas()とかを作るべきですな)
-				if ( ! inCanvas ){ // 統合キャンバス(inCanvas)を新規作成する
+				if ( !inCanvas.context ){ // 統合キャンバス(inCanvas)を新規作成する
 					if ( !this.#summarizeCanvas ){ // 2014.5.26以前の既存モード
-						var imageId = svgNode.getAttribute("iid");
-						// この状態では編集機能をベクタに入れると破綻します！！！！！！(idなくなるので)
-						if ( ! imageId || imageId.indexOf("i") != 0 ){ // 上記、結構よく破綻する・・・ これがバグだった・・ 2013.8.20
-							imageId = "i" + this.#imageSeqNumber;
-							svgNode.setAttribute("iid" , imageId);
-							++this.#imageSeqNumber;
-						}
-						
-						inCanvas = this.#isLoadedImage(imageId); // この判断で誤っていた！ 2013.8.20
-						
-						if (!inCanvas ){
-							// canvas2dを生成する
-							inCanvas = document.createElement("canvas");
-							inCanvas.style.position = "absolute";
-							inCanvas.style.left = "0px";
-							inCanvas.style.top = "0px";
-							inCanvas.width = this.#mapViewerProps.mapCanvasSize.width;
-							inCanvas.height = this.#mapViewerProps.mapCanvasSize.height;
-							inCanvas.id = imageId;
-							
-							if ( beforeElem ){
-								// SVGのデータ順序の通りにhtmlのinCanvas要素を設置する処理
-								// 一つ前のもののあとに入れる
-								parentElem.insertBefore(inCanvas, beforeElem.nextSibling);
-							} else {
-								if ( parentElem.hasChildNodes()){
-									// 子要素がある場合は最初のspan要素の直前に挿入する？
-									var childSpans = parentElem.getElementsByTagName("div");
-									if ( childSpans ){
-										parentElem.insertBefore( inCanvas , childSpans.item(0) );
-									} else {
-										parentElem.insertBefore(inCanvas , parentElem.lastChild);
-									}
-								} else {
-									parentElem.appendChild(inCanvas);
-								}
-							}
-						} else {
-							inCanvas.getContext('2d').clearRect(0,0,inCanvas.width,inCanvas.height);
-							inCanvas.style.left = "0px";
-							inCanvas.style.top = "0px";
-							inCanvas.width = this.#mapViewerProps.mapCanvasSize.width;
-							inCanvas.height = this.#mapViewerProps.mapCanvasSize.height;
-							inCanvas.setAttribute("hasdrawing","false");
-						}
-						if ( pStyle ){
-							this.#svgStyle.setCanvasStyle(pStyle , inCanvas.getContext('2d'));
-						}
+						// このモードはだいぶ昔に消滅
 					} else { // summarizeCanvas=true rootLayer毎のcanvasとりまとめ高速化/省メモリモード 2014.5.27
-						inCanvas = document.getElementById(this.#svgImagesProps[docId].rootLayer + "_canvas" );
-						if ( ! inCanvas ){
-							inCanvas = document.createElement("canvas");
-							inCanvas.style.position = "absolute";
-							inCanvas.style.left = "0px";
-							inCanvas.style.top = "0px";
-							inCanvas.width = this.#mapViewerProps.mapCanvasSize.width;
-							inCanvas.height = this.#mapViewerProps.mapCanvasSize.height;
-							inCanvas.id = this.#svgImagesProps[docId].rootLayer + "_canvas" ;
-							document.getElementById(this.#svgImagesProps[docId].rootLayer).appendChild(inCanvas); //前後関係をもう少し改善できると思う 2015.3.24 rootLayerのdivが生成されていない状況で、appendしてerrが出ることがある　非同期処理によるものかもしれない。（要継続観察）
-							inCanvas.setAttribute("hasdrawing","false");
+						var inCanvasElement = document.getElementById(this.#svgImagesProps[docId].rootLayer + "_canvas" );
+						if ( ! inCanvasElement ){
+							inCanvasElement = document.createElement("canvas");
+							inCanvasElement.style.position = "absolute";
+							inCanvasElement.style.left = "0px";
+							inCanvasElement.style.top = "0px";
+							inCanvasElement.width = this.#mapViewerProps.mapCanvasSize.width;
+							inCanvasElement.height = this.#mapViewerProps.mapCanvasSize.height;
+							inCanvasElement.id = this.#svgImagesProps[docId].rootLayer + "_canvas" ;
+							document.getElementById(this.#svgImagesProps[docId].rootLayer).appendChild(inCanvasElement); //前後関係をもう少し改善できると思う 2015.3.24 rootLayerのdivが生成されていない状況で、appendしてerrが出ることがある　非同期処理によるものかもしれない。（要継続観察）
+							inCanvasElement.setAttribute("hasdrawing","false");
 						} else {
 							// inCanvas.styleの初期化系はresetSummarizedCanvasに移動
 						}
-						if ( pStyle ){
-							this.#svgStyle.setCanvasStyle(pStyle , inCanvas.getContext('2d'));
-						}
+						inCanvas.element = inCanvasElement;
+						inCanvas.context2d = inCanvasElement.getContext("2d");
 					}
 				} else {
 					// 生成済みのcanvasを使用する
 				}
 				
 				
-				var cStyle = this.#svgStyle.getStyle(  svgNode , pStyle );
+				var cStyle = this.#svgStyle.getStyle(svgNode, pStyle, null,  this.#svgImagesProps[docId].styleMap);
 	//			console.log("thisObj's style:",cStyle, "   parent's style:",pStyle);
 				if ( GISgeometry ){
 					GISgeometry.determineType(cStyle);
 				}
-				var canContext;
 				if ( this.#geometryCapturer.GISgeometriesCaptureOptions.SkipVectorRendering ){ // 2021.9.16
-					canContext = this.#geometryCapturer.dummy2DContextBuilder();
+					inCanvas.context = this.#geometryCapturer.dummy2DContextBuilder();
 				} else {
-					canContext = inCanvas.getContext('2d'); // canvas2dコンテキスト取得
+					inCanvas.context = inCanvas.context2d; // canvas2dコンテキスト取得
 				}
-				// 必要に応じてスタイルを設定する(ここまでやらなくても性能出るかも？)
-				if ( cStyle.hasUpdate ){ // 親のスタイルを継承しているだけでない
-					this.#svgStyle.setCanvasStyle(cStyle , canContext);
-					nextStyleUpdate = true;
-				} else if(nextStyleUpdate){ // 親のスタイルを継承しているだけだが、直前の要素がそうでない
-					this.#svgStyle.setCanvasStyle(cStyle , canContext);
-					nextStyleUpdate = false;
-				} else {
-					// do nothing
-				}
+				inCanvas.altdMap = this.#svgImagesProps[docId].altdMap;
 				if ( UtilFuncs.inZoomRange( cStyle , zoom , child2root.scale ) && ( !cStyle.display || cStyle.display != "none") && (!cStyle.visibility || cStyle.visibility != "hidden") ){
 					var bbox = null;
 					if (childSubCategory == SvgMapElementType.PATH){
-						bbox = this.#pathRenderer.setSVGpathPoints( svgNode , canContext , child2canvas , clickable , null , cStyle.nonScalingOffset , GISgeometry );
+						bbox = this.#pathRenderer.setSVGpathPoints( svgNode , inCanvas , child2canvas , clickable , null , cStyle , GISgeometry );
 					} else if ( childSubCategory == SvgMapElementType.RECT ){
-						bbox = this.#pathRenderer.setSVGrectPoints( svgNode , canContext , child2canvas , clickable , cStyle.nonScalingOffset , GISgeometry );
+						bbox = this.#pathRenderer.setSVGrectPoints( svgNode , inCanvas , child2canvas , clickable , cStyle , GISgeometry );
 					} else if ( childSubCategory == SvgMapElementType.CIRCLE || childSubCategory == SvgMapElementType.ELLIPSE ){
-						bbox = this.#pathRenderer.setSVGcirclePoints( svgNode , canContext , child2canvas , clickable , childSubCategory , cStyle.nonScalingOffset , GISgeometry );
+						bbox = this.#pathRenderer.setSVGcirclePoints( svgNode , inCanvas , child2canvas , clickable , childSubCategory , cStyle , GISgeometry );
 					} else if ( childSubCategory == SvgMapElementType.POLYLINE || childSubCategory == SvgMapElementType.POLYGON ){
-						bbox = this.#pathRenderer.setSVGpolyPoints( svgNode , canContext , child2canvas , clickable , childSubCategory , cStyle.nonScalingOffset , GISgeometry );
+						bbox = this.#pathRenderer.setSVGpolyPoints( svgNode , inCanvas , child2canvas , clickable , childSubCategory , cStyle , GISgeometry );
 					} else { // これら以外 -- 未実装　～　だいぶなくなったけれど
 	//					bbox = setSVGvectorPoints(svgNode , canContext , childSubCategory , child2canvas , cStyle );
 					}
@@ -1266,15 +1218,14 @@ class SvgMap {
 								markPath = symbols[markerId[1]].d;
 							}
 							var markMat = { a: bbox.endCos , b: bbox.endSin , c: -bbox.endSin , d: bbox.endCos , e: bbox.endX , f: bbox.endY };
-	//						canContext.setLineDash([0]); // 2016.9.6 不要？？ ffox45でフリーズ原因・・
-							canContext.setLineDash([]);
-							this.#pathRenderer.setSVGpathPoints( svgNode , canContext , markMat , clickable , markPath , cStyle.nonScalingOffset );
+							inCanvas.context.setLineDash([]);
+							this.#pathRenderer.setSVGpathPoints( svgNode , inCanvas , markMat , clickable , markPath , cStyle );
 						}
 						if ( (this.#mapTicker.pathHitTester.enable || this.#mapTicker.pathHitTester.centralGetter ) && bbox.hitted ){
 							this.#mapTicker.pathHitTester.setHittedObjects(svgNode, bbox, cStyle.usedParent);
 						}
 						if ( UtilFuncs.isIntersect(bbox,this.#mapViewerProps.mapCanvasSize) ){
-							inCanvas.setAttribute("hasdrawing","true");
+							inCanvas.element.setAttribute("hasdrawing","true");
 							onViewport = true;
 						}
 					}
@@ -1675,9 +1626,15 @@ class SvgMap {
 			for ( var i = 0 ; i < anims.length ; i++ ){
 				this.#removeChildDocs( anims[i].getAttribute("iid") );
 			}
+			if (this.#svgImagesProps[imageId].domMutationObserver){
+				this.#svgImagesProps[imageId].domMutationObserver.disconnect()
+			}
 			delete this.#svgImages[imageId];
 			delete this.#svgImagesProps[imageId];
 		} else if ( this.#svgImagesProps[imageId] && this.#svgImagesProps[imageId].loadError ){
+			if (this.#svgImagesProps[imageId].domMutationObserver){
+				this.#svgImagesProps[imageId].domMutationObserver.disconnect()
+			}
 			delete this.#svgImagesProps[imageId];
 		}
 	}
@@ -1714,7 +1671,20 @@ class SvgMap {
 
 
 	#retryingRefreshScreen = false;
-	#refreshScreen=function(noRetry, parentCaller, isRetryCall){
+	#refreshScreen=function(noRetry, parentCaller, isRetryCall, withinContext) {
+		// MutationObserverとの不整合を回避するため、refreshScreenはマイクロタスクに積む
+		// https://zenn.dev/canalun/articles/js_async_and_company_summary
+		// https://developer.mozilla.org/ja/docs/Web/API/queueMicrotask
+		if ( withinContext ){
+			return ( this.#refreshScreenSync(noRetry, parentCaller, isRetryCall, withinContext) );
+		} else {
+			queueMicrotask(function(){
+				 this.#refreshScreenSync(noRetry, parentCaller, isRetryCall) 
+			}.bind(this));
+		}
+	}
+	
+	#refreshScreenSync=function(noRetry, parentCaller, isRetryCall){
 		// スクロール・パンを伴わずに画面の表示を更新(内部のSVGMapDOMとシンクロ)する処理
 		// SVGMapコンテンツ全体のDOMトラバースが起きるため基本的に重い処理
 		// SVGMapLv0.1.jsは画面の更新は定期的に行われ"ない" 実際は末尾のdynamicLoad()でそれが起きる
