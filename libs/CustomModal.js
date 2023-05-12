@@ -44,18 +44,19 @@ class CustomModal{
 			btn.setAttribute("value",buttonMessages[i]);
 			cm.appendChild(btn);
 		}
-		
-		cm.addEventListener("click", (function (e) {
+		var clickFunc = (function (e) {
 			return function cmf(e){
 				if ( e.target.id.indexOf("customModalBtn_")>=0){
 					this.mapTicker.initModal();
 					if ( callback ){
 						callback ( Number(e.target.id.substring(15)),callbackParam);
 					}
-					cm.removeEventListener("click", cmf , false);
+					cm.removeEventListener("click", clickFunc , false);
 				}
 			}.bind(this)
-		}.bind(this))(),false);
+		}.bind(this))()
+		
+		cm.addEventListener("click", clickFunc,false);
 		
 	}
 }

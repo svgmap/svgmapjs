@@ -383,7 +383,7 @@ class SvgMapAuthoringTool {
 
 #setMetaUiEvents(targetDoc){
 	targetDoc.getElementById("metaEditor").addEventListener("click",function(e){
-		console.log( getMetaUiData(targetDoc));
+		console.log( this.#getMetaUiData(targetDoc));
 		switch ( e.target.id ){
 		}
 	}.bind(this),false);
@@ -426,7 +426,7 @@ class SvgMapAuthoringTool {
 			confStat = "OK";
 			if ( this.#uiMapping.editingMode ==="POI"){
 //				clearPoiSelection();
-				ret = this.#setPoiSvg(readPoiUiParams(targetDoc),poiDocId);
+				ret = this.#setPoiSvg(this.#readPoiUiParams(targetDoc),poiDocId);
 				// 既存アイコンを選択しているものがあれば（ＳＶＧではなく、ＨＴＭＬの方を）元に戻す
 //				console.log(uiMapping.modifyTargetElement,document.getElementById(uiMapping.modifyTargetElement.getAttribute("iid")));
 				if ( this.#uiMapping.modifyTargetElement && document.getElementById(this.#uiMapping.modifyTargetElement.getAttribute("iid"))){
@@ -459,7 +459,7 @@ class SvgMapAuthoringTool {
 		case"pepdel": // 削除 2017.2.27 delにpolygonの要素ポイントの削除機能を拡張する
 			console.log("pepdel button: selP",this.#uiMapping.selectedPointsIndex, "  insP:",this.#uiMapping.insertPointsIndex);
 			if ( this.#uiMapping.selectedPointsIndex == -1 ){
-				this.#svgMap.setCustomModal("Delete Object?",["YES","Cancel"],delConfModal,{targetDoc:targetDoc,toolsCbFunc:this.#uiMapping.toolsCbFunc,toolsCbFuncParam:this.#uiMapping.toolsCbFuncParam});
+				this.#svgMap.setCustomModal("Delete Object?",["YES","Cancel"],this.#delConfModal,{targetDoc:targetDoc,toolsCbFunc:this.#uiMapping.toolsCbFunc,toolsCbFuncParam:this.#uiMapping.toolsCbFuncParam});
 				/**
 				confStat = "Delete";
 				uiMapping.editingGraphicsElement = false;
@@ -520,7 +520,7 @@ class SvgMapAuthoringTool {
 	this.#svgMap.refreshScreen();
 }
 
-#delConfModal(index,opt){
+#delConfModal=function(index,opt){
 	if ( index == 0 ){
 		var confStat = "Delete";
 		this.#uiMapping.editingGraphicsElement = false;
@@ -531,7 +531,7 @@ class SvgMapAuthoringTool {
 	} else {
 		// do nothing
 	}
-}
+}.bind(this);
 
 
 #clearForms(targetDoc){
@@ -700,7 +700,7 @@ class SvgMapAuthoringTool {
 		}
 		targetSvgElem.setAttribute("d",d);
 		
-		var meta = getMetaUiData(targetDoc);
+		var meta = this.#getMetaUiData(targetDoc);
 		var metaStr = "";
 		for ( var i = 0 ; i < meta.length ; i++ ){
 			metaStr += this.#svgMap.escape(meta[i]);
@@ -716,7 +716,7 @@ class SvgMapAuthoringTool {
 
 
 #readPoiUiParams(targetDoc){
-	var meta = getMetaUiData(targetDoc);
+	var meta = this.#getMetaUiData(targetDoc);
 	var tbl = targetDoc.getElementById("poiEditor");
 	var symbs = tbl.rows[0].cells[0].childNodes;
 	var symbolHref;
@@ -907,7 +907,7 @@ class SvgMapAuthoringTool {
 	console.log("XY:",mxy, " latlng:",geop, " form:",targetDoc.getElementById("poiEditorPosition"));
 //	values[2].value= numberFormat(geop.lat) + "," + numberFormat(geop.lng);
 	targetDoc.getElementById("poiEditorPosition").value= this.#svgMap.numberFormat(geop.lat) + "," + this.#svgMap.numberFormat(geop.lng);
-	document.removeEventListener("click", setPoiPosition, false);
+	document.removeEventListener("click", this.#setPoiPosition, false);
 	
 	// メタデータで緯度経度重複のあるdisabled formに値をコピー
 	console.log("setPoiPosition: copy lat lng to meta");
@@ -962,7 +962,7 @@ class SvgMapAuthoringTool {
 	var defaultStrokeColor = "rgba(255,0,0,1.0)";
 	var defaultLineWidth = 3.0;
 	
-	function initCanvas(){
+	var initCanvas = function(){
 		enabled = true;
 //		console.log("initCanvas");
 		if (  document.getElementById("PolyEditCanvas") ){
@@ -1000,7 +1000,7 @@ class SvgMapAuthoringTool {
 //		cc.stroke();
 		document.addEventListener("screenRefreshed",updateCanvas);
 		document.addEventListener("zoomPanMap",updateCanvas);
-	}
+	}.bind(this);
 	
 	function addPoint(point){
 		geoPoints.push(point);
@@ -1027,7 +1027,7 @@ class SvgMapAuthoringTool {
 		return ( geoPoints );
 	}
 	
-	function updateCanvas(){
+	var updateCanvas = function(){
 		console.log("updateCanvas: insP:", this.#uiMapping.insertPointsIndex , "  selP:" , this.#uiMapping.selectedPointsIndex, "   isPolygon:",isPolygon);
 		initCanvas();
 		cc.clearRect(0, 0, cs.width, cs.height);
@@ -1053,13 +1053,13 @@ class SvgMapAuthoringTool {
 		}
 		
 		
-	}
+	}.bind(this);
 	
 	function clearPoints(){
 		geoPoints = [];
 	}
 	
-	function hilightPoint( index ){
+	var hilightPoint = function( index ){
 		if ( index >=0 && index < geoPoints.length ){
 			var P1 = this.#svgMap.geo2Screen(geoPoints[index].lat , geoPoints[index].lng);
 		console.log("hilightPoint:",index," XY:",P1);
@@ -1077,9 +1077,9 @@ class SvgMapAuthoringTool {
 			cc.strokeStyle = defaultStrokeColor;
 			cc.fillStyle = defaultFillColor;
 		}
-	}
+	}.bind(this);
 	
-	function hilightLine( index ){
+	var hilightLine = function ( index ){
 		console.log("polyCanvas hilightLine:",index, " totalPoints:",geoPoints.length);
 		var P1,P2;
 		if ( index >0 && index < geoPoints.length ){
@@ -1107,7 +1107,7 @@ class SvgMapAuthoringTool {
 			cc.strokeStyle = defaultStrokeColor;
 			cc.fillStyle = defaultFillColor;
 		}
-	}
+	}.bind(this);
 	
 	function removeCanvas(){
 		enabled = false;
@@ -1155,12 +1155,12 @@ class SvgMapAuthoringTool {
 		document.addEventListener("zoomPanMap",updateCursorGeo);
 	}
 	
-	function updateCursorGeo(event){
+	var updateCursorGeo = function(event){
 		console.log("updateCursor:",cursorGeoPoint, "  ev:",event);
 		if ( document.getElementById("centerSight") ){
 			var screenPoint = this.#svgMap.geo2Screen( cursorGeoPoint.lat , cursorGeoPoint.lng );
 			if ( ! document.getElementById("POIeditCursor") ){
-				cursor = document.createElement("img");
+				var cursor = document.createElement("img");
 		//		poiの画面上の位置を得る
 				cursor.style.position = "absolute";
 				cursor.style.width="10";
@@ -1178,7 +1178,7 @@ class SvgMapAuthoringTool {
 			cursor.style.left = (screenPoint.x - 6) + "px";
 			cursor.style.top = (screenPoint.y - 6)+ "px";
 		}
-	}
+	}.bind(this);
 	
 	function removeCursor(){
 		enabled = false;
@@ -1246,7 +1246,7 @@ class SvgMapAuthoringTool {
 	
 	var geops;
 	if (svgTarget.element.nodeName == "path"){
-		var svgps = this.#getPolyPoints(pathConditioner(svgTarget.element.getAttribute("d")));
+		var svgps = this.#getPolyPoints(this.#pathConditioner(svgTarget.element.getAttribute("d")));
 //		console.log(svgps);
 		geops = this.#getGeoCoordinates(svgps,this.#svgImagesProps[poiDocId].CRS);
 //		console.log(geops);
@@ -1272,7 +1272,7 @@ class SvgMapAuthoringTool {
 	d = d.replace(/([0-9])([+\-])/gm,'$1 $2'); // separate digits when no comma
 	d = d.replace(/(\.[0-9]*)(\.)/gm,'$1 $2'); // separate digits when no comma
 	d = d.replace(/([Aa](\s+[0-9]+){3})\s+([01])\s*([01])/gm,'$1 $3 $4 '); // shorthand elliptical arc path syntax
-	d = trim(compressSpaces(d)).split(' '); // compress multiple spaces
+	d = this.#trim(this.#compressSpaces(d)).split(' '); // compress multiple spaces
 //	console.log("d:",d);
 	return ( d );
 }
@@ -1663,7 +1663,7 @@ class SvgMapAuthoringTool {
 //*	uiMapping.pointsUiSelectionRange = null;
 	
 	console.log("updatePointListForm:",geoPoints);
-	updatePointListForm( this.#uiMapping.uiDoc.getElementById("polyEditorPosition") , geoPoints );
+	this.#updatePointListForm( this.#uiMapping.uiDoc.getElementById("polyEditorPosition") , geoPoints );
 	
 //	document.removeEventListener("click", arguments.callee, false);
 	

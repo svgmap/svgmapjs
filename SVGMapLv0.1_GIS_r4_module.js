@@ -46,6 +46,8 @@
 // 2021/10/27 ラスターGISの画像キャッシュの明示的なOn/Offを可能に
 // 2022/03/xx geoJsonのレンダラのバグ修正・高速化
 // 2022/04/xx Proxy処理をリファクタリング(メインのFW側および切り出したcorsProxy.js側で処理するように)
+// 2022/10/21 ラスターGIS: filterをサポート
+// 2023/05/11 getBufferedPolygon
 //
 // ISSUES:
 //
@@ -106,13 +108,13 @@ class SvgMapGIS {
 						}
 					}
 				}
-				return (featureReader.read(geojs));
-			}
-			this.getGeoJson = function( feature ){
-				return (featureWriter.write(feature));
-			}
+				return (this.#featureReader.read(geojs));
+			}.bind(this)
+			this.#getGeoJson = function( feature ){
+				return (this.#featureWriter.write(feature));
+			}.bind(this);
 		}
-		
+		//console.log("init svgmapgis",this.#jsts,this.#getGeoJson);
 	//	console.log(featureReader, featureWriter, getFeature, getGeoJson);
 		
 		// http://stackoverflow.com/questions/22521982/js-check-if-point-inside-a-polygon
@@ -655,7 +657,7 @@ class SvgMapGIS {
 		loop1: for (var i = loop1Count ; i < fa1.length ; i++){
 			if ( j == 0 ){
 				console.log("Seed feartureA:",fa1[i]);
-				var featureA = getFeature(fa1[i]);
+				var featureA = this.#getFeature(fa1[i]);
 				try{
 					featureA = this.#jsts.simplify.DouglasPeuckerSimplifier.simplify(featureA,0.00001);
 					featureA = this.#jsts.precision.GeometryPrecisionReducer.reduce(featureA,pm);
@@ -692,7 +694,7 @@ class SvgMapGIS {
 					if ( nextCount2 == fa2.length ){
 						// たまたま内側ループ完了タイミングだった
 						if ( ansFeature ){
-							ansFeatures.push(getGeoJson(ansFeature));
+							ansFeatures.push(this.#getGeoJson(ansFeature));
 //							console.log(ansFeature);
 						}
 						nextCount1 = i+1;
@@ -993,7 +995,7 @@ class SvgMapGIS {
 					params.progrssCallback( Math.ceil(1000 * counter /  compArray.length) / 10 );
 				}
 				startTime = new Date().getTime();
-				setTimeout(buildIntersectionS3.bind(this), 30 , src2IDs,src1Features, compArray,geom, params, counter , startTime , feature2, intersections);
+				setTimeout(this.#buildIntersectionS3.bind(this), 30 , src2IDs,src1Features, compArray,geom, params, counter , startTime , feature2, intersections);
 				break;
 			}
 		}
@@ -1256,7 +1258,7 @@ class SvgMapGIS {
 		if ( targetCoverage && targetCoverage.href ){
 			var targetCoverageURL = targetCoverage.href;
 			//console.log("getImagePixData:",getImagePixData);
-			this.#getImagePixData(targetCoverageURL, this.#computeInRangePoints, superParam, targetCoverage.src.getAttribute("iid"));
+			this.#getImagePixData(targetCoverageURL, this.#computeInRangePoints, superParam, targetCoverage.src.getAttribute("iid"), targetCoverage.src.getAttribute("style"));
 		} else {
 			this.#halt = false;
 			superParam.cbFunc(superParam.ans, superParam.param);
@@ -1415,7 +1417,7 @@ class SvgMapGIS {
 			if ( targetCoverage && targetCoverage.href ){
 				var targetCoverageURL = targetCoverage.href;
 				// getImagePixData経由で再帰実行されるcomputeInRangePointsを呼び出し処理を進める
-				this.#getImagePixData(targetCoverageURL, this.#computeInRangePoints, superParam, targetCoverage.src.getAttribute("iid"));
+				this.#getImagePixData(targetCoverageURL, this.#computeInRangePoints, superParam, targetCoverage.src.getAttribute("iid"), targetCoverage.src.getAttribute("style"));
 			} else {
 				// これは異常終了のケース？
 				this.#halt = false;
@@ -1488,7 +1490,7 @@ class SvgMapGIS {
 		this.#imageCache = [];
 		this.#imageCacheQueue=[];
 	}
-	#getImagePixData(imageUrl, callbackFunc, callbackFuncParams, imageIID){
+	#getImagePixData(imageUrl, callbackFunc, callbackFuncParams, imageIID, imageStyle){
 		// 2020.1.30 自ドメイン経由のビットイメージの場合、画面に表示しているimgリソースをそのまま画像処理用として利用する。　これをより有効にするため、コアモジュールもbitimageをproxy経由で取得させる機能を実装している(svgMap.setProxyURLFactory)
 //		console.log("getImagePixData: url,iid,iid's elem: ",imageUrl,imageIID,document.getElementById(imageIID));
 		var imageURLobj = this.#getImageURL(imageUrl,true);
@@ -1496,13 +1498,13 @@ class SvgMapGIS {
 		var imageURL_int = imageURLobj.url;
 		if ( this.#imageCacheEnabled && this.#imageCache[imageURL_int]){
 //			console.log("Hit imageCache");
-			this.#returnImageRanderedCanvas(this.#imageCache[imageURL_int],callbackFunc, callbackFuncParams)
+			this.#returnImageRanderedCanvas(this.#imageCache[imageURL_int],callbackFunc, callbackFuncParams, imageStyle)
 		} else {
 			var documentImage = document.getElementById(imageIID);
 			var imgSrcURL = documentImage.getAttribute("src");
 			if ( imgSrcURL.indexOf("http")!=0 || this.#getImageURL(imgSrcURL)==imgSrcURL){
 				//console.log("use image element's image :", documentImage); 
-				this.#returnImageRanderedCanvas(documentImage,callbackFunc, callbackFuncParams);
+				this.#returnImageRanderedCanvas(documentImage,callbackFunc, callbackFuncParams, imageStyle);
 				if ( this.#imageCacheEnabled ){
 					this.#addImageCache(imageURL_int, documentImage);
 				}
@@ -1515,7 +1517,7 @@ class SvgMapGIS {
 				// console.log("Fetch image : ", imageUrl);
 				img.src = imageURL_int;
 				img.onload = function() {
-					this.#returnImageRanderedCanvas(img,callbackFunc, callbackFuncParams);
+					this.#returnImageRanderedCanvas(img,callbackFunc, callbackFuncParams, imageStyle);
 					if ( this.#imageCacheEnabled ){
 						this.#addImageCache(imageURL_int, img);
 					}
@@ -1524,7 +1526,7 @@ class SvgMapGIS {
 		}
 	}
 	
-	#returnImageRanderedCanvas(img,callbackFunc, callbackFuncParams){
+	#returnImageRanderedCanvas(img,callbackFunc, callbackFuncParams,imageStyle){
 		var canvas = document.createElement("canvas");
 //		canvas.width  = img.width;
 		canvas.width  = img.naturalWidth;
@@ -1536,12 +1538,23 @@ class SvgMapGIS {
 		cContext.webkitImageSmoothingEnabled = false;
 		cContext.msImageSmoothingEnabled = false;
 		cContext.imageSmoothingEnabled = false;
+		this.#applyFilter(cContext, imageStyle); // 2022/10/21 imgにfilterをかけているケースに対応
 		cContext.drawImage(img, 0, 0);
 		var pixData = cContext.getImageData(0, 0, canvas.width, canvas.height).data;
 //		console.log("pixData:",pixData);
 		callbackFunc(pixData, canvas.width, canvas.height, callbackFuncParams);
 	}
 	
+	#applyFilter(cContext, styleStr) {
+		// 2022/10/21 imgにfilterをかけているケースに対応
+		if (styleStr) {
+			var ans = styleStr.match(/filter:([^;]+);/);
+			if (ans) {
+				console.log("applyFilter:", ans);
+				cContext.filter = ans[1].trim();
+			}
+		}
+	}
 	
 	
 	// 線(ポリライン)とビットイメージ間のGIS 2020/7/3
@@ -3126,6 +3139,117 @@ class SvgMapGIS {
 		return ( uri );
 	}
 	
+	#getBufferedPolygon(geom,bufferLength){
+		// jstsを用いて経度緯度系のgeometryのバッファ計算を行う
+		// geom : 経度緯度系のgeomerty(line,polygon,polylineなんでも)
+		// bufferLength : バッファ長[m]
+		//
+		// xx領域が十分狭いことを前提として、経度緯度系geometryの重心を基にした1次の変換によるメートル系への平面直角座標変換を行い、バッファ計算後、緯度座標に戻す
+		var ct = this.#getCentroid(geom);
+		var cost = Math.cos(ct[1] * Math.PI/180 );
+		//console.log("centroid:",ct, " cos:",cost);
+		var tf = [
+		111111.11 * cost,
+		0,
+		0,
+		111111.11,
+		0,
+		0
+		];
+		var ngm = {
+			type:geom.type,
+			coordinates:geom.coordinates
+		}
+		ngm = this.#transformGeometry(ngm,tf,true);
+		console.log(ngm, this);
+		var f = this.#getFeature(ngm);
+		f = f.buffer(bufferLength);
+		var bufGeom = this.#getGeoJson(f);
+		var rtf = [
+		1/(111111.11 * cost),
+		0,
+		0,
+		1/111111.11,
+		0,
+		0
+		];
+		this.#transformGeometry(bufGeom,rtf);
+		if ( geom.src){
+			bufGeom.src = geom.src;
+		}
+		return ( bufGeom );
+	}
+	#getCentroid(geom){
+		function opf(){
+			var count=0;
+			var sumX=0;
+			var sumY=0;
+			function set(crd){
+				sumX+=crd[0];
+				sumY+=crd[1];
+				++count;
+				//console.log(sumX,sumY,count);
+			}
+			function getResult(){
+				//console.log(sumX,sumY,count);
+				if ( count >0){
+					return ( [sumX / count, sumY / count]);
+				} else {
+					return null;
+				}
+			}
+			return{
+				getResult,
+				set
+			}
+		}
+		var op = opf();
+		this.#parseCoordinates(geom.coordinates, op);
+		//console.log(op.getResult());
+		return ( op.getResult() );
+	}
+	#transformGeometry(geom,transform, doDeepCopy){
+		var transformOp;
+		if ( doDeepCopy ){
+			geom = structuredClone(geom);
+		}
+		if (typeof(transform)=="function"){
+			transformOp = function(){
+				function set(crd){
+					return(transform(crd));
+				}
+				return{set}
+			}
+		} else {
+			transformOp = function(){
+				function set(crd){
+					var ansX = crd[0]*transform[0] + crd[1]*transform[2] + transform[4]
+					var ansY = crd[0]*transform[1] + crd[1]*transform[3] + transform[5]
+					return [ansX,ansY];
+				}
+				return{set}
+			}
+		}
+		var op = transformOp();
+		//console.log(op);
+		this.#parseCoordinates(geom.coordinates, op);
+		return ( geom );
+	}
+	#parseCoordinates(cd, operator){
+		//console.log(operator);
+		if ( typeof(cd[0])=="number" && cd.length == 2){
+			var ocd = operator.set(cd);
+			if ( ocd ){
+				cd[0]=ocd[0];
+				cd[1]=ocd[1];
+			}
+		} else {
+			for ( var scd of cd ){
+				this.#parseCoordinates(scd, operator)
+			}
+		}
+	}
+	
 	
 	buildDifference(...params){ return (this.#buildDifference(...params))};
 	buildIntersection(...params){ return (this.#buildIntersection(...params))};
@@ -3135,6 +3259,7 @@ class SvgMapGIS {
 	drawKml(...params){ return (this.#drawKml(...params))};
 	disableImageCache(...params){ return (this.#disableImageCache(...params))};
 	enableImageCache(...params){ return (this.#enableImageCache(...params))};
+	getBufferedPolygon(...params){ return (this.#getBufferedPolygon(...params))};
 	getExcludedPoints(...params){ return (this.#getExcludedPoints(...params))};
 	getColorString(...params){ return (this.#getColorString(...params))};
 	getImage(...params){ return (this.#getImage(...params))};
