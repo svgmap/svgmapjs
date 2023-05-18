@@ -378,7 +378,7 @@ class SvgMapAuthoringTool {
 	this.#setPoiUiEvents(uiDoc, poiDocId);
 	this.#setMetaUiEvents(uiDoc, poiDocId);
 	this.#setEditConfEvents(uiDoc, poiDocId);
-	
+	return ( this.#uiMapping );
 }
 
 #setMetaUiEvents(targetDoc){
@@ -1218,7 +1218,12 @@ class SvgMapAuthoringTool {
 	var svgPos = this.#svgMap.getPoiPos(poiNode);
 	var poiHref = poiNode.getAttribute("xlink:href");
 //	var metaSchema = poiNode.parentNode.getAttribute("property").split(",");
-	var metaData = poiNode.getAttribute("content").split(",");
+	var metaData = poiNode.getAttribute("content");
+	if ( metaData !="" ){
+		metaData = metaData.split(",");
+	} else {
+		metaData = [];
+	}
 	var title = poiNode.getAttribute("xlink:title");
 	var latlng = this.#svgMap.SVG2Geo(Number(svgPos.x) , Number(svgPos.y) , this.#svgImagesProps[poiDocId].CRS);
 	return {
@@ -1414,6 +1419,7 @@ class SvgMapAuthoringTool {
 			this.#displayPolyProps(svgTarget);
 		}
 	}
+	this.#svgMap.refreshScreen(); // 選択状態を解除(2023/1/20)
 }
 
 #selectedObjectID; // これは、メイン画面上の選択されたオブジェクト(アイコン)のIDなのでたぶんグローバルで問題ないはずです。
@@ -1604,6 +1610,7 @@ class SvgMapAuthoringTool {
 	this.#setPolyUiEvents(uiDoc, poiDocId);
 	this.#setMetaUiEvents(uiDoc, poiDocId);
 	this.#setEditConfEvents(uiDoc, poiDocId);
+	return ( this.#uiMapping );
 }
 
 #testTouch(e){
