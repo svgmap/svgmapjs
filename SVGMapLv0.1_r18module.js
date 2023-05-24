@@ -192,6 +192,7 @@
 // 2023/02/15 : 線のヒットテスト改善し、getHitPoint廃止(PathRenderer)
 // 2023/04/07 : ビットイメージアイコンを中心としたパフォーマンスチューニング
 // 2023/04/21 : ベクトルグラフィックスのパフォーマンスチューニング(XML属性キャッシュ)
+// 2023/05/24 : mapcanvasを囲むmapCanvasWrapperをつくりイベント検出に使い、右クリック下ドラッグによるズームアウトの操作性を改善
 //
 // Issues:
 // 2022/03/17 getVectorObjectsAtPointの作法が良くない
@@ -341,7 +342,7 @@ class SvgMap {
 		
 		this.#matUtil = new MatrixUtil();
 		this.#proxyManager = new ProxyManager();
-		this.#svgMapAuthoringTool = new SvgMapAuthoringTool(this);
+		this.#svgMapAuthoringTool = new SvgMapAuthoringTool(this, this.#mapViewerProps);
 		this.#svgMapLayerUI = new SvgMapLayerUI(this, this.#svgMapAuthoringTool);
 		this.#svgMapCustomLayersManager = new SvgMapCustomLayersManager(this, this.#svgMapLayerUI.getLayersCustomizer );
 		this.#resourceLoadingObserver = new ResourceLoadingObserver(this.#mapViewerProps, this.#svgImagesProps, this.#svgImages, this.#refreshScreen, this.#viewBoxChanged);
@@ -372,29 +373,26 @@ class SvgMap {
 			console.log( "Already initialized. Exit...");
 		}
 		
-		this.#mapViewerProps.mapCanvas=document.getElementById("mapcanvas");
-		if ( !this.#mapViewerProps.mapCanvas ){
-			console.log("NO id:mapcanvas div exit..");
-			return;
-		}
-		var rootSVGpath;
-		if ( this.#mapViewerProps.mapCanvas.dataset.src ){
-			// data-src属性に読み込むべきSVGの相対リンクがある 2017.3.6
-			rootSVGpath = this.#mapViewerProps.mapCanvas.dataset.src;
-		} else if ( this.#mapViewerProps.mapCanvas.title ){
-			// title属性に読み込むべきSVGの相対リンクがあると仮定(微妙な・・) 最初期からの仕様
-			rootSVGpath = this.#mapViewerProps.mapCanvas.title;
-		} else{
-			console.log("NO id:mapcanvas data-src for root svg container exit..");
-			return;
-		}
+		this.#zoomPanManager = new ZoomPanManager(
+			this.#mapTicker.hideTicker, 
+			this.#resourceLoadingObserver.checkLoadCompleted, 
+			this.#mapTicker.getObjectAtPoint, 
+			this.#getIntValue, 
+			this.#getRootSvg2Canvas,
+			this.#mapViewerProps, 
+			this
+		);
+		this.#essentialUIs = new EssentialUIs(this, this.#mapViewerProps, this.#zoomPanManager, this.#mapTicker, this.#matUtil, this.#hideAllTileImgs, this.#getRootSvg2Canvas);
+		
+		var rootSVGpath = this.#essentialUIs.initMapCanvas();
+		if ( !rootSVGpath ){return };
 		
 		
 	//	console.log("AppName:",navigator.appName,"  UAname:",navigator.userAgent);
 	//	if ( navigator.appName == 'Microsoft Internet Explorer' && window.createPopup )
 		this.#mapViewerProps.uaProps = new UAtester();
 		
-		this.#mapViewerProps.mapCanvas.title = ""; // titleにあると表示されてしまうので消す
+		//this.#mapViewerProps.mapCanvas.title = ""; // titleにあると表示されてしまうので消す
 	//	console.log(mapCanvas);
 		this.#mapViewerProps.setMapCanvasSize( UtilFuncs.getCanvasSize() );
 		
@@ -406,25 +404,11 @@ class SvgMap {
 			return; // どうもwindow.openで作ったときに時々失敗するので、少し(30ms)ディレイさせ再挑戦する
 		}
 		
-		
-		
-		
 		this.#gps = new GPS(this);
-		
 		
 		this.#mapViewerProps.setRootViewBox (UtilFuncs.getBBox( 0 , 0 , this.#mapViewerProps.mapCanvasSize.width , this.#mapViewerProps.mapCanvasSize.height ));
 		
-		this.#zoomPanManager = new ZoomPanManager(
-			this.#mapTicker.hideTicker, 
-			this.#resourceLoadingObserver.checkLoadCompleted, 
-			this.#mapTicker.getObjectAtPoint, 
-			this.#getIntValue, 
-			this.#getRootSvg2Canvas,
-			this.#mapViewerProps, 
-			this
-		);
-		this.#essentialUIs = new EssentialUIs(this, this.#mapViewerProps, this.#zoomPanManager, this.#mapTicker, this.#matUtil, this.#hideAllTileImgs, this.#getRootSvg2Canvas);
-		// この辺の初期化は、#essentialUIs.init()で一発設定したほうが良いと思われる
+		// この辺の初期化は、上記initMapCanvasも含め、#essentialUIs.init()で一発設定したほうが良いと思われる
 		this.#essentialUIs.setMapCanvasCSS(this.#mapViewerProps.mapCanvas); // mapCanvasに必要なCSSの設定 2012/12
 		this.#essentialUIs.setPointerEvents();
 		this.#essentialUIs.setCenterUI(); // 画面中心の緯緯度を表示するUIのセットアップ
@@ -433,7 +417,7 @@ class SvgMap {
 		this.#loadSVG(rootSVGpath , "root" , this.#mapViewerProps.mapCanvas );
 	}
 
-
+	
 	#setLayerDivProps( id, parentElem, parentSvgDocId ){ // parseSVGから切り出した関数 2017.9.29
 		if ( parentSvgDocId ){
 			if ( parentSvgDocId == "root" ){

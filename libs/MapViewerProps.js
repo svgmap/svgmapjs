@@ -5,6 +5,9 @@ class MapViewerProps{
 	rootCrs;
 	uaProps;
 	
+	mapCanvas;
+	mapCanvasWrapper;
+	
 	constructor(){
 		Object.defineProperty(this, "rootViewBox",{value:{}});
 		Object.defineProperty(this, "mapCanvasSize",{value:{}});

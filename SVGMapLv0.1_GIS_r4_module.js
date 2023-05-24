@@ -87,8 +87,8 @@ class SvgMapGIS {
 	#getGeoJson;
 	
 //	console.log("Hello this is svgMapGIStool");
-	constructor(svgMapObject, istsObject){
-		this.#jsts = istsObject;
+	constructor(svgMapObject, jstsObject){
+		this.#jsts = jstsObject;
 		this.#svgMap = svgMapObject;
 		if ( this.#jsts ){ // using jsts (JTS javascript edition) https://bjornharrtell.github.io/jsts/
 	//		console.log("This apps has jsts (JavaScript Topology Suites)");

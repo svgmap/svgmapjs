@@ -35,6 +35,44 @@ class EssentialUIs{
 	#vScale; // 中心緯度経度表示用font要素
 	#spButtonSize = 50;
 	
+	initMapCanvas(){
+//		this.#mapViewerProps.mapCanvas=document.getElementById("mapcanvas");
+		var mapCanvas=document.getElementById("mapcanvas");
+		if ( !mapCanvas ){
+			console.warn("NO id:mapcanvas div exit..");
+			return null;
+		}
+		
+		// 2023/05/24 zoom-out UI を改善するため、全画面mapcanvasのラッパーを仕掛ける
+		var childMapCanvas = document.createElement("div");
+		mapCanvas.setAttribute("id","mapCanvasWrapper");
+		for ( var mcatr of mapCanvas.attributes){
+			if ( mcatr.name=="id"){
+				childMapCanvas.setAttribute("id","mapcanvas");
+			} else if (mcatr.name=="title"){
+				// skip
+			} else {
+				childMapCanvas.setAttribute(mcatr.name,mcatr.value);
+			}
+		}
+		mapCanvas.appendChild(childMapCanvas);
+		mapCanvas.setAttribute("style","position: absolute; overflow: hidden; top: 0px; left: 0px; width: 100%; height: 100%;");
+		this.#mapViewerProps.mapCanvas = childMapCanvas;
+		this.#mapViewerProps.mapCanvasWrapper = mapCanvas;
+		
+		var rootSVGpath;
+		if ( this.#mapViewerProps.mapCanvas.dataset.src ){
+			// data-src属性に読み込むべきSVGの相対リンクがある 2017.3.6
+			rootSVGpath = this.#mapViewerProps.mapCanvas.dataset.src;
+		} else if ( this.#mapViewerProps.mapCanvas.title ){
+			// title属性に読み込むべきSVGの相対リンクがあると仮定(微妙な・・) 最初期からの仕様
+			rootSVGpath = this.#mapViewerProps.mapCanvas.title;
+		} else{
+			console.warn("NO id:mapcanvas data-src for root svg container exit..");
+			return null;
+		}
+		return rootSVGpath;
+	}
 	
 	setLayerListSize(){
 		var llElem = document.getElementById("layerList");
@@ -149,7 +187,7 @@ class EssentialUIs{
 		if ( this.#mapViewerProps.uaProps.verIE >8 ){ // !isIEから変更（たぶんもう不要？ 2014.6.29)
 			if ( true ){ // タッチパネルデバイスの場合(POIが選べない・・2013/4/4)
 				// タッチイベント
-				var mc = document.getElementById("mapcanvas");
+				var mc = this.#mapViewerProps.mapCanvasWrapper;
 				
 				UtilFuncs.addEvent(mc, "touchstart", function(e){ // 2014/06/03
 					e.preventDefault();
@@ -168,7 +206,6 @@ class EssentialUIs{
 				
 				// マウスイベント
 				// 緯度経度文字を選べるようにね/ 2012/12/07
-				var mc = document.getElementById("mapcanvas");
 				
 				UtilFuncs.addEvent(mc,"mousedown",function(event){that.#zoomPanManager.startPan(event)});
 				UtilFuncs.addEvent(mc,"mouseup",function(event){that.#zoomPanManager.endPan(event)});

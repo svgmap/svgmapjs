@@ -52,10 +52,13 @@
 
 class SvgMapAuthoringTool {
 
-	#svgMap
-	constructor(svgMapObject){
+	#svgMap;
+	#mapViewerProps;
+	
+	constructor(svgMapObject, mapViewerProps){
 		console.log("Hello this is svgMapAuthoringTool");
 		this.#svgMap = svgMapObject;
+		this.#mapViewerProps = mapViewerProps;
 		console.log("construct SvgMapAuthoringTool: svgMapObject: ",svgMapObject);
 	}
 
@@ -979,7 +982,7 @@ class SvgMapAuthoringTool {
 			cv.style.zIndex="20";
 //			cv.style.width=cs.width+"px";
 //			cv.style.height=cs.height+"px";
-			var mapc=document.getElementById("mapcanvas");
+			var mapc=this.#mapViewerProps.mapCanvas;
 //			document.getElementById("centerSight").parentNode.appendChild(cv);
 			mapc.appendChild(cv);
 		}
@@ -1169,7 +1172,7 @@ class SvgMapAuthoringTool {
 				var cs = document.getElementById("centerSight");
 				cursor.src = cs.src;
 	//			cs.parentNode.appendChild(cursor);
-				var mapc=document.getElementById("mapcanvas");
+				var mapc=this.#mapViewerProps.mapCanvas;
 				mapc.appendChild(cursor);
 			} else {
 				cursor = document.getElementById("POIeditCursor");
@@ -1677,13 +1680,13 @@ class SvgMapAuthoringTool {
 }.bind(this)
 
 #addPointEvents( func ){
-	var mapc = document.getElementById("mapcanvas");
+	var mapc = this.#mapViewerProps.mapCanvas;
 	mapc.addEventListener( "click", func, false );
 	mapc.addEventListener( "touchend", func, false );
 }
 #removePointEvents( func ){
 //	console.log("removePointEvents: ",func);
-	var mapc = document.getElementById("mapcanvas");
+	var mapc = this.#mapViewerProps.mapCanvas;
 	mapc.removeEventListener( "click", func, false );
 	mapc.removeEventListener( "touchend", func, false );
 }
