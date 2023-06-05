@@ -1,3 +1,5 @@
+import { UtilFuncs } from './UtilFuncs.js';
+
 class ResumeManager{
 	
 	constructor(svgMapObject, svgMapCustomLayersManager, parseSVGfunc){
@@ -10,6 +12,7 @@ class ResumeManager{
 	
 	#resume = false; // 2016/10/26 resume機能のデータ
 	#resumeSpan = 3; // resumeの有効期限 (日) 2021/3 rev17で無効化する予定
+	#initialRootLayersProps; // 2023/06/05 for permanentLink generation
 	
 	static localStorageSvgMapSuffix = "svgmap_";
 	
@@ -79,6 +82,7 @@ class ResumeManager{
 			}
 			
 			var lp = this.#svgMapObject.getRootLayersProps();
+			this.#initialRootLayersProps = lp;
 			// 2021/2/4 レイヤーのカスタムOFF＆追加＆変更を設定できるsvgMapCustomLayersManagerの情報を導入する
 			// cook.customLayers の中のJSONデータからレイヤーの削除、追加などを実施する
 			if ( cook.customLayers && this.#svgMapCustomLayersManager ){
@@ -266,36 +270,91 @@ class ResumeManager{
 		var expire = new Date();
 		expire.setTime( expire.getTime() + 1000 * 3600 * 24 * this.#resumeSpan); // 3日の有効期限..
 		var resumeObj = {};
-		resumeObj.resume = this.#resume;
 		if ( this.#resume == true ){ // resumeがfalseの場合は、そもそもこれらは不要
-			var geoViewBox = this.#svgMapObject.getGeoViewBox();
-			resumeObj.vbLng = geoViewBox.x;
-			resumeObj.vbLat = geoViewBox.y;
-			resumeObj.vbLngSpan = geoViewBox.width;
-			resumeObj.vbLatSpan = geoViewBox.height;
-			var lps = this.#svgMapObject.getRootLayersProps();
-			// クッキーの個数よりもレイヤーがとても多い場合があるので簡略化
-			var layersProps={};
-			for ( var i = 0 ; i < lps.length ; i++ ){
-				var lp = lps[i];
-				var key = lp.title; // WARN titleが同じものがあるとここで上書きされることになります！！！ 2021/2/3
-				var lpProps = {
-					visible:lp.visible,
-					editing:lp.editing,
-					groupName:lp.groupName,
-					groupFeature:lp.groupFeature,
-					href:lp.href,
-					title:lp.title,
-					href:lp.href
-				}
-				layersProps[key]=lpProps;
-				
-			}
-			resumeObj.layersProperties = layersProps;
+			resumeObj = this.#getResumeObj();
 		}
+		resumeObj.resume = this.#resume;
 		this.#setCookie ( "resume" , JSON.stringify(resumeObj) , expire );
 	}
+	
+	#getResumeObj(){
+		var resumeObj = {};
+		var geoViewBox = this.#svgMapObject.getGeoViewBox();
+		resumeObj.vbLng = geoViewBox.x;
+		resumeObj.vbLat = geoViewBox.y;
+		resumeObj.vbLngSpan = geoViewBox.width;
+		resumeObj.vbLatSpan = geoViewBox.height;
+		var lps = this.#svgMapObject.getRootLayersProps();
+		var layersProps = this.#getBasicLayersPropsObject(lps);
+		resumeObj.layersProperties = layersProps;
+		return resumeObj;
+	}
+	
+	#getBasicLayersPropsObject(rootLayersProps){
+		// クッキーの個数よりもレイヤーがとても多い場合があるので簡略化
+		var layersProps={};
+		for ( var i = 0 ; i < rootLayersProps.length ; i++ ){
+			var lp = rootLayersProps[i];
+			var key = lp.title; // WARN titleが同じものがあるとここで上書きされることになります！！！ 2021/2/3
+			var lpProps = {
+				visible:lp.visible,
+				editing:lp.editing,
+				groupName:lp.groupName,
+				groupFeature:lp.groupFeature,
+				href:lp.href,
+				title:lp.title,
+				href:lp.href
+			}
+			layersProps[key]=lpProps;
+			
+		}
+		return layersProps;
+	}
 
+	getBasicPermanentLink(copyLinkTextToClipboard){
+		// 今見ているレイヤー可視状況及びビューポートのパーマリンクを発生する
+		// contaier.svgにもともとあったもののみを対象とする基本的なもの
+		// customLayerManagerによってレイヤの意追加や順番が変わったりしたものは、customLayerManagerの機構を別途設ける
+		// さらにレイヤ固有UIの設定状況もこの機能の対象外、別途機構を設ける
+		console.log("getBasicPermanentLink:",copyLinkTextToClipboard);
+		var resumeObj = this.#getResumeObj();
+		var hiddenDif=[];
+		var visibleDif=[];
+		var initialLayersProperties = this.#getBasicLayersPropsObject(this.#initialRootLayersProps);
+		for ( var layerName in initialLayersProperties){
+			var origLayerProp = initialLayersProperties[layerName];
+			var currentLayerProp =  resumeObj.layersProperties[layerName];
+			if ( currentLayerProp ){
+				if ( origLayerProp.visible != currentLayerProp.visible ){
+					if ( origLayerProp.visible == true ){
+						hiddenDif.push(layerName);
+					} else {
+						visibleDif.push(layerName);
+					}
+				}
+			}
+		}
+		
+		var visHash="";
+		if ( visibleDif.length >0){
+			visHash =`&visibleLayer=${visibleDif.join(",")}`
+		}
+		var hidHash="";
+		if ( hiddenDif.length >0){
+			hidHash =`&hiddenLayer=${hiddenDif.join(",")}`
+		}
+		
+		var vbHash = `xywh=global:${resumeObj.vbLng.toFixed(6)},${resumeObj.vbLat.toFixed(6)},${resumeObj.vbLngSpan.toFixed(6)},${resumeObj.vbLatSpan.toFixed(6)}`;
+		
+		var permaLink= new URL(location.pathname,location.origin);
+		var plHash = vbHash + visHash + hidHash;
+		permaLink.hash = plHash;
+		if ( copyLinkTextToClipboard == true){
+			navigator.clipboard.writeText(permaLink.href);
+		}
+		return ( permaLink );
+	}
+	
 	resumeToggle(evt){
 		if ( evt.target.checked ){
 			svgMap.setResume(true);

@@ -1744,6 +1744,7 @@ class SvgMap {
 		return ( ans );
 	},
 	**/
+	//get basicPermanentLink(){return this.#resumeManager.getBasicPermanentLink()},
 	captureGISgeometries(...params){ return (this.#geometryCapturer.captureGISgeometries(...params)) };
 	captureGISgeometriesOption= function ( BitImageGeometriesCaptureFlg , TreatRectAsPolygonFlg , SkipVectorRenderingFlg ){ // 2018.2.26
 		// TBD : ロードできてないイメージは外すかどうか, onViewportのもののみにするかどうか のオプションもね
@@ -1762,6 +1763,7 @@ class SvgMap {
 	dynamicLoad(...params){ return (this.#dynamicLoad(...params)) };
 	escape(...params){ return (UtilFuncs.escape(...params)) };
 	geo2Screen(...params){ return (this.#essentialUIs.geo2Screen(...params)) };
+	getBasicPermanentLink(...params){return( this.#resumeManager.getBasicPermanentLink(...params))};
 	getBBox(...params){ return (UtilFuncs.getBBox(...params)) };
 	getCanvasSize(...params){ return (UtilFuncs.getCanvasSize(...params)) };
 	getCentralGeoCoorinates(...params){ return (this.#essentialUIs.getCentralGeoCoorinates(...params)) };
