@@ -143,8 +143,10 @@ class SvgMapLayerUI {
 			this.#syncLayerSpecificUiExistence( lps[i].id, lps[i].visible ); // 基幹処理(レイヤ固有UI)をレイヤリストUI更新(setLayerTable)から分けた
 		}
 		if ( tb ){
+			var ltst= this.#layerTableDiv.scrollTop;
 			this.#removeAllLayerItems(tb);
 			this.#setLayerTable(tb, lps);
+			this.#layerTableDiv.scrollTop = ltst;
 		}
 		this.#checkLayerListAndRegistLayerUI();
 	}
@@ -659,6 +661,7 @@ class SvgMapLayerUI {
 			
 			
 			var llUIdiv = document.createElement("div");
+			this.#layerTableDiv = llUIdiv;
 			llUIdiv.id="layerTableDiv";
 			llUIdiv.style.width = "100%";
 			llUIdiv.style.height = "100%";

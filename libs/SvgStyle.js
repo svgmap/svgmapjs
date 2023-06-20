@@ -105,7 +105,7 @@ class SvgStyle{
 
 		if (svgNode.getAttribute("transform")) {
 			// <g>の svgt1.2ベースのnon-scaling機能のオフセット値を"スタイル"として設定する・・ 2014.5.12
-			style.nonScalingOffset = getNonScalingOffset(svgNode);
+			style.nonScalingOffset = this.getNonScalingOffset(svgNode);
 		}
 		return style;
 	}

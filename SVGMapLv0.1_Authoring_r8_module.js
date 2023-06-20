@@ -4,7 +4,7 @@
 //  
 //  Programmed by Satoru Takagi
 //  
-//  Copyright (C) 2016-2016 by Satoru Takagi @ KDDI CORPORATION
+//  Copyright (C) 2016-2023 by Satoru Takagi @ KDDI CORPORATION
 //  
 // License: (GPL v3)
 //  This program is free software: you can redistribute it and/or modify
@@ -40,25 +40,46 @@
 // 2021/03/16 POIregistTool(initPOIregistToolの方)でタッチイベントでの座標入力に対応、また座標入力のキャンセル関数を設けた
 // 2021/06/23 複数のレイヤーでツールが起動されたとき、処理が破綻したのをひとまず回避（まだ不完全かも。特に状態を保持するline/polygon系）
 //
+// ESM fork  SVGMapLv0.2_Authoring_r7_
+// 2023/06/06 polylineの操作性向上。polygonも最初の一点可視化
+// 2023/06/14 Rev8: バッファ付きポイント・ライン・ポリゴンUI、6個のＵＩを統合したＵＩ(initGenericTool)
+// 2023/06/19 POIもoptionsで設定するように変更。 bufferedのvecrot-effectバグ修正、　いずれでもeditingStyle,shapeStyleを設定可能に（POIの場合はbuiffered時有効)
+// 2023/06/20 GenericTool周りのコードのブラッシュアップ、editingStyle,shapeStyleを設定可能に
+//
 // ToDo,ISSUES:
 //  POI以外の描画オブジェクトを選択したときに出るイベントbase fwに欲しい
 //  編集UIを出した状態で、TypeError: svgImagesProps[layerId] is undefined[詳細]  SVGMapLv0.1_r14.js:3667:3
 // POIToolsとPolytoolsが排他処理が完全ではない
-// 複数のレイヤーでツールが起動されたとき、処理が破綻している このライブラリは基本的にレイヤーにカプセル化されていない・・リファクタリングすべき ひとまず破綻しないようにしてみた
+// 複数のレイヤーでツールが起動されたとき、処理が破綻している? (2021/06で対応できたか？)このライブラリは基本的にレイヤーにカプセル化されていない・・リファクタリングすべき ひとまず破綻しないようにしてみた
+// 重なったオブジェクトが標準UIの中で選べない
 
 // Notes:
 //  root containerでclass=editableの設定がないと、再編集や、レイヤ消去後の再表示での編集結果の保持はできない 2018.2.5
 
+// path は 以下のルールとしておこう・・
+//   zが一個でも付いたら無条件でポリゴン認定、
+//   zが一個もない場合
+//     fill="none"でポリライン認定
+//     fillなしもしくはnone以外でポリゴン認定
+
+
+// Notes:
+//  root containerでclass=editableの設定がないと、再編集や、レイヤ消去後の再表示での編集結果の保持はできない 2018.2.5
+
+import { SvgMapGIS } from './SVGMapLv0.1_GIS_r4_module.js';
 
 class SvgMapAuthoringTool {
 
 	#svgMap;
 	#mapViewerProps;
+	#svgMapGIStool;
 	
 	constructor(svgMapObject, mapViewerProps){
 		console.log("Hello this is svgMapAuthoringTool");
 		this.#svgMap = svgMapObject;
 		this.#mapViewerProps = mapViewerProps;
+		this.#svgMapGIStool=new SvgMapGIS(svgMapObject, window.jsts);
+		
 		console.log("construct SvgMapAuthoringTool: svgMapObject: ",svgMapObject);
 	}
 
@@ -72,7 +93,7 @@ class SvgMapAuthoringTool {
 
 
 // 開いている編集UIに関するグローバル情報を入れているオブジェクト
-// uiMapping = {uiPanel,editingLayerId,editingMode,uiDoc,editingGraphicsElement,modifyTargetElement,toolsCbFunc,toolsCbFuncParam}
+// uiMapping = {uiPanel,editingLayerId,editingMode,uiDoc,editingGraphicsElement,modifyTargetElement,toolsCbFunc,toolsCbFuncParam,genericMode{panel,editingStyle,shapeStyle,withBufferedTools},editingStyle,shapeStyle,bufferOption,editedElement}
 // uiPanel : オーサリングUIを発生させる(layer specific UI iframe中などの)div要素
 // editingLayerId : 編集中のSVG文書のレイヤーID(svgMapProps[]などの)
 // editingMode : POI,POLYLINE,POIreg...
@@ -82,30 +103,26 @@ class SvgMapAuthoringTool {
 // selectedPointsIndex,insertPointsIndex: Poly*用の編集対象ポイント ない場合は-1
 // toolsCbFunc : コールバック 2019/3/12
 // toolsCbFuncParam : コールバック関数の任意パラメータ
+// genericMode: .panel: ポリゴン、ポリライン、ポイント、（さらに拡張）全部乗せUIの時に設定される、div要素, .editingStyle, .shapeStyle : 共通のスタイル,  withBufferedTools: bufferedツールあるときはtrue
+// shapeStyle, edigingStyle : 図形のスタイルや編集中のスタイル
+// bufferOption : バッファー生成オプション
+// editedElement : polylie/polygon/POI(full)編集ツールで編集したオブジェクト
 #uiMapping = {};
 
 #uiMappingG ={}; //  uiMapping[layerID]:uiMapping  layerID毎にuiMappingを入れる 2021/6/23
-#setGlobalVars(){ // 2021/6/23 グローバル変数を、レイヤ固有UIの切り替えに応じて変更する
-	this.#uiMappingG[this.#uiMapping.editingLayerId]=this.#uiMapping;
-	console.log("Authoring: setGlobalVars :",this.#uiMappingG);
-	// appearなどしたときにuiMappingを切り替えるためのフックを設置する
-	var layerId = this.#uiMapping.editingLayerId;
-	var mdoc = this.#uiMapping.uiDoc;
-	mdoc.addEventListener("appearFrame",function(){
-		console.log("change uiMapping var : ",layerId,this.#uiMappingG);
-		this.#uiMapping=this.#uiMappingG[layerId];
-		this.#prevMouseXY={x:0,y:0};
-	}.bind(this));
-	mdoc.addEventListener("closeFrame",function(){
-		console.log("delete uiMappingGloval var");
-		delete this.#uiMappingG[layerId];
-	}.bind(this));
+#defaultShapeStyle = {
+	strokeWidth:3,
+	opacity:1,
+	fill:"skyblue",
+	stroke:"blue",
+};
+#defaultEditingStyle = {
+	strokeWidth:3,
+	opacity:1,
+	fill:"yellow",
+	stroke:"red",
+};
 	
-	// polyCanvas //初期化は？
-	// poiCursor // 初期化は？
-	// selectedObjectID // 初期化は？
-	this.#prevMouseXY={x:0,y:0};
-}
 
 #editPoint( x , y ){
 	var geop = this.#svgMap.screen2Geo( x , y );
@@ -203,14 +220,8 @@ class SvgMapAuthoringTool {
 		console.log("ADD uiMapping");
 	} else { // uiMappingを新規作成する系
 		console.log("NEW uiMapping");
-		uiDoc.removeEventListener("hideFrame", this.#clearTools, false);
-		uiDoc.removeEventListener("closeFrame", this.#clearTools, false);
-		uiDoc.removeEventListener("appearFrame", this.#setTools, false);
-		uiDoc.addEventListener('hideFrame',this.#clearTools);
-		uiDoc.addEventListener('closeFrame',this.#clearTools);
-		uiDoc.addEventListener('appearFrame',this.#setTools);
 		
-		this.#uiMapping = {
+		this.#initUiMapping({  
 			uiPanel : [],
 			editingLayerId : poiDocId,
 			editingMode : "POIreg",
@@ -220,8 +231,7 @@ class SvgMapAuthoringTool {
 			poiParams:[],
 			returnSvgElement:returnSvgElement,
 			selectedPointsIndex:-1
-		} ;
-		this.#setGlobalVars();
+		}) ;
 		if ( cbFunc ){
 			this.#uiMapping.toolsCbFunc = cbFunc;
 			this.#uiMapping.toolsCbFuncParam = cbFuncParam;
@@ -279,18 +289,16 @@ class SvgMapAuthoringTool {
 // POINTオブジェクト(use)の"編集"ツール 新規追加、削除、変更などが可能　ただし一個しか設置できない
 #svgImages;
 #svgImagesProps;
-#initPOItools(targetDiv,poiDocId,cbFunc,cbFuncParam,getPointOnly,returnSvgElement){
+#initPOItools(targetDiv,poiDocId,cbFunc,cbFuncParam,getPointOnly,returnSvgElement,options,){
+	var bufferOption = false;
+	if (  options?.bufferOption){
+		bufferOption = options.bufferOption;
+	}
 	// getPointOnlyuse: useは作るものの　作った後に座標を取得してすぐに捨てるような使い方(アイコンを打つわけではない)
 	
 	this.#removeChildren(targetDiv);
 	
 	var uiDoc = targetDiv.ownerDocument;
-	uiDoc.removeEventListener("hideFrame", this.#clearTools, false);
-	uiDoc.removeEventListener("closeFrame", this.#clearTools, false);
-	uiDoc.removeEventListener("appearFrame", this.#setTools, false);
-	uiDoc.addEventListener('hideFrame',this.#clearTools);
-	uiDoc.addEventListener('closeFrame',this.#clearTools);
-	uiDoc.addEventListener('appearFrame',this.#setTools);
 	
 	console.log("called initPOItools: docId:",poiDocId);
 	this.#svgMap.setRootLayersProps(poiDocId, true , true ); // 子docの場合もあり得ると思う・・
@@ -354,12 +362,15 @@ class SvgMapAuthoringTool {
 		}
 	}
 	ihtml+='</table>';
+	if ( bufferOption ){
+		ihtml +='<div><input type="text" id="objectBufferLength"  value=""  placeholder="バッファ半径[m]"></input></div>';
+	}
 	ihtml+='<div id="editConf"><input type="button" id="pepok" value="決定"/><input type="button" id="pepng" value="キャンセル"/><input type="button" id="pepdel" disabled value="削除"/><span id="editMode">newObject</span></div>';
 	targetDiv.innerHTML = ihtml;
 	
 //	addPoiEditEvents(document.getElementById(poiDocId));
 	
-	this.#uiMapping = {
+	this.#initUiMapping( {
 		uiPanel : targetDiv,
 		editingLayerId : poiDocId,
 		editingMode : "POI",
@@ -367,9 +378,10 @@ class SvgMapAuthoringTool {
 		editingGraphicsElement: false,
 		modifyTargetElement: null,
 		returnSvgElement: returnSvgElement,
-		selectedPointsIndex:-1
-	} ;
-	this.#setGlobalVars();
+		selectedPointsIndex:-1,
+		editingStyle:structuredClone(this.#defaultEditingStyle), // bufferedの時に有効になる
+		shapeStyle:structuredClone(this.#defaultShapeStyle), // 同上
+	}, true );
 	if ( cbFunc ){
 		this.#uiMapping.toolsCbFunc = cbFunc;
 		this.#uiMapping.toolsCbFuncParam = cbFuncParam;
@@ -377,6 +389,11 @@ class SvgMapAuthoringTool {
 		this.#uiMapping.toolsCbFunc = null;
 		this.#uiMapping.toolsCbFuncParam = null;
 	}
+	if ( bufferOption ){
+		this.#uiMapping.bufferOption = true;
+	}
+	this.#setUiStyle(this.#uiMapping.editingStyle, options?.editingStyle);
+	this.#setUiStyle(this.#uiMapping.shapeStyle, options?.shapeStyle);
 	
 	this.#setPoiUiEvents(uiDoc, poiDocId);
 	this.#setMetaUiEvents(uiDoc, poiDocId);
@@ -480,6 +497,13 @@ class SvgMapAuthoringTool {
 				this.#updatePointListForm( this.#uiMapping.uiDoc.getElementById("polyEditorPosition") , geoPoints );
 			}
 			break;
+		}
+		if ( ret ){
+			if ( this.#uiMapping.bufferOption ){
+				this.#bufferObject(ret);
+			} else {
+				ret.removeAttribute("data-geometry");
+			}
 		}
 		this.#uiMapping.editedElement = ret;
 		if ( confStat ){
@@ -645,6 +669,7 @@ class SvgMapAuthoringTool {
 		if ( param.href ){
 			poiElem.setAttribute("xlink:href", param.href);
 		}
+		poiElem.setAttribute("data-geometry",JSON.stringify({type:"Point",coordinates:[param.geoPos[1],param.geoPos[0]],icon:param.href}));
 		console.log("setPoiSvg:",poiElem);
 		return ( poiElem );
 	} else {
@@ -660,6 +685,10 @@ class SvgMapAuthoringTool {
 	var geoPoints = this.#polyCanvas.getPoints();
 	if ( geoPoints.length < 2 || (this.#uiMapping.editingMode == "POLYGON" && geoPoints.length < 3) ){
 		return ( false );
+	}
+	var gtype ="LineString";
+	if (this.#uiMapping.editingMode== "POLYGON"){
+		gtype ="Polygon";
 	}
 	
 	if (  this.#uiMapping.modifyTargetElement &&  ( this.#uiMapping.modifyTargetElement.nodeName == "polygon" || this.#uiMapping.modifyTargetElement.nodeName == "polyline" ) ){
@@ -678,14 +707,14 @@ class SvgMapAuthoringTool {
 		} else {
 			var poiDoc = this.#svgImages[poiDocId];
 			targetSvgElem = poiDoc.createElement("path");
-			targetSvgElem.setAttribute("vector-effect","non-scaling-stroke");
 			if ( this.#uiMapping.editingMode == "POLYGON" ){
-				targetSvgElem.setAttribute("fill","yellow");
+				targetSvgElem.setAttribute("fill", this.#uiMapping.shapeStyle.fill);
 			} else {
 				targetSvgElem.setAttribute("fill","none");
 			}
-			targetSvgElem.setAttribute("stroke","red");
-			targetSvgElem.setAttribute("stroke-width","3");
+			targetSvgElem.setAttribute("stroke", this.#uiMapping.shapeStyle.stroke);
+			targetSvgElem.setAttribute("stroke-width", this.#uiMapping.shapeStyle.strokeWidth);
+			targetSvgElem.setAttribute("vector-effect","non-scaling-stroke");
 			poiDoc.documentElement.appendChild(targetSvgElem);
 		}
 		var d="";
@@ -714,6 +743,18 @@ class SvgMapAuthoringTool {
 		}
 		targetSvgElem.setAttribute("content",metaStr);
 	}
+	var crds=[];
+	for ( var gp of geoPoints){
+		crds.push([gp.lng, gp.lat]);
+	}
+	if ( gtype =="Polygon"){
+		if ( crds[0][0] != crds[crds.length-1][0] || crds[0][1] != crds[crds.length-1][1] ){
+			// 端が閉じてないのはgeojson的にはpolygonじゃないので
+			crds.push([crds[0][0],crds[0][1]]);
+		}
+		crds = [crds];
+	}
+	targetSvgElem.setAttribute("data-geometry",JSON.stringify({type:gtype,coordinates:crds}));
 	return (targetSvgElem);
 }
 
@@ -835,6 +876,7 @@ class SvgMapAuthoringTool {
 
 #callAfterRefreshed(cbf,cbfParam0,cbfParam1){ // refreshが完了してから呼ぶための関数(2019/12/27)
 	console.log("set cbf on callAfterRefreshed :", cbf,cbfParam0,cbfParam1);
+	if ( typeof(cbf)!="function"){return}
 	window.addEventListener('screenRefreshed', (function(cbf,cbfParam0,cbfParam1) {
 		var f = function() {
 			console.log("catch screenRefreshed call:",cbf," param:",cbfParam0,cbfParam1)
@@ -966,6 +1008,10 @@ class SvgMapAuthoringTool {
 	var defaultLineWidth = 3.0;
 	
 	var initCanvas = function(){
+		defaultFillColor = this.#uiMapping.editingStyle.fill;
+		defaultStrokeColor = this.#uiMapping.editingStyle.stroke;
+		defaultLineWidth = this.#uiMapping.editingStyle.strokeWidth;
+
 		enabled = true;
 //		console.log("initCanvas");
 		if (  document.getElementById("PolyEditCanvas") ){
@@ -1049,8 +1095,22 @@ class SvgMapAuthoringTool {
 		}
 		cc.stroke();
 		
+		if ( geoPoints.length == 1 ){
+			hilightPoint(0);
+		}
 		if ( this.#uiMapping.insertPointsIndex >=0 ){
-			hilightLine(this.#uiMapping.insertPointsIndex);
+			if ( this.#uiMapping.editingMode == "POLYLINE" && this.#uiMapping.insertPointsIndex == geoPoints.length){
+				hilightPoint(this.#uiMapping.insertPointsIndex-1);
+			} else if ( this.#uiMapping.editingMode == "POLYLINE" &&this.#uiMapping.insertPointsIndex == 0){
+				hilightPoint(0);
+			} else {
+				if ( this.#uiMapping.insertPointsIndex == 0 ){ // 上の条件があるのでPolygon専用処理
+					hilightPoint(geoPoints.length-1);
+				} else {
+					hilightPoint(this.#uiMapping.insertPointsIndex-1);
+				}
+				hilightLine(this.#uiMapping.insertPointsIndex);
+			}
 		} else if ( this.#uiMapping.selectedPointsIndex >=0 ){
 			hilightPoint(this.#uiMapping.selectedPointsIndex);
 		}
@@ -1222,7 +1282,7 @@ class SvgMapAuthoringTool {
 	var poiHref = poiNode.getAttribute("xlink:href");
 //	var metaSchema = poiNode.parentNode.getAttribute("property").split(",");
 	var metaData = poiNode.getAttribute("content");
-	if ( metaData !="" ){
+	if ( metaData && metaData !="" ){
 		metaData = metaData.split(",");
 	} else {
 		metaData = [];
@@ -1413,13 +1473,26 @@ class SvgMapAuthoringTool {
 	
 	if ( this.#uiMapping.editingLayerId === svgTarget.docId  || this.#uiMapping.editingLayerId === this.#svgImagesProps[svgTarget.docId].rootLayer){ // 冗長・・
 		var svgNode = svgTarget.element;
-//		var targetDocId = svgTarget.docId
-		console.log("setTargetObject:",svgNode);
-		if ( svgNode.nodeName =="use" && this.#uiMapping.editingMode=="POI"){
-			this.#hilightPOI(svgNode.getAttribute("iid"));
-			this.#displayPOIprops(svgTarget);
-		} else if (( svgNode.nodeName =="path" || svgNode.nodeName =="polygon" || svgNode.nodeName =="polyline" )&& (this.#uiMapping.editingMode=="POLYGON" || this.#uiMapping.editingMode=="POLYLINE")){
-			this.#displayPolyProps(svgTarget);
+		
+		console.log(svgNode.nodeName,svgNode.getAttribute("fill"),this.#uiMapping.editingMode, this.#uiMapping.genericModePanel);
+		if ( this.#uiMapping.genericMode.panel ){
+			this.#switchGenericTool(svgTarget);
+			
+		} else {
+			//		var targetDocId = svgTarget.docId
+			console.log("setTargetObject:", svgNode);
+			if (svgNode.nodeName == "use" && this.#uiMapping.editingMode == "POI") {
+				this.#hilightPOI(svgNode.getAttribute("iid"));
+				this.#displayPOIprops(svgTarget);
+			} else if (
+				(svgNode.nodeName == "path" ||
+					svgNode.nodeName == "polygon" ||
+					svgNode.nodeName == "polyline") &&
+				(this.#uiMapping.editingMode == "POLYGON" ||
+					this.#uiMapping.editingMode == "POLYLINE")
+			) {
+				this.#displayPolyProps(svgTarget);
+			}
 		}
 	}
 	this.#svgMap.refreshScreen(); // 選択状態を解除(2023/1/20)
@@ -1428,6 +1501,7 @@ class SvgMapAuthoringTool {
 #selectedObjectID; // これは、メイン画面上の選択されたオブジェクト(アイコン)のIDなのでたぶんグローバルで問題ないはずです。
 #hilightPOI( poiID ){
 	console.log("hilightPOI  :  targetPOI ID:",poiID, " poiIcon:",document.getElementById(poiID));
+	if ( !document.getElementById(poiID)){return}
 	document.getElementById(poiID).style.backgroundColor="#FFFF00";
 	if ( this.#selectedObjectID && (this.#selectedObjectID != poiID ) && document.getElementById(this.#selectedObjectID) ){
 		document.getElementById(this.#selectedObjectID).style.backgroundColor="";
@@ -1529,24 +1603,21 @@ class SvgMapAuthoringTool {
 // POLYGONオブジェクトの"編集"ツール 新規追加、削除、変更などが可能　ただし一個しか設置できない
 // var toolsCbFunc; // uiMapping.toolsCbFuncに収納変更
 // var toolsCbFuncParam; // 同上
-#initPolygonTools(targetDiv,poiDocId,cbFunc,cbFuncParam,isPolylineMode){
+#initPolygonTools(targetDiv,poiDocId,cbFunc,cbFuncParam,isPolylineMode,options  ){
 	
 	console.log("initPolygonTools : isPolylineMode:",isPolylineMode,  "  uiMapping.toolsCbFunc:",this.#uiMapping.toolsCbFunc);
 	
 	this.#removeChildren( targetDiv );
 	
 	var uiDoc = targetDiv.ownerDocument;
-	uiDoc.removeEventListener("hideFrame", this.#clearTools, false);
-	uiDoc.removeEventListener("closeFrame", this.#clearTools, false);
-	uiDoc.removeEventListener("appearFrame", this.#setTools, false);
-	uiDoc.addEventListener('hideFrame',this.#clearTools);
-	uiDoc.addEventListener('closeFrame',this.#clearTools);
-	uiDoc.addEventListener('appearFrame',this.#setTools);
-	
 	console.log("called initPolygonTools: docId:",poiDocId);
 	var isRootLayer = this.#svgMap.setRootLayersProps(poiDocId, true , true ); // 子docの場合もあり得ると思う・・
 		if ( ! isRootLayer ){ // 実質なにも今のところしていないがアラートはメッセージする(2017.1.20)
 		console.log("This ID is not layer (child document of layer).. thus you can only add new elements ( not edit existing element) ");
+	}
+	var bufferOption = false;
+	if ( options?.bufferOption==true){
+		bufferOption = true;
 	}
 	
 	this.#svgImages = this.#svgMap.getSvgImages();
@@ -1578,7 +1649,11 @@ class SvgMapAuthoringTool {
 			}
 		}
 	}
-	ihtml+='</table><div id="editConf"><input type="button" id="pepok" value="決定"/><input type="button" id="pepng" value="キャンセル"/><input type="button" id="pepdel" disabled value="削除"/><span id="editMode">newObject</span></div>';
+	ihtml +='</table>';
+	if ( bufferOption ){
+		ihtml +='<div><input type="text" id="objectBufferLength"  value=""  placeholder="バッファ半径[m]"></input></div>';
+	}
+	ihtml+='<div id="editConf"><input type="button" id="pepok" value="決定"/><input type="button" id="pepng" value="キャンセル"/><input type="button" id="pepdel" disabled value="削除"/><span id="editMode">newObject</span></div>';
 	targetDiv.innerHTML = ihtml;
 	
 	var polyMode = "POLYGON";
@@ -1590,7 +1665,7 @@ class SvgMapAuthoringTool {
 		this.#polyCanvas.setPolygonMode(true);
 	}
 	
-	this.#uiMapping = {
+	this.#initUiMapping( {
 		uiPanel : targetDiv,
 		editingLayerId : poiDocId,
 		editingMode : polyMode,
@@ -1598,10 +1673,12 @@ class SvgMapAuthoringTool {
 		editingGraphicsElement: false,
 		modifyTargetElement: null,
 		selectedPointsIndex : -1,
-		insertPointsIndex : -1
-
-	};
-	this.#setGlobalVars();
+		insertPointsIndex : -1,
+		editingStyle:structuredClone(this.#defaultEditingStyle),
+		shapeStyle:structuredClone(this.#defaultShapeStyle),
+	},true);
+	this.#setUiStyle(this.#uiMapping.editingStyle, options?.editingStyle);
+	this.#setUiStyle(this.#uiMapping.shapeStyle, options?.shapeStyle);
 	if ( cbFunc ){
 		this.#uiMapping.toolsCbFunc = cbFunc;
 		this.#uiMapping.toolsCbFuncParam = cbFuncParam;
@@ -1609,11 +1686,100 @@ class SvgMapAuthoringTool {
 		this.#uiMapping.toolsCbFunc = null;
 		this.#uiMapping.toolsCbFuncParam = null;
 	}
+	if ( bufferOption ){
+		this.#uiMapping.bufferOption = true;
+	}
 //	polyCanvas.initCanvas();
 	this.#setPolyUiEvents(uiDoc, poiDocId);
 	this.#setMetaUiEvents(uiDoc, poiDocId);
 	this.#setEditConfEvents(uiDoc, poiDocId);
 	return ( this.#uiMapping );
+}
+
+#setUiStyle(targetStyle, setupObj){
+	if (!setupObj){return}
+	
+	if (setupObj.opacity && isNaN(setupObj.opacity)==false ){
+		var op  = Number(setupObj.opacity);
+		if ( op >0 && op <=1 ){
+			targetStyle.opacity = op;
+		}
+	}
+	if (setupObj.strokeWidth && isNaN(setupObj.strokeWidth)==false){
+		var sw  = Number(setupObj.strokeWidth);
+		if ( sw >0 && sw <=100 ){
+			targetStyle.strokeWidth = sw;
+		}
+	}
+	if (setupObj.fill && typeof(setupObj.fill)=="string"){
+		targetStyle.fill = setupObj.fill;
+	}
+	if (setupObj.stroke && typeof(setupObj.stroke)=="string"){
+		targetStyle.stroke = setupObj.stroke;
+	}
+}
+
+#initUiMapping(tmpl, maintainGenericMode){
+	this.#initGlobalVars(tmpl);
+	//uiMappingGとのつながりが切れるので、uiMappingは不用意にnewできない
+	var genericMode = false;
+	console.log("uiMapping:",this.#uiMapping);
+	if (this.#uiMapping.genericMode ){
+		genericMode = this.#uiMapping.genericMode;
+	}
+	for ( var uk in this.#uiMapping ){
+		delete this.#uiMapping[uk];
+	}
+	for ( var uk in tmpl){
+		this.#uiMapping[uk]=tmpl[uk];
+	}
+	if ( maintainGenericMode && genericMode){
+		this.#uiMapping.genericMode = genericMode;
+	}
+	console.log(this.#uiMapping);
+}
+
+#initGlobalVars(tmpl) {
+	// 2021/6/23 グローバル変数を、レイヤ固有UIの切り替えに応じて変更する
+	//uiMappingG[uiMapping.editingLayerId] = uiMapping;
+	// appearなどしたときにuiMappingを切り替えるためのフックを設置する
+	var layerId = tmpl.editingLayerId;
+	var mdoc = tmpl.uiDoc;
+	console.log("Authoring: initGlobalVars :", this.#uiMappingG,"  layerId:",layerId," uiDoc:",mdoc );
+	if ( !layerId || !mdoc ){
+		console.error( "No editingLayerId or uiDoc ", layerId, mdoc);
+		return false;
+	}
+	this.#initClearToolsEvents(mdoc);
+	if ( this.#uiMappingG[layerId] ){
+		this.#uiMapping = this.#uiMappingG[layerId];
+	} else {
+		this.#uiMapping = {};
+		this.#uiMappingG[layerId]=this.#uiMapping;
+		mdoc.addEventListener("appearFrame", function () {
+			console.log("change uiMapping var : ", layerId, this.#uiMappingG);
+			this.#uiMapping = this.#uiMappingG[layerId];
+			this.#prevMouseXY = { x: 0, y: 0 };
+		}.bind(this));
+		mdoc.addEventListener("closeFrame", function () {
+			console.log("delete uiMappingGloval var");
+			delete this.#uiMappingG[layerId];
+		}.bind(this));
+	}
+
+	// polyCanvas //初期化は？
+	// poiCursor // 初期化は？
+	// selectedObjectID // 初期化は？
+	this.#prevMouseXY = { x: 0, y: 0 };
+}
+
+#initClearToolsEvents(uiDoc){
+	uiDoc.removeEventListener("hideFrame", this.#clearTools, false);
+	uiDoc.removeEventListener("closeFrame", this.#clearTools, false);
+	uiDoc.removeEventListener("appearFrame", this.#setTools, false);
+	uiDoc.addEventListener("hideFrame", this.#clearTools);
+	uiDoc.addEventListener("closeFrame", this.#clearTools);
+	uiDoc.addEventListener("appearFrame", this.#setTools);
 }
 
 #testTouch(e){
@@ -1810,6 +1976,7 @@ class SvgMapAuthoringTool {
 }
 
 #isEditingGraphicsElement(){
+	if ( !this.#uiMapping){return false}
 	if ( this.#uiMapping.editingGraphicsElement ){
 		return ( true );
 	} else {
@@ -1826,15 +1993,334 @@ class SvgMapAuthoringTool {
 }
 
 #clearTools_with_UI(){
-	console.log("clearTools_with_UI:",this.#uiMapping.uiPanel);
+	var uiPanel;
+	if (this.#uiMapping.genericMode?.panel){
+		this.#clearChangeGenericToolMode(uiMapping.uiDoc);
+		uiPanel = this.#uiMapping.genericMode.panel;
+		delete this.#uiMapping.genericMode.panel;
+	} else {
+		uiPanel = this.#uiMapping.uiPanel;
+	}
+	this.#clearTools_with_UI_int(uiPanel);
+}
+	
+
+#clearTools_with_UI_int(uiPanel) {
+	//console.log("clearTools_with_UI:",this.#uiMapping.uiPanel);
 	this.#clearTools();
-	if ( this.#uiMapping.uiPanel && (this.#uiMapping.uiPanel).nodeType && (this.#uiMapping.uiPanel).nodeType===1 ){
-		removeChildren(this.#uiMapping.uiPanel);
+	if ( uiPanel && uiPanel.nodeType && uiPanel.nodeType===1 ){
+		this.#removeChildren(this.#uiMapping.uiPanel);
 	}
 }
 	
+#genericToolModeDivName = "genericAuthoringToolModeDiv";
+#genericToolMainDivName = "genericAuthoringToolMainDiv";
+#pointToolRadio ="pointGenericToolRadioButton";
+#polylineToolRadio ="polylineGenericToolRadioButton";
+#polygonToolRadio ="polygonGenericToolRadioButton";
+
+#bufferedPointToolRadio ="bufferedPointGenericToolRadioButton";
+#bufferedPolylineToolRadio ="bufferedPolylineGenericToolRadioButton";
+#bufferedPolygonToolRadio ="bufferedPolygonGenericToolRadioButton";
+
+#initGenericTool(
+	targetDiv,
+	poiDocId,
+	cbFunc,
+	cbFuncParam,
+	options
+) {
+	this.#removeChildren(targetDiv);
+	var uiDoc = targetDiv.ownerDocument;
+	
+	this.#initUiMapping({
+		genericMode:{
+			panel:targetDiv ,
+			editingStyle:structuredClone(this.#defaultEditingStyle) ,
+			shapeStyle:structuredClone(this.#defaultShapeStyle)
+		},
+		editingLayerId:poiDocId,
+		uiDoc:uiDoc,
+		toolsCbFunc:cbFunc,
+		toolsCbFuncParam:cbFuncParam,
+	});
+	this.#setUiStyle(this.#uiMapping.genericMode.editingStyle, options?.editingStyle);
+	this.#setUiStyle(this.#uiMapping.genericMode.shapeStyle, options?.shapeStyle);
+
+	/**
+	console.log(
+		"initGenericTool :",
+		"  cbFunc:",this.#uiMapping.toolsCbFunc,
+		" uiDoc:",this.#uiMapping.uiDoc
+	);
+	**/
+	var modeSelDiv = uiDoc.createElement("div");
+	modeSelDiv.id = this.#genericToolModeDivName;
+	targetDiv.appendChild(modeSelDiv);
+	var modeSelDivHTML = `	<input type="radio" value="poi" id="${this.#pointToolRadio}" name="amode" checked></input><label for="${this.#pointToolRadio}">POINT</label>
+<input type="radio" value="polyline" id="${this.#polylineToolRadio}" name="amode" ></input><label for="${this.#polylineToolRadio}">POLYLINE</label>
+<input type="radio" value="polygon" id="${this.#polygonToolRadio}" name="amode" ></input><label for="${this.#polygonToolRadio}">POLYGON</label>`;
+	if ( options?.withBufferedTools){
+		this.#uiMapping.genericMode.withBufferedTools = true;
+		modeSelDivHTML += `	<input type="radio" value="b_poi" id="${this.#bufferedPointToolRadio}" name="amode" ></input><label for="${this.#bufferedPointToolRadio}">CIRCLE</label>
+<input type="radio" value="b_polyline" id="${this.#bufferedPolylineToolRadio}" name="amode" ></input><label for="${this.#bufferedPolylineToolRadio}">Buffered POLYLINE</label>
+<input type="radio" value="b_polygon" id="${this.#bufferedPolygonToolRadio}" name="amode" ></input><label for="${this.#bufferedPolygonToolRadio}">Buffered POLYGON</label>`;
+	}
+	
+	modeSelDiv.insertAdjacentHTML("beforeend",modeSelDivHTML);
+
+	uiDoc.getElementById(this.#pointToolRadio).addEventListener("change",this.#changeGenericToolMode);
+	uiDoc.getElementById(this.#polylineToolRadio).addEventListener("change",this.#changeGenericToolMode);
+	uiDoc.getElementById(this.#polygonToolRadio).addEventListener("change",this.#changeGenericToolMode);
+	
+	uiDoc.getElementById(this.#bufferedPointToolRadio).addEventListener("change",this.#changeGenericToolMode);
+	uiDoc.getElementById(this.#bufferedPolylineToolRadio).addEventListener("change",this.#changeGenericToolMode);
+	uiDoc.getElementById(this.#bufferedPolygonToolRadio).addEventListener("change",this.#changeGenericToolMode);
+	
+	var toolMainDiv = uiDoc.createElement("div");
+	toolMainDiv.id = this.#genericToolMainDivName;
+	targetDiv.appendChild(toolMainDiv);
+	
+	this.#changeGenericToolMode({target:{value:"poi"}});
+	return ( this.#uiMapping );
+}
+
+#clearChangeGenericToolMode(uiDoc){
+	uiDoc.getElementById(this.#pointToolRadio).removeEventListener("change",this.#changeGenericToolMode,false);
+	uiDoc.getElementById(this.#polylineToolRadio).removeEventListener("change",this.#changeGenericToolMode,false);
+	uiDoc.getElementById(this.#polygonToolRadio).removeEventListener("change",this.#changeGenericToolMode,false);
+	
+	uiDoc.getElementById(this.#bufferedPointToolRadio).removeEventListener("change",this.#changeGenericToolMode,false);
+	uiDoc.getElementById(this.#bufferedPolylineToolRadio).removeEventListener("change",this.#changeGenericToolMode,false);
+	uiDoc.getElementById(this.#bufferedPolygonToolRadio).removeEventListener("change",this.#changeGenericToolMode,false);
+}
+
+#changeGenericToolMode = function(event){
+	var mode = event.target.value.toLowerCase();
+	// modeSpan.innerText=mode;
+	
+	var editingLayerId = this.#uiMapping.editingLayerId;
+	var uiDoc = this.#uiMapping.uiDoc
+	var toolsCbFunc = this.#uiMapping.toolsCbFunc;
+	var toolsCbFuncParam = this.#uiMapping.toolsCbFuncParam;
+	//var genericModePanel = this.#uiMapping.genericModePanel;
+	
+	this.#clearTools_with_UI_int(this.#uiMapping.uiPanel); // genericモードの変更なのでgenericModePanelは消してはダメなので・・
+	var options = {
+		editingStyle:this.#uiMapping.genericMode.editingStyle,
+		shapeStyle:this.#uiMapping.genericMode.shapeStyle
+	}
+	if ( mode.indexOf("b_")==0){
+		options.bufferOption=true;
+	}
+	
+	var toolMainDiv = uiDoc.getElementById(this.#genericToolMainDivName);
+	switch (mode){
+	case "poi":
+		uiDoc.getElementById(this.#pointToolRadio).checked = true;
+		this.#initPOItools(toolMainDiv,editingLayerId,toolsCbFunc,toolsCbFuncParam,false,false,options);
+		break;
+	case "polyline":
+		uiDoc.getElementById(this.#polylineToolRadio).checked = true;
+		this.#initPolygonTools(toolMainDiv,editingLayerId,toolsCbFunc,toolsCbFuncParam,true,options);
+		break;
+	case "polygon":
+		uiDoc.getElementById(this.#polygonToolRadio).checked = true;
+		this.#initPolygonTools(toolMainDiv,editingLayerId,toolsCbFunc,toolsCbFuncParam,false,options);
+		break;
+		
+	// Buffered
+	case "b_poi":
+		uiDoc.getElementById(this.#bufferedPointToolRadio).checked = true;
+		this.#initPOItools(toolMainDiv,editingLayerId,toolsCbFunc,toolsCbFuncParam,false,false,options);
+		break;
+	case "b_polyline":
+		uiDoc.getElementById(this.#bufferedPolylineToolRadio).checked = true;
+		this.#initPolygonTools(toolMainDiv,editingLayerId,toolsCbFunc,toolsCbFuncParam,true,options);
+		break;
+	case "b_polygon":
+		uiDoc.getElementById(this.#bufferedPolygonToolRadio).checked = true;
+		this.#initPolygonTools(toolMainDiv,editingLayerId,toolsCbFunc,toolsCbFuncParam,false,options);
+		break;
+		
+	}
+}.bind(this);
+
+#switchGenericTool(svgTarget){
+	console.log("switchGenericTool svgTarget:",svgTarget);
+	var svgNode = svgTarget.element;
+	var opt = this.#uiMapping.genericMode;
+	//console.log("GenericToolOptions:",opt);
+	var nodeName = svgNode.nodeName;
+	var fill = svgNode.getAttribute("fill");
+	var objectType;
+	if ( nodeName == "use"){
+		objectType = "POI";
+	} else if ( nodeName == "polygon" ){
+		objectType = "POLYGON";
+	} else if ( nodeName == "polyline" ){
+		objectType = "POLYLINE";
+	} else if ( nodeName == "path" ){
+		if ( fill == "none" ){
+			objectType = "POLYLINE";
+		} else {
+			objectType = "POLYGON";
+		}
+	}
+	
+	var buffered;
+	if ( opt?.withBufferedTools && svgNode.getAttribute("data-buffered")){
+		buffered={};
+		buffered.length = Number(svgNode.getAttribute("data-buffered"));
+		buffered.baseGeometry = JSON.parse(svgNode.getAttribute("data-geometry"));
+		//console.log(buffered.baseGeometry.type.toLowerCase(), this.#uiMapping.editingMode);
+		switch(buffered.baseGeometry.type.toLowerCase()){
+		case "point":
+			objectType = "B_POI";
+			break;
+		case "linestring":
+			objectType = "B_POLYLINE";
+			break;
+		case "polygon":
+			objectType = "B_POLYGON";
+			break;
+		}
+		
+		 svgTarget.element = this.#unBufferObject(svgNode, buffered.baseGeometry );
+		
+	}
+	
+	var currentEditingMode_w_bufferMode = this.#uiMapping.editingMode;
+	if ( this.#uiMapping.bufferOption ){ currentEditingMode_w_bufferMode = "B_"+currentEditingMode_w_bufferMode}
+	
+	//console.log("switchGenericTool  currentEditingMode:",currentEditingMode_w_bufferMode,"  objectType:",objectType);
+	if ( objectType != currentEditingMode_w_bufferMode  ){ // 厳密にモードがあっているかどうか。
+		if ( objectType.indexOf("B_")==-1 && currentEditingMode_w_bufferMode.indexOf(objectType)>=0 ){
+			// ただし、BufferでないオブジェクトはBufferモードを選んでいればそのまま編集可能にしたいので、そのままにしてあげる
+		} else {
+			this.#changeGenericToolMode({target:{value:objectType}});
+		}
+	}
+	if ( objectType =="POI" || objectType =="B_POI"){
+		this.#hilightPOI(svgNode.getAttribute("iid"));
+		this.#displayPOIprops(svgTarget);
+	} else {
+		this.#displayPolyProps(svgTarget);
+	}
+	if ( buffered  && this.#uiMapping.uiDoc.getElementById("objectBufferLength") ){
+		this.#uiMapping.uiDoc.getElementById("objectBufferLength").setAttribute("value",buffered.length);
+	}
+}
+
+#bufferObject(svgElem){
+	if ( !this.#uiMapping.shapeStyle){
+		this.#uiMapping.shapeStyle = this.#defaultShapeStyle;
+	}
+	var geomTxt = svgElem.getAttribute("data-geometry");
+	if (!geomTxt){ return}
+	var geom = JSON.parse(geomTxt);
+	//console.log("bufferObject geom:",geom);
+	var bufInput = this.#uiMapping.uiDoc.getElementById("objectBufferLength");
+	if ( isNaN(bufInput.value) || Number( bufInput.value) <=0 ){
+		return;
+	}
+	var blen = Number( bufInput.value) ;
+	if ( blen <=0 ){return}
+	var bgeom = this.#svgMapGIStool.getBufferedPolygon(geom, blen);
+	//console.log("Buffered Geometry : ", bgeom, svgElem.parentElement);
+	var svgDoc = svgElem.ownerDocument;
+	var bpath =svgDoc.createElement("path");
+	bpath.setAttribute("data-geometry",geomTxt);
+	bpath.setAttribute("data-buffered",blen);
+	bpath.setAttribute("d",this.#getPolygonPathD(bgeom));
+	bpath.setAttribute("fill", this.#uiMapping.shapeStyle.fill);
+	bpath.setAttribute("stroke", this.#uiMapping.shapeStyle.stroke);
+	bpath.setAttribute("stroke-width", this.#uiMapping.shapeStyle.strokeWidth);
+	bpath.setAttribute("vector-effect", "non-scaling-stroke");
+	(svgElem.parentElement).insertBefore(bpath, svgElem);
+	svgElem.remove();
+}
+
+#unBufferObject(svgElem, geom){
+	// data-bufferedと、data-geometryがあるものについて、オリジナルの形状を復元
+	// 再編集で使用する
+	if ( !this.#uiMapping.shapeStyle){
+		this.#uiMapping.shapeStyle = this.#defaultShapeStyle;
+	}
+	var unbufElm = svgElem;
+	var svgDoc = svgElem.ownerDocument;
+	
+	var path, use;
+	var layerCRS = this.#svgImagesProps[this.#uiMapping.editingLayerId].CRS;
+	var svgCrds =  this.#svgMap.Geo2SVG(geom.coordinates[1], geom.coordinates[0], layerCRS);
+	switch (geom.type.toLowerCase()){
+	case "point":
+		use =svgDoc.createElement("use");
+		use.setAttribute("transform",`ref(svg,${svgCrds.x},${svgCrds.y})`);
+		use.setAttribute("xlink:href",geom.icon);
+		break;
+	case "linestring":
+		path =svgDoc.createElement("path");
+		path.setAttribute("d",this.#getPathD(geom.coordinates,layerCRS));
+		path.setAttribute("fill", "none");
+		break;
+	case "polygon":
+		path =svgDoc.createElement("path");
+		path.setAttribute("d",this.#getPolygonPathD(geom));
+		path.setAttribute("fill", this.#uiMapping.shapeStyle.fill);
+		break;
+	}
+	
+	if ( path ){
+		path.setAttribute("stroke", this.#uiMapping.shapeStyle.stroke);
+		path.setAttribute("stroke-width", this.#uiMapping.shapeStyle.strokeWidth);
+		path.setAttribute("vector-effect", "non-scaling-stroke");
+		unbufElm = path;
+	} else {
+		unbufElm = use;
+	}
+	
+	(svgElem.parentElement).insertBefore(unbufElm, svgElem);
+	svgElem.remove();
+	
+	return ( unbufElm );
+}
+
+#getPolygonPathD(polygonGeom){
+	// この関数、　svgMapGISのputPolygonと完全にかぶってる。整理必要・・・TBD?
+	var layerCRS = this.#svgImagesProps[this.#uiMapping.editingLayerId].CRS;
+	var pathD = "";
+	for (var i = 0; i < polygonGeom.coordinates.length; i++) {
+		pathD += this.#getPathD(polygonGeom.coordinates[i], layerCRS) + "z ";
+	}
+	return pathD;
+}
+
+#getPathD(geoCoords, crs) {
+	if (geoCoords.length == 0) {
+		return " ";
+	}
+	//console.log(geoCoords,crs);
+	var ans = "M";
+	var svgc = this.#svgMap.Geo2SVG(geoCoords[0][1],geoCoords[0][0], crs);
+	if (svgc) {
+		ans += svgc.x + "," + svgc.y + " L";
+		for (var i = 1; i < geoCoords.length; i++) {
+			svgc = this.#svgMap.Geo2SVG(geoCoords[i][1],geoCoords[i][0], crs);
+			if (svgc) {
+				ans += svgc.x + "," + svgc.y + " ";
+			}
+		}
+	} else {
+		ans = " ";
+	}
+	return ans;
+}
+
+	
 cancelPointingPoiRegister(...params){ return (this.#cancelPointingPoiRegister(...params))};
 editPoint(...params){ return (this.#editPoint(...params))};
+initGenericTool(...params){ return (this.#initGenericTool(...params))};
 initPOItools(...params){ return (this.#initPOItools(...params))};
 initPOIregistTool(...params){ return (this.#initPOIregistTool(...params))};
 initPolygonTools(...params){ return (this.#initPolygonTools(...params))};
