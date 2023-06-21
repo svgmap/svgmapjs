@@ -1605,7 +1605,7 @@ class SvgMapAuthoringTool {
 // var toolsCbFuncParam; // 同上
 #initPolygonTools(targetDiv,poiDocId,cbFunc,cbFuncParam,isPolylineMode,options  ){
 	
-	console.log("initPolygonTools : isPolylineMode:",isPolylineMode,  "  uiMapping.toolsCbFunc:",this.#uiMapping.toolsCbFunc);
+	console.log("initPolygonTools : isPolylineMode:",isPolylineMode);
 	
 	this.#removeChildren( targetDiv );
 	

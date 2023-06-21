@@ -478,7 +478,7 @@ class SvgMapGIS {
 	
 	// 下の、buildIntersectionをラップし、"difference" | "union" | "symDifference"　を実行する関数
 	#buildDifference( sourceId1, sourceId2, targetId , strokeColor, strokeWidth, fillColor, progrssCallback, addSourceMetadata, getResultAsGeoJsonCallback,getResultAsGeoJsonCallbackParam){
-		return (buildIntersection( sourceId1, sourceId2, targetId , strokeColor, strokeWidth, fillColor, progrssCallback, addSourceMetadata, getResultAsGeoJsonCallback,getResultAsGeoJsonCallbackParam, "difference"));
+		return (this.#buildIntersection( sourceId1, sourceId2, targetId , strokeColor, strokeWidth, fillColor, progrssCallback, addSourceMetadata, getResultAsGeoJsonCallback,getResultAsGeoJsonCallbackParam, "difference"));
 	}
 	/**
 	#buildUnion( sourceId1, sourceId2, targetId , strokeColor, strokeWidth, fillColor, progrssCallback, getResultAsGeoJsonCallback,getResultAsGeoJsonCallbackParam){
@@ -530,13 +530,13 @@ class SvgMapGIS {
 		this.#svgMap.captureGISgeometriesOption(false,true); // 2020/1/8 rectもpolygonとみなす
 		if ( params.processMode == "intersection" ){
 			if ((!params.addMetadata) ){// addMetadataしないintersectionだけこっちで処理する・・・今後整理が必要　TBD
-				this.#svgMap.captureGISgeometries(buildIntersectionS2, params ); 
+				this.#svgMap.captureGISgeometries(this.#buildIntersectionS2, params ); 
 //				svgMap.captureGISgeometries(buildIntersectionS2a, params ); // jstsに丸投げするパターン(処理は２倍ほど高速だが・・重くなった時に進捗が取れない) 2020/1/9
 			} else {
-				this.#svgMap.captureGISgeometries(buildIntersectionS2, params ); 
+				this.#svgMap.captureGISgeometries(this.#buildIntersectionS2, params ); 
 			}
 		} else if ( params.processMode == "difference" ){
-			this.#svgMap.captureGISgeometries(buildDifferenceS2, params );
+			this.#svgMap.captureGISgeometries(this.#buildDifferenceS2, params );
 		} else { 
 			// NOP
 		}
@@ -620,7 +620,7 @@ class SvgMapGIS {
 		}
 	}
 	
-	#buildDifferenceS2( geom, params , loop1Count , loop2Count, fa1, fa2, ansFeatures , ansFeature ,ansFeatureMetadata ){ // 2020/1/10 非同期処理のために、かなりトリッキーですよ
+	#buildDifferenceS2=function( geom, params , loop1Count , loop2Count, fa1, fa2, ansFeatures , ansFeature ,ansFeatureMetadata ){ // 2020/1/10 非同期処理のために、かなりトリッキーですよ
 		var startTime =  new Date().getTime();
 //		console.log( "called buildDifferenceS2:",geom, params );
 		var j = 0;
@@ -708,7 +708,7 @@ class SvgMapGIS {
 						break loop1;
 					}
 //					wait and call buildDifferenceS2 and exit
-					setTimeout(buildDifferenceS2.bind(this), 20 , geom, params , nextCount1 , nextCount2, fa1, fa2, ansFeatures , ansFeature, ansFeatureMetadata);
+					setTimeout(this.#buildDifferenceS2.bind(this), 20 , geom, params , nextCount1 , nextCount2, fa1, fa2, ansFeatures , ansFeature, ansFeatureMetadata);
 					return;
 				}
 				
@@ -716,14 +716,18 @@ class SvgMapGIS {
 			j = 0;
 			loop2Count = 0;
 			if ( ansFeature ){
-				var ansGeoJs=this.#getGeoJson(ansFeature);
-				if ( this.#geomHasCoordinates(ansGeoJs)){
-					if ( params.addMetadata ){
-//						console.log("Add metada",ansFeatureMetadata);
-						ansGeoJs.metadata=ansFeatureMetadata;
+				try{
+					var ansGeoJs=this.#getGeoJson(ansFeature);
+					if ( this.#geomHasCoordinates(ansGeoJs)){
+						if ( params.addMetadata ){
+	//						console.log("Add metada",ansFeatureMetadata);
+							ansGeoJs.metadata=ansFeatureMetadata;
+						}
+						ansFeatures.push(ansGeoJs);
+	//					console.log(ansFeature);
 					}
-					ansFeatures.push(ansGeoJs);
-//					console.log(ansFeature);
+				} catch (e){
+					console.warn("Could not build geoJson skip :", ansFeature);
 				}
 			}
 		}
@@ -740,7 +744,7 @@ class SvgMapGIS {
 		this.#drawGeoJson(geoJsonIntersections, params.targetId, params.strokeColor, params.strokeWidth, params.fillColor,"p0","poi",null,params.resultGroup);
 		this.#svgMap.refreshScreen();
 		
-	}
+	}.bind(this);
 	
 	
 	#buildIntersectionS2a( geom, params ){
@@ -842,7 +846,7 @@ class SvgMapGIS {
 		return ( gc );
 	}
 	
-	#buildIntersectionS2( geom, params ){
+	#buildIntersectionS2 = function( geom, params ){
 		console.log( "called buildIntersectionS2:",geom, params );
 		var svgImages = this.#svgMap.getSvgImages();
 		var svgImagesProps = this.#svgMap.getSvgImagesProps();
@@ -923,7 +927,7 @@ class SvgMapGIS {
 		
 		this.#buildIntersectionS3(src2IDs,src1Features, compArray,geom, params);
 		
-	}
+	}.bind(this);
 	
 	#halt = false;
 	#haltComputing(){
