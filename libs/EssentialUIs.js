@@ -29,6 +29,7 @@ class EssentialUIs{
 		this.#matUtil = matUtil;
 		this.#hideAllTileImgs = hideAllTileImgs;
 		this.#getRootSvg2Canvas = getRootSvg2Canvas;
+		this.#wheelZooming = 0;
 	}
 	
 	#centerPos;
@@ -221,7 +222,7 @@ class EssentialUIs{
 			**/
 		}
 		var that = this;
-		window.addEventListener( 'wheel', function(event){that.#testWheel(event)}, false );
+		window.addEventListener( 'wheel', function(event){that.#testWheel(event)}, { passive: false } );
 	}
 
 	#refreshWindowSize(){
@@ -251,14 +252,46 @@ class EssentialUIs{
 		this.setCenterUI();
 	}
 	
+	#wheelTimerID;
+	#wheelZooming;
+	
 	#testWheel( evt ){
-		if (evt.deltaY < 0 || evt.detail < 0 || evt.wheelDelta > 0 ){
-			//evt.preventDefault();
-			this.#zoomPanManager.zoomup();
-		} else if ( evt.deltaY > 0 || evt.detail > 0 || evt.wheelDelta < 0 ){
-			//evt.preventDefault();
-			this.#zoomPanManager.zoomdown();
+		if (this.#wheelZooming == 0) {
+			// console.log("start wheel");
+			this.#zoomPanManager.startPan({ type: "wheelDummy", button: 2, clientX: 0, clientY: 0 });
+			this.#zoomPanManager.wheelZooming=true;
 		}
+		var zf = 1;
+		// https://groups.google.com/a/chromium.org/g/chromium-dev/c/VhSKxAJFCs0
+		// たしかに、パッドでピンチするとctrlはtrueになってる
+		if (evt.ctrlKey) {
+			zf = 3;
+		}
+		this.#wheelZooming -= (evt.deltaX + evt.deltaY + evt.deltaZ) * zf;
+		/**
+		console.log(
+			"wheel Zooming ",
+			this.#wheelZooming,
+			evt.deltaX,
+			evt.deltaY,
+			evt.deltaZ,
+			evt.ctrlKey
+		);
+		**/
+		this.#zoomPanManager.showPanning({
+			type: "wheelDummy",
+			buttons: 1,
+			clientX: 0,
+			clientY: this.#wheelZooming,
+		});
+		clearTimeout(this.#wheelTimerID);
+		this.#wheelTimerID = setTimeout(function () {
+			// console.log("wheel終了", this.#wheelTimerID, this.#wheelZooming);
+			this.#zoomPanManager.endPan();
+			this.#zoomPanManager.wheelZooming=false;
+			this.#wheelZooming = 0;
+		}.bind(this), 200);
+		evt.preventDefault();
 	}
 
 

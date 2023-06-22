@@ -185,10 +185,12 @@ class ZoomPanManager{
 	#prevX;
 	#prevY;
 	#zoomingTransitionFactor = -1; // ズームモードで>0 ズーム遷移中のズーム率
+	wheelZooming = false; // 2023/6/22 whee処理中フラグ(EssentialUIから設定される)
 
 	showPanning=function( evt ){
 		// ここではズームパンアニメーション自体を行うことはしていない(difX,Y,zTFなどの変化をさせているだけ)
 		if ( this.#panning){
+			if ( this.wheelZooming && evt.type !="wheelDummy"){return false}
 	//		console.log("button:",evt.button,event.button);
 			
 			if ( !this.#mapViewerProps.uaProps.isIE ){
@@ -220,7 +222,7 @@ class ZoomPanManager{
 			
 			if ( this.#zoomingTransitionFactor > 0 ){
 				if ( this.#initialTouchDisance == 0 ){
-					this.#zoomingTransitionFactor = Math.exp( -this.#difY / (this.#mapViewerProps.mapCanvasSize.height / 2) ) / Math.exp(0);
+					this.#zoomingTransitionFactor = Math.exp( this.#difY / (this.#mapViewerProps.mapCanvasSize.height / 2) ) / Math.exp(0);
 				}
 				if ( this.#zoomingTransitionFactor < 0.1 ){
 					this.#zoomingTransitionFactor = 0.1;
