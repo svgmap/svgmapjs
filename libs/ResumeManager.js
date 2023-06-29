@@ -123,47 +123,49 @@ class ResumeManager{
 			this.#removeCookies("resume"); // resumeという名前のモノだけ削除する
 			
 			if ( this.#resume && resumeObj  ){
-				var vbLat = Number(resumeObj.vbLat);
-				var vbLng = Number(resumeObj.vbLng);
-				var vbLatSpan = Number(resumeObj.vbLatSpan);
-				var vbLngSpan = Number(resumeObj.vbLngSpan);
-				
-	//			var lp = getRootLayersProps();
-				var lprev = resumeObj.layersProperties;
-				
-				var matched=[];
-				// titleとhrefが一致しているケース
-				for ( var i = 0 ; i < lp.length ; i++ ){
-					var key = lp[i].title; // titleがlprevのkeyになっているのは要注意ですよ
-					matched.push(false);
-					if ( lprev[key] ){
-						if ( lprev[key].href == lp[i].href ){
-							// titleもhrefも正しいのでOK
-							var visible = lprev[key].visible;
-							this.#svgMapObject.setRootLayersProps(lp[i].id,visible,false);
-							matched[i]=true;
-							delete lprev[key];
-						} else {
-							// hrefが変更されている！！　skipしておく
-							console.warn("href is unmatched!!!: title:",key,"  href:",lprev[key].href ," : ", lp[i].href,"  SKIP IT");
-						}
-					}
-				}
-				
-				// 未解決レイヤでtitleは違うがURLが同じモノがあるケース(titleが変更になったとみなす)
-				for ( var i = 0 ; i < lp.length ; i++ ){
-					if ( matched[i]==false){
-						for ( var key in lprev ){
-							if (lprev[key].href == lp[i].href ){
+				if (lh && (lh.hiddenLayer || lh.visibleLayer)) {
+					// skip
+					console.log( "hiddenLayer or visibleLayer hash is. Skip layer visibility resume." );
+				} else {
+					var lprev = resumeObj.layersProperties;
+					
+					var matched=[];
+					// titleとhrefが一致しているケース
+					for ( var i = 0 ; i < lp.length ; i++ ){
+						var key = lp[i].title; // titleがlprevのkeyになっているのは要注意ですよ
+						matched.push(false);
+						if ( lprev[key] ){
+							if ( lprev[key].href == lp[i].href ){
+								// titleもhrefも正しいのでOK
 								var visible = lprev[key].visible;
 								this.#svgMapObject.setRootLayersProps(lp[i].id,visible,false);
 								matched[i]=true;
-								console.log("layer title may be changed, but set visibility");
+								delete lprev[key];
+							} else {
+								// hrefが変更されている！！　skipしておく
+								console.warn("href is unmatched!!!: title:",key,"  href:",lprev[key].href ," : ", lp[i].href,"  SKIP IT");
+							}
+						}
+					}
+					
+					// 未解決レイヤでtitleは違うがURLが同じモノがあるケース(titleが変更になったとみなす)
+					for ( var i = 0 ; i < lp.length ; i++ ){
+						if ( matched[i]==false){
+							for ( var key in lprev ){
+								if (lprev[key].href == lp[i].href ){
+									var visible = lprev[key].visible;
+									this.#svgMapObject.setRootLayersProps(lp[i].id,visible,false);
+									matched[i]=true;
+									console.log("layer title may be changed, but set visibility");
+								}
 							}
 						}
 					}
 				}
-				
+				var vbLat = Number(resumeObj.vbLat);
+				var vbLng = Number(resumeObj.vbLng);
+				var vbLatSpan = Number(resumeObj.vbLatSpan);
+				var vbLngSpan = Number(resumeObj.vbLngSpan);
 	//			resumeFirstTime = false; // 下(setGeoViewPort)でもう一回checkが通ってバグる・・10/27 これは5番目の引数により不要になった 2017.1.31
 				this.#svgMapObject.setGeoViewPort(vbLat,vbLng,vbLatSpan,vbLngSpan , true); // set geoviewport without refresh
 			}

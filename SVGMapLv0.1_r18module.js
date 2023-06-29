@@ -687,7 +687,7 @@ class SvgMap {
 			try{ // 2020/09/11 preRenderFunctionがエラーアウトすると NOW LOADING:: delay and retry refreshScreenの無限ループに入るのを防止
 				this.#svgImagesProps[docId].preRenderControllerFunction(svgDocStatus);
 			} catch(e){
-				console.error("Error in handlePreRenderControllerScript:",e);
+				console.error("Error in handlePreRenderControllerScript: docId:", docId, "  Exception:", e);
 			}
 		}
 	}
