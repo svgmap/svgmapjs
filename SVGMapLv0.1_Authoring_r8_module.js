@@ -216,7 +216,7 @@ class SvgMapAuthoringTool {
 	}
 	
 	
-	if ( this.#uiMapping.editingMode && this.#uiMapping.editingMode=="POIreg" && uiDoc === this.#uiMapping.uiDoc && poiDocId == this.#uiMapping.editingLayerId){ // すでにそのUIdocでPOIregモードの初期化済みのときは二個目以降のツールが追加されていく。このときcbFuncは無視・・
+	if (  this.#uiMapping && this.#uiMapping.editingMode && this.#uiMapping.editingMode=="POIreg" && uiDoc === this.#uiMapping.uiDoc && poiDocId == this.#uiMapping.editingLayerId){ // すでにそのUIdocでPOIregモードの初期化済みのときは二個目以降のツールが追加されていく。このときcbFuncは無視・・
 		console.log("ADD uiMapping");
 	} else { // uiMappingを新規作成する系
 		console.log("NEW uiMapping");
