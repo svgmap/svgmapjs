@@ -337,11 +337,11 @@ class SvgMapGIS {
 				var poiDoc = geom[pointsDocTreeIDs[poiDocC]];
 				totalPoiCount +=  poiDoc.length;
 				for ( var pic = 0 ; pic < poiDoc.length ; pic++ ){
-					for ( polDocC = 0 ; polDocC < polygonsDocTreeIDs.length ; polDocC++ ){ // Loop:seki point
+					for ( var polDocC = 0 ; polDocC < polygonsDocTreeIDs.length ; polDocC++ ){ // Loop:seki point
 						if ( geom[polygonsDocTreeIDs[polDocC]] ){
 							var polDoc = geom[polygonsDocTreeIDs[polDocC]];
 //							console.log("polDoc:",polDoc);
-							for ( plc = 0 ; plc < polDoc.length ; plc ++ ){
+							for ( var plc = 0 ; plc < polDoc.length ; plc ++ ){
 								compArray.push([poiDocC,pic,polDocC,plc]);
 							}
 						}
@@ -407,7 +407,7 @@ class SvgMapGIS {
 				++ counter;
 				continue;
 			}
-			polygon = polDoc[plc].coordinates;
+			var polygon = polDoc[plc].coordinates;
 			if ( !superParam.inverse ){ // 内包判定
 				if (  this.#insidePolygon( point , polygon ) ){
 					// 一個でも内包してたらそれで内包判断完了 ⇒こうするかどうかは今後選択にすべき(複数のポリゴンに内包されてて、そのポリゴンはどんな属性なのかを知りたいケースがある)2019/12/19
