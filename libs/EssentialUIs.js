@@ -62,12 +62,12 @@ class EssentialUIs{
 		this.#mapViewerProps.mapCanvasWrapper = mapCanvas;
 		
 		var rootSVGpath;
-		if ( this.#mapViewerProps.mapCanvas.dataset.src ){
+		if (mapCanvas.dataset.src ){
 			// data-src属性に読み込むべきSVGの相対リンクがある 2017.3.6
-			rootSVGpath = this.#mapViewerProps.mapCanvas.dataset.src;
-		} else if ( this.#mapViewerProps.mapCanvas.title ){
+			rootSVGpath = mapCanvas.dataset.src;
+		} else if ( mapCanvas.title ){
 			// title属性に読み込むべきSVGの相対リンクがあると仮定(微妙な・・) 最初期からの仕様
-			rootSVGpath = this.#mapViewerProps.mapCanvas.title;
+			rootSVGpath = mapCanvas.title;
 		} else{
 			console.warn("NO id:mapcanvas data-src for root svg container exit..");
 			return null;
