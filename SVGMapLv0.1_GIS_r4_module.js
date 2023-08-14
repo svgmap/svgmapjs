@@ -2488,7 +2488,7 @@ class SvgMapGIS {
 	}
 	
 	// geoJsonレンダラ系
-	#drawGeoJson( geojson , targetSvgDocId, strokeColor, strokeWidth, fillColor, POIiconId, poiTitle, metadata, parentElm,metaDictionary){
+	#drawGeoJson( geojson , targetSvgDocId, strokeColor, strokeWidth, fillColor, POIiconId, poiTitle, parentMetadata, parentElm,metaDictionary){
 //		console.log("called svgMapGisTool drawGeoJson");
 		var svgImages = this.#svgMap.getSvgImages();
 		var svgImagesProps = this.#svgMap.getSvgImagesProps();
@@ -2496,21 +2496,21 @@ class SvgMapGIS {
 		var svgImagesProp = svgImagesProps[targetSvgDocId];
 		var crs = svgImagesProp.CRS;
 		
+		var metadata={};
+		if (parentMetadata ){
+			for (var mkey in parentMetadata){
+				metadata[mkey]=parentMetadata[mkey];
+			}
+		}
 		if ( geojson.metadata){ // 2020/1/8
 			metadata=geojson.metadata;
 //			console.log("Set metadata on drawGeoJson:",metadata)
 		} // ISSUE 2020.1.14 本来のgeojsonでは、 properties type:Featureオブジェクト下の "properties"プロパティに{KV,..}としてメタデータを入れる仕様　これをサポートするべき
 		
 		if (geojson.properties){ // 拡張メタデータ機構：標準geojsonはFeature下のみ許されるがどこでもOKに、下層はそれを継承上書き（デフォ属性可に）
-			if (!metadata){
-				metadata={};
-			}
 			for ( var mkey in geojson.properties){
 				metadata[mkey]=geojson.properties[mkey];
 			}
-		}
-		if (!metadata){
-			metadata={};
 		}
 		
 		if ( !geojson.type && geojson.length >0 ){ // これはおそらく本来はエラーだが
