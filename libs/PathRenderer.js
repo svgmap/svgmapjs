@@ -42,7 +42,7 @@ class PathRenderer{
 			ret.y -= ry;
 			ret.height = ry * 2;
 		} else {
-			var csize = transform( rx , ry , child2canvas , true );
+			var csize = this.#matUtil.transform( rx , ry , child2canvas , true );
 			ret.y -= csize.y;
 			ret.height = csize.y * 2;
 		}
@@ -139,6 +139,7 @@ class PathRenderer{
 			} else {
 				d = pathNode.getAttribute("d"); // from canvg
 			}
+			if (!d){d=""}
 			d = d.replace(this.ssppRe0, " "); // get rid of all commas
 			d = d.replace(this.ssppRe1, "$1 $2"); // separate commands from commands
 			d = d.replace(this.ssppRe2, "$1 $2"); // separate commands from commands
