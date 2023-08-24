@@ -54,6 +54,7 @@
 // 2022/03/08-: コアFWとともに、svgImagesProps[].controllerを構造化、*.svgScript導入しlsUIで実行、従来型*.scriptを廃止
 // 2022/05/31 : ESM, Class化
 // 2023/07/25 : Firefoxの最新版では、力業のiFrameReady()がDOMContentLoadedタイミングをつかんだ処理ができないケースが多い、そこでloadイベント処理のリトライを行うルーチンを入れた（この実装までにかなりの試行錯誤があった）
+// 2023/08/24 : ↑の問題がChromeでも起きる環境があることが判明。iframeのhtmlのキャッシュを無効化することで対応。そろそろ仕様変更などの本質的な対策が求められる。
 
 // ISSUES, ToDo: 
 // 2021/10/14 rootsvgのDOM直編集ではupdateLayerTableが反映されるタイミングが直にない～updateLayerTableを多数呼びたくない理由は、LayerListTableの後進にオーバヘッドがかかるから　なので、それをせずにならば(例えばrefreshScreen毎に)いくら呼んでも気にならないはず
@@ -1000,6 +1001,31 @@ class SvgMapLayerUI {
 		}
 	}
 
+	#addCacheDisabledQuery(path) {
+		var hashPos = path.indexOf("#");
+		var queryPos = path.indexOf("?");
+		if (queryPos > hashPos) {
+			queryPos = -1;
+		}
+		var timeStampQuery = "disableCacheQuery=" + new Date().getTime();
+		var ans, queryDelim;
+		if (queryPos > 0) {
+			queryDelim = "&";
+		} else {
+			queryDelim = "?";
+		}
+		if (hashPos > 0) {
+			ans =
+				path.substring(0, hashPos) +
+				queryDelim +
+				timeStampQuery +
+				path.substring(hashPos);
+		} else {
+			ans = path + queryDelim + timeStampQuery;
+		}
+		return ans;
+	}
+
 	#initIframe(lid, controllerURL, reqSize, hiddenOnLaunch, cbf){
 		// controllerURLの仕様:checkController参照 
 		console.log("initIframe:",controllerURL, "  hiddenOnLaunch?:",hiddenOnLaunch);
@@ -1040,6 +1066,7 @@ class SvgMapLayerUI {
 				bySrcdoc = true;
 			} else { // 同一ドメインにあるケース(基本ケース)  
 				iframe.src=controllerURL;
+				iframe.src = this.#addCacheDisabledQuery(controllerURL); // 2023/08/24 キャッシュからの読み込みでは、iframeReadyが効かないことがあるため、キャッシュ無効化する
 	//			layerSpecificUIbody.appendChild(iframe);
 			}
 		} else { // controller-srcに直接ソースが書かれている　もしくは svgScriptがある　もしくは画像のケース
