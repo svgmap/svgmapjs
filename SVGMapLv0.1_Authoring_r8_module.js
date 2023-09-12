@@ -722,6 +722,7 @@ class SvgMapAuthoringTool {
 			} else {
 				targetSvgElem.setAttribute("fill","none");
 			}
+			targetSvgElem.setAttribute("opacity", this.#uiMapping.shapeStyle.opacity);
 			targetSvgElem.setAttribute("stroke", this.#uiMapping.shapeStyle.stroke);
 			targetSvgElem.setAttribute("stroke-width", this.#uiMapping.shapeStyle.strokeWidth);
 			targetSvgElem.setAttribute("vector-effect","non-scaling-stroke");
@@ -2864,6 +2865,7 @@ class SvgMapAuthoringTool {
 	bpath.setAttribute("d",this.#getPolygonPathD(bgeom));
 	bpath.setAttribute("fill", this.#uiMapping.shapeStyle.fill);
 	bpath.setAttribute("stroke", this.#uiMapping.shapeStyle.stroke);
+	bpath.setAttribute("opacity", this.#uiMapping.shapeStyle.opacity);
 	bpath.setAttribute("stroke-width", this.#uiMapping.shapeStyle.strokeWidth);
 	bpath.setAttribute("vector-effect", "non-scaling-stroke");
 	(svgElem.parentElement).insertBefore(bpath, svgElem);
