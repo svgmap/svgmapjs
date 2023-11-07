@@ -83,6 +83,7 @@ class  SvgMapCustomLayersManager{
 			getDetailedOriginalLayersPropertySet : this.#getDetailedOriginalLayersPropertySet.bind(this), 
 			setCustomLayerSettingIndex : this.#setCustomLayerSettingIndex.bind(this), 
 			applyCustomLayers : this.#applyCustomLayers.bind(this), 
+			getRootContainerXML : this.#getRootContainerXML.bind(this),
 			registCustomLayer : this.#registCustomLayer.bind(this), 
 			loadCustomLayerSettings : this.#loadCustomLayerSettings.bind(this), 
 			storeCustomLayerSettings : this.#storeCustomLayerSettings.bind(this), 
@@ -1112,6 +1113,12 @@ class  SvgMapCustomLayersManager{
 		return ( rootContainer);
 	}
 	
+	#getRootContainerXML(){
+		var doc = this.#getRootContainer();
+		const serializer = new XMLSerializer();
+		const xmlStr = serializer.serializeToString(doc);
+		return ( xmlStr );
+	}
 	
 	#getRootContainerHref(){
 		if ( ! this.#hasSvgMapObj ){

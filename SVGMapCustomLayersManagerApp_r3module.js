@@ -43,7 +43,7 @@ import { SvgMapCustomLayersManagerClient } from './SvgMapCustomLayersManagerClie
 
 
 class SvgMapCustomLayersManagerApp{
-	// 重要なグローバル変数（一個だけのはずです）
+	// 重要なこのオブジェクト内のグローバル変数（一個だけのはずです）
 	#lpEdit; // 編集したlayersProperty (最初にdeepCopyしているので上のオリジナルは保持)
 	
 	#svgMapCustomLayersManagerClient;
@@ -66,6 +66,15 @@ class SvgMapCustomLayersManagerApp{
 		this.#setLayersPanelEvent();
 		this.#setOthersPanelEvent();
 	}
+	
+	// public methods
+	async getRootContainer(){
+		var rootSvg= await this.#svgMapCustomLayersManagerClient.getRootContainerXML();
+		return ( rootSvg );
+	}
+	
+	
+	// private methods
 	
 	#setStartupPanelEvent(){
 		document.getElementById("defaultVbRadio").addEventListener("click",this.#selectStartupSetting.bind(this));
@@ -939,4 +948,4 @@ class SvgMapCustomLayersManagerApp{
 
 }
 
-var svgMapCustomLayersManagerApp = new SvgMapCustomLayersManagerApp();
+window.svgMapCustomLayersManagerApp = new SvgMapCustomLayersManagerApp();

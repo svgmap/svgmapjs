@@ -48,6 +48,10 @@ class SvgMapCustomLayersManagerClient{
 		return (await this.#iwmsg.callRemoteFunc(this.applyCustomLayers.name,[customLayersObject, baseLayersPropertySet]));
 	}
 	
+	async getRootContainerXML(){
+		return (await this.#iwmsg.callRemoteFunc(this.getRootContainerXML.name,[]));
+	}
+	
 	async registCustomLayer(customLayerObject, applyImmediately, customLayerMetadata){
 		return (await this.#iwmsg.callRemoteFunc(this.registCustomLayer.name,[customLayerObject, applyImmediately, customLayerMetadata]));
 	}

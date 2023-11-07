@@ -1667,7 +1667,7 @@ class SvgMap {
 				 this.#refreshScreenSync(noRetry, parentCaller, isRetryCall) 
 			}.bind(this));
 		}
-	}
+	}.bind(this);
 	
 	#refreshScreenSync=function(noRetry, parentCaller, isRetryCall){
 		// スクロール・パンを伴わずに画面の表示を更新(内部のSVGMapDOMとシンクロ)する処理

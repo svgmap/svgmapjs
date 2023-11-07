@@ -89,6 +89,10 @@ window.svgMapCustomLayersManagerClient = svgMapCustomLayersManagerClient;
 <!-- 上記ライブラリを用いてレイヤー管理アプリを作るコード 将来的に上記ライブラリと統合するかも？-->
 <script type="module" src="./SVGMapCustomLayersManagerApp_r3module.js"></script> 
 
+<!-- 拡張機能(Container.svgを保存する) -->
+<script type="module" src="./customLayerManagerExtension.js"></script> 
+
+
 <body>
 <h3>SVGMap Setting Panel</h3>
 <div class="tabs">
@@ -158,6 +162,10 @@ window.svgMapCustomLayersManagerClient = svgMapCustomLayersManagerClient;
 		<tr>
 			<td>Restore settings</td>
 			<td><input type="file" id="loadFile" onchangeX="loadSetting(event)" /></td>
+		</tr>
+		<tr>
+			<td>Container</td>
+			<td colspan="2" ><input id="saveContainerSvg" type="button" value="Save Current View as container.svg"></td>
 		</tr>
 		<tr>
 			<td colspan="1" >RESET</td>
