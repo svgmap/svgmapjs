@@ -2700,6 +2700,9 @@ class SvgMapGIS {
 	
 	// geoJsonレンダラ系
 	#drawGeoJson( geojson , targetSvgDocId, strokeColor, strokeWidth, fillColor, POIiconId, poiTitle, parentMetadata, parentElm,metaDictionary, options){
+		if (!options) {
+			options = {};
+		}
 //		console.log("called svgMapGisTool drawGeoJson");
 		var svgImages = this.#svgMap.getSvgImages();
 		var svgImagesProps = this.#svgMap.getSvgImagesProps();
