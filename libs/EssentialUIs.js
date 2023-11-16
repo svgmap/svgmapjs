@@ -498,13 +498,14 @@ class EssentialUIs{
 	}
 
 	getGeoViewBox(){
+		var cent = this.getCentralGeoCoorinates();
 		return {
 			x:this.geoViewBox.x , 
 			y:this.geoViewBox.y , 
 			width:this.geoViewBox.width, 
 			height:this.geoViewBox.height, 
-			cx: this.geoViewBox.x + 0.5*this.geoViewBox.width, 
-			cy:this.geoViewBox.y + 0.5*this.geoViewBox.height
+			cx:cent.lng, 
+			cy:cent.lat
 		} 
 	}
 	
