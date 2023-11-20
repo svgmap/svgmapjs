@@ -372,7 +372,7 @@ class SvgMapLayerUI {
 		var lsuiDoc = this.#layerSpecificUI.ownerDocument;
 		
 		if ( !svgImageProps.controller &&  svgImageProps.svgScript){ // svgScriptだけがあるパターン
-			ctrUrl=":#exec=appearOnLayerLoad";
+			ctrUrl=":#exec=hiddenOnLayerLoad";
 		}
 		
 		if ( svgImageProps.controller ){
@@ -1076,7 +1076,7 @@ class SvgMapLayerUI {
 			} else if ( (this.#svgMap.getSvgImagesProps())[lid].controller ){ // controller-srcに直接ソースが書かれているケース
 				sourceDoc = (this.#svgMap.getSvgImagesProps())[lid].controller.src;
 			} else { // svgScriptだけがあるケース
-				var addSrc ='<h4>test svgScript on layerUI</h4>LayerID:'+lid;
+				var addSrc ='<h4>svgScript only  layerUI</h4>LayerID:'+lid;
 				sourceDoc = this.#getEmptyHtmlSrc(addSrc); // まず空のhtmlを立ち上げ、Window構築後、svgScriptを追加する
 			}
 			
