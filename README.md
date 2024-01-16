@@ -18,3 +18,6 @@ Development has started since 2022/05 as SVGMapLv0.1_r18module.js. A practical r
 
 ```sudo n lts```
 
+### excute unittest
+
+```npm test```
