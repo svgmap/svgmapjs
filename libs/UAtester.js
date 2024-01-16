@@ -21,6 +21,7 @@ class UAtester{
 	old;
 	
 	constructor(){
+		console.log(navigator.userAgent)
 		this.isSP = this.#checkSmartphone();
 		this.uaProp = this.#checkBrowserName();
 		this.#checkIE();
