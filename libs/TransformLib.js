@@ -82,7 +82,10 @@ class MatrixUtil {
 			return ( null );
 		}
 	}
-	
+	/**
+	 * @param {GenericMatrix} m1 - 最初の変換マトリクス
+	 * @param {GenericMatrix} m2 - GenericMatrix
+	 */
 	matMul( m1 , m2 ){ // getConversionMatrixViaGCSとほとんど同じでは？
 		// m1: 最初の変換マトリクス
 		// m2: 二番目の変換マトリクス
@@ -115,7 +118,13 @@ class MatrixUtil {
 			f: m2.b * m1.e + m2.d * m1.f + m2.f
 		}
 	}
-	
+	/**
+	 * @param {int} x - 何か不明
+	 * @param {int} y - 何か不明
+	 * @param {GenericMatrix} mat -???
+	 * @param {any} calSize : any
+	 * nonScaling : any
+	 */
 	transform( x , y , mat , calcSize , nonScaling){
 		if ( calcSize == true ){
 			if ( mat.transform ){
@@ -366,8 +375,8 @@ class Mercator{
 		var pixelX = (( lng + 180.0 ) / 360.0 ) * size;
 		var pixelY = (0.5 - Math.log((1 + sinLat) / (1.0 - sinLat)) / (4 * Math.PI)) * size;
 		return {
-			x : pixelX ,
-			y : pixelY
+			x : Math.round(pixelX*1e6)/1e6 , 
+			y : Math.round(pixelY*1e6)/1e6
 		}
 	}
 
@@ -378,8 +387,8 @@ class Mercator{
 		var lat = 90 - 360 * Math.atan(Math.exp(-y * 2 * Math.PI)) / Math.PI;
 		var lng = 360 * x;
 		return{
-			lat : lat ,
-			lng : lng
+			lat : Math.trunc(lat*1e6)/1e6 ,
+			lng : Math.trunc(lng*1e6)/1e6
 		}
 	}
 	
