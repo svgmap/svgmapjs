@@ -8,7 +8,8 @@
   "version": "0.0.1",
   "main": "SVGMapLv0.1.js",
   "scripts": {
-    "test": "NODE_OPTIONS=--experimental-vm-modules npx jest"
+    "test": "NODE_OPTIONS=--experimental-vm-modules npx jest",
+    "report": "NODE_OPTIONS=--experimental-vm-modules npx jest --coverage"
   },
   "repository": {
     "type": "git",
