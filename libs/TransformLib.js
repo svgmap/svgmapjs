@@ -83,8 +83,11 @@ class MatrixUtil {
 		}
 	}
 	/**
-	 * @param {GenericMatrix} m1 - 最初の変換マトリクス
-	 * @param {GenericMatrix} m2 - GenericMatrix
+	 * 行列の積を求める関数 = m2 * m1
+	 * 
+	 * @param {GenericMatrix} m1
+	 * @param {GenericMatrix} m2
+	 * 
 	 */
 	matMul( m1 , m2 ){ // getConversionMatrixViaGCSとほとんど同じでは？
 		// m1: 最初の変換マトリクス
@@ -180,6 +183,15 @@ class MatrixUtil {
 		}
 	}
 	
+	/***
+	 * SVG座標から緯度経度への変換
+	 * 
+	 * @param {int} svgX 
+	 * @param {int} svgY 
+	 * @param {GenericMatrix} crs 
+	 * @param {GenericMatrix} inv 
+	 */
+
 	SVG2Geo( svgX , svgY , crs , inv ){
 		var iCrs;
 		if ( inv ){
@@ -198,6 +210,15 @@ class MatrixUtil {
 		}
 	}
 	
+
+	/***
+	 * 緯度経度からSVG座標への変換
+	 * 
+	 * @param {float} lat - 緯度
+	 * @param {float} lng - 軽度
+	 * @param {GenericMatrix} crs - 座標参照系(Coordinate Reference System:CRS)
+	 * 
+	 */
 	Geo2SVG( lat , lng , crs ){
 		return ( this.transform(lng, lat, crs ) );
 	}
@@ -337,6 +358,14 @@ class MatrixUtil {
 
 }
 
+/**
+ * CSSで使用されるMatrix()：2次元同時変換行列と同等の汎用行列クラス
+ * https://developer.mozilla.org/ja/docs/Web/CSS/transform-function/matrix
+ * 
+ * GenericMatrix = | a, c, e|
+ *                 | b, d, f|
+ *                 | 0, 0, 1|
+ */
 class GenericMatrix{
 	setNonLinearCRS(transform, inverse, scale){
 		this.transform = transform;
