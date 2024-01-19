@@ -185,9 +185,9 @@ class ShowPoiProperty{
 	#specificShowPoiPropFunctions = {};
 
 	/**
-	 * POI or vector2Dのくりっかぶるオブジェクトをクリックしたときに起動する関数
+	 * POI or vector2Dのクリッカブルオブジェクトをクリックしたときに起動する関数
 	 * 
-	 * @param {*} target - 該当する"SVGコンテンツ"の要素
+	 * @param {Element} target - 該当する"SVGコンテンツ"の要素
 	 */
 	showPoiPropertyWrapper(target){
 		var targetIsXMLElement = false;

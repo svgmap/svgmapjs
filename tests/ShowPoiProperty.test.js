@@ -18,5 +18,18 @@ describe("unittest for ShowPoiProperty",()=>{
             result = showPoiProperty.parseEscapedCsvLine("'a',\"b\",c,'dd'");
             expect(result).toEqual(["a","b","c","dd"]);
         });
+
+        it("showPoiPropertyWrapper", ()=>{
+            let elm = new Element();
+            result = showPoiProperty.showPoiPropertyWrapper(elm);
+        });
+
+        it("setShowPoiProperty", ()=>{
+            let mock_func = jest.fn();
+            result = showPoiProperty.setShowPoiProperty(mock_func, "tasikasuuji");
+            // 関数削除
+            result = showPoiProperty.setShowPoiProperty(null, "tasikasuuji");
+            //　何も試験ができない
+        })
     });
 });
