@@ -26,6 +26,11 @@ class UtilFuncs {
 		e.stopPropagation();
 	}
 
+	/**
+	 * 
+	 * @param {Element} svgNode 
+	 * @returns 
+	 */
 	static getHyperLink(svgNode) {
 		var oneNode = svgNode;
 		while (oneNode.parentNode) {
@@ -57,6 +62,12 @@ class UtilFuncs {
 	}
 
 	// 同じ関数がSVGMapLv0.1_LayerUI2_r2.jsにもある・・(getHash)
+	/**
+	 * 
+	 * 
+	 * @param {String} url 
+	 * @returns 
+	 */
 	static getUrlHash(url) {
 		if (url.indexOf("#") >= 0) {
 			var lhash = url.substring(url.indexOf("#") + 1);
@@ -483,6 +494,13 @@ class UtilFuncs {
 	}
 			
 	// POI,タイル(use,image要素)のプロパティを得る DIRECTPOI,USEDPOIの処理に変更2018.3.2
+	/***
+	 * @param {} imgE
+	 * @param {int} category  -- SvgMapElementTypeNo
+	 * @param {} parentProps
+	 * @param {} subCategory
+	 * 
+	 */
 	static getImageProps=function( imgE , category , parentProps , subCategory , GISgeometry){
 		var x, y, width, height, meta, title, elemClass, href, transform, text , cdx , cdy , href_fragment, commonQuery;
 		var nonScaling = false;
