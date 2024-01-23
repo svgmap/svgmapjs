@@ -6,10 +6,18 @@ class PoiHitTester{
 		this.visiblePOIs=new Array();
 	}
 	
-	visiblePOIs; // 現在画面上に表示されているPOI(imgアイコン)のリスト(idのハッシュ 内容はx,y,width,height)
+	 // 現在画面上に表示されているPOI(imgアイコン)のリスト(idのハッシュ 内容はx,y,width,height)
+	visiblePOIs;
 	
+	/**
+	 * 
+	 * @param {*} x 
+	 * @param {*} y 
+	 * @returns 
+	 */
 	getPoiObjectsAtPoint( x, y ){
 		var hittedPOIs = new Array();
+		console.log(this.visiblePOIs);
 		for ( var i in this.visiblePOIs ){
 			if ( x < this.visiblePOIs[i].x ||
 				x > this.visiblePOIs[i].x + this.visiblePOIs[i].width ||
@@ -29,6 +37,7 @@ class PoiHitTester{
 	}
 	
 	setPoiBBox(imageId, x, y, width, height){
+		console.log("aaaaa");
 		this.visiblePOIs[imageId] = { x: x, y: y, width: width, height: height };
 	}
 	
