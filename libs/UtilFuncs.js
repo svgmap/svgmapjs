@@ -189,13 +189,13 @@ class UtilFuncs {
 		return sl.pathname + sl.search;
 	}
 
-	static numberFormat(number, digits) {
-		if (!digits) {
-			digits = 7;
-		}
-		var base = Math.pow(10, digits);
-		return Math.round(number * base) / base;
-	}
+	// static numberFormat(number, digits) {
+	// 	if (!digits) {
+	// 		digits = 7;
+	// 	}
+	// 	var base = Math.pow(10, digits);
+	// 	return Math.round(number * base) / base;
+	// }
 
 	static escape(str) {
 		str = str.replace(/&/g, "&amp;");
@@ -461,6 +461,12 @@ class UtilFuncs {
 		return ( matrix );
 	}
 	
+	/**
+	 * これは何のぷしょんだろう。。。
+	 * 
+	 * @param {Element} svgPoiNode 
+	 * @returns {Array}
+	 */
 	static getNonScalingOffset( svgPoiNode ){ // getPoiPosから改称 2018.3.2
 		// vectorEffect,transform(ref ノンスケールのための基点座標取得
 		try {
@@ -494,14 +500,15 @@ class UtilFuncs {
 	}
 			
 	// POI,タイル(use,image要素)のプロパティを得る DIRECTPOI,USEDPOIの処理に変更2018.3.2
-	/***
-	 * @param {} imgE
-	 * @param {int} category  -- SvgMapElementTypeNo
-	 * @param {} parentProps
-	 * @param {} subCategory
+	/**
+	 * @param {Element} imgE
+	 * @param {Number} category  - SvgMapElementTypeNo
+	 * @param {*} parentProps
+	 * @param {Number} subCategory - SvgMapElementTypeNo
+	 * @param {*} GISgeometry
 	 * 
 	 */
-	static getImageProps=function( imgE , category , parentProps , subCategory , GISgeometry){
+	static getImageProps = function(imgE , category , parentProps , subCategory , GISgeometry){
 		var x, y, width, height, meta, title, elemClass, href, transform, text , cdx , cdy , href_fragment, commonQuery;
 		var nonScaling = false;
 		cdx = 0;
@@ -658,6 +665,7 @@ class UtilFuncs {
 			text = imgE.textContent;
 		}
 		
+		//このコードはif/elseの中身一緒に見える
 		var minZoom , maxZoom;
 		if ( subCategory == SvgMapElementType.SVG2EMBED ){
 			// この部分は、今後CSS media query  zoom featureに置き換えるつもりです！
