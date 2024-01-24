@@ -5,6 +5,12 @@ class PathHitTester{
 	// .x,.y ヒットテストする場所を設置
 	// .hittedElements* ヒットした情報が返却される　親の要素も返る
 	
+	/**
+	 * 
+	 * @param {*} svgMapObject 
+	 * @param {*} svgMapAuthoringTool 
+	 * @param {*} setLoadCompleted 
+	 */
 	constructor(svgMapObject, svgMapAuthoringTool, setLoadCompleted ){
 		this.#svgMapObject = svgMapObject;
 		this.#svgMapAuthoringTool = svgMapAuthoringTool;
@@ -24,7 +30,12 @@ class PathHitTester{
 	x;
 	y;
 	
-	setCentralVectorObjectsGetter(){ // checkTicker()(画面中心のデフォルトヒットテスト)での二重パースを防止するための関数 2018.1.18
+	/**
+	 * checkTicker()(画面中心のデフォルトヒットテスト)での二重パースを防止するための関数 2018.1.18
+	 * 
+	 * @returns 
+	 */
+	setCentralVectorObjectsGetter(){ 
 		if ( !this.enable ){ // getVectorObjectsAtPoint(x,y)が要求されていた時はこの機能を発動させてはまずい
 			this.enable = false;
 			this.centralGetter = true;
@@ -46,7 +57,11 @@ class PathHitTester{
 		}
 	}
 
-	getHittedObjects = function(){ // 2018.1.17 setCentralVectorObjectsGetter用にgetVectorObjectsAtPointの一部を関数化
+
+	/**
+	 * 2018.1.17 setCentralVectorObjectsGetter用にgetVectorObjectsAtPointの一部を関数化
+	 */
+	getHittedObjects = function(){ // 
 		this.enable = false;
 		this.centralGetter = false;
 		return {
@@ -56,13 +71,26 @@ class PathHitTester{
 		}
 	}.bind(this);
 	
+	/**
+	 * 
+	 * @param {*} svgNode    - XMLオブジェクト
+	 * @param {*} bbox       - 
+	 * @param {*} usedParent 
+	 */
 	setHittedObjects(svgNode, bbox, usedParent){
 		this.hittedElements.push(svgNode);
 		this.hittedElementsBbox.push(bbox);
 		this.hittedElementsUsedParent.push(usedParent);
 	}
 
-	getVectorObjectsAtPoint( x, y ){ // この関数はいろいろ作法がまずい(同期refreshScreenや、loadCompletedセットなど)
+	/**
+	 * この関数はいろいろ作法がまずい(同期refreshScreenや、loadCompletedセットなど)
+	 * 
+	 * @param {*} x 
+	 * @param {*} y 
+	 * @returns 
+	 */
+	getVectorObjectsAtPoint( x, y ){
 		this.enable = true;
 		this.centralGetter = false; // 2018.1.18
 		this.x = x;
