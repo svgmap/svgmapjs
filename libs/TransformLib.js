@@ -279,39 +279,6 @@ class MatrixUtil {
 		
 	}
 	
-	matMul( m1 , m2 ){ // getConversionMatrixViaGCSとほとんど同じでは？
-		// m1: 最初の変換マトリクス
-		// m2: 二番目の変換マトリクス
-		// x',y' = m2(m1(x,y))
-		
-		// 2020/3/17 マトリクスでなくtransform(関数)がある場合、それらの積の関数を返却する
-		if ( m1.transform || m2.transform){
-			var mulFunc = function(inp){
-				var int1,ans;
-				if ( m1.transform ){
-					int1 = m1.transform(inp);
-				} else {
-					int1 = this.transform(inp.x, inp.y, m1);
-				}
-				if ( m2.transform ){
-					ans = m2.transform(int1);
-				} else {
-					ans = this.transform(int1.x, int1.y, m2);
-				}
-				return ( ans );
-			}.bind(this)
-			return ( {transform:mulFunc} ); // inverseがないのは不十分だと思われる 2020/8/18
-		}
-		return {
-			a: m2.a * m1.a + m2.b * m1.b ,
-			b: m2.b * m1.a + m2.d * m1.b ,
-			c: m2.a * m1.c + m2.c * m1.d ,
-			d: m2.b * m1.c + m2.d * m1.d ,
-			e: m2.a * m1.e + m2.c * m1.f + m2.e ,
-			f: m2.b * m1.e + m2.d * m1.f + m2.f
-		}
-	}
-	
 	transformRect( rect ,  c2r ){ // 2020/10/22 getTransformedBox()を使うようにした
 		var x , y , width , height;
 		var mm;
