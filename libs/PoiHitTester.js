@@ -17,7 +17,6 @@ class PoiHitTester{
 	 */
 	getPoiObjectsAtPoint( x, y ){
 		var hittedPOIs = new Array();
-		console.log(this.visiblePOIs);
 		for ( var i in this.visiblePOIs ){
 			if ( x < this.visiblePOIs[i].x ||
 				x > this.visiblePOIs[i].x + this.visiblePOIs[i].width ||
@@ -37,7 +36,6 @@ class PoiHitTester{
 	}
 	
 	setPoiBBox(imageId, x, y, width, height){
-		console.log("aaaaa");
 		this.visiblePOIs[imageId] = { x: x, y: y, width: width, height: height };
 	}
 	
