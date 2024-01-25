@@ -223,16 +223,16 @@ describe("unittest for UtilFuncs",()=>{
 
         it("getImageProps(Text) with nonScaling",()=>{
             mock = jest.spyOn(UtilFuncs,"getNonScalingOffset").mockReturnValue({"x":5, "y":3,"nonScaling":true});
-            let imgElement = document.createElement("img");
-            imgElement.setAttribute("x",100);
-            imgElement.setAttribute("y",200);
-            imgElement.setAttribute("widtht",8);
-            imgElement.setAttribute("heigh",5);
-            imgElement.setAttribute("visibleMinZoom", 1000);
-            imgElement.setAttribute("visibleMaxZoom", 600000);
-            imgElement.setAttribute("font-size",10.5)
-            imgElement.textContent = "hello";
-            let result = UtilFuncs.getImageProps(imgElement, SvgMapElementType.TEXT, null, null, null);
+            let txtElement = document.createElement("text");
+            txtElement.setAttribute("x",100);
+            txtElement.setAttribute("y",200);
+            txtElement.setAttribute("widtht",8);
+            txtElement.setAttribute("heigh",5);
+            txtElement.setAttribute("visibleMinZoom", 1000);
+            txtElement.setAttribute("visibleMaxZoom", 600000);
+            txtElement.setAttribute("font-size",10.5)
+            txtElement.textContent = "hello";
+            let result = UtilFuncs.getImageProps(txtElement, SvgMapElementType.TEXT, null, null, null);
             expect(result).toEqual({
                 "cdx": 100,
                 "cdy": 200,
@@ -261,16 +261,16 @@ describe("unittest for UtilFuncs",()=>{
 
         it("getImageProps(Text) without nonScaling",()=>{
             mock = jest.spyOn(UtilFuncs,"getNonScalingOffset").mockReturnValue({"x":null, "y":null,"nonScaling":false});
-            let imgElement = document.createElement("img");
-            imgElement.setAttribute("x",100);
-            imgElement.setAttribute("y",200);
-            imgElement.setAttribute("widtht",8);
-            imgElement.setAttribute("heigh",5);
-            imgElement.setAttribute("visibleMinZoom", 1000);
-            imgElement.setAttribute("visibleMaxZoom", 600000);
-            imgElement.setAttribute("font-size",10.5)
-            imgElement.textContent = "hello";
-            let result = UtilFuncs.getImageProps(imgElement, SvgMapElementType.TEXT, null, null, null);
+            let txtElement = document.createElement("text");
+            txtElement.setAttribute("x",100);
+            txtElement.setAttribute("y",200);
+            txtElement.setAttribute("widtht",8);
+            txtElement.setAttribute("heigh",5);
+            txtElement.setAttribute("visibleMinZoom", 1000);
+            txtElement.setAttribute("visibleMaxZoom", 600000);
+            txtElement.setAttribute("font-size",10.5)
+            txtElement.textContent = "hello";
+            let result = UtilFuncs.getImageProps(txtElement, SvgMapElementType.TEXT, null, null, null);
             expect(result).toEqual({
                 "cdx": 0,
                 "cdy": 0,
