@@ -185,5 +185,117 @@ describe("unittest for UtilFuncs",()=>{
                 });
         });
 
+        it("getImageProps(POI) with nonScaling Mode",()=>{
+            mock = jest.spyOn(UtilFuncs,"getNonScalingOffset").mockReturnValue({"x":5, "y":3,"nonScaling":true});
+            let imgElement = document.createElement("img");
+            imgElement.setAttribute("x",100);
+            imgElement.setAttribute("y",200);
+            imgElement.setAttribute("widtht",8);
+            imgElement.setAttribute("heigh",5);
+            imgElement.setAttribute("visibleMinZoom", 0);
+            imgElement.setAttribute("visibleMaxZoom", 0);
+            let result = UtilFuncs.getImageProps(imgElement, SvgMapElementType.POI, null, SvgMapElementType.RECT, null);
+            expect(result).toEqual({
+                "cdx": 0,
+                "cdy": 0,
+                "commonQuery": null,
+                "crossorigin": null,
+                "elemClass": undefined,
+                "height": undefined,
+                "href": undefined,
+                "href_fragment": undefined,
+                "imageFilter": null,
+                "maxZoom": undefined,
+                "metadata": null,
+                "minZoom": undefined,
+                "nonScaling": false,
+                "opacity": 0,
+                "pixelated": false,
+                "text": undefined,
+                "title": null,
+                "transform": undefined,
+                "visible": true,
+                "width": 0,
+                "x": 0,
+                "y": 0
+                });
+        });
+
+        it("getImageProps(Text) with nonScaling",()=>{
+            mock = jest.spyOn(UtilFuncs,"getNonScalingOffset").mockReturnValue({"x":5, "y":3,"nonScaling":true});
+            let imgElement = document.createElement("img");
+            imgElement.setAttribute("x",100);
+            imgElement.setAttribute("y",200);
+            imgElement.setAttribute("widtht",8);
+            imgElement.setAttribute("heigh",5);
+            imgElement.setAttribute("visibleMinZoom", 1000);
+            imgElement.setAttribute("visibleMaxZoom", 600000);
+            imgElement.setAttribute("font-size",10.5)
+            imgElement.textContent = "hello";
+            let result = UtilFuncs.getImageProps(imgElement, SvgMapElementType.TEXT, null, null, null);
+            expect(result).toEqual({
+                "cdx": 100,
+                "cdy": 200,
+                "commonQuery": null,
+                "crossorigin": null,
+                "elemClass": undefined, //undefinedじゃなくてnullを返すべきでは？
+                "height": 0,
+                "href": undefined,
+                "href_fragment": undefined,
+                "imageFilter": null,
+                "maxZoom": 6000,
+                "metadata": undefined,
+                "minZoom": 10,
+                "nonScaling": true,
+                "opacity": 0,
+                "pixelated": false,
+                "text": "hello",
+                "title": undefined,
+                "transform": undefined,
+                "visible": true,
+                "width": 0,
+                "x": 5,
+                "y": 3
+                });
+        });
+
+        it("getImageProps(Text) without nonScaling",()=>{
+            mock = jest.spyOn(UtilFuncs,"getNonScalingOffset").mockReturnValue({"x":null, "y":null,"nonScaling":false});
+            let imgElement = document.createElement("img");
+            imgElement.setAttribute("x",100);
+            imgElement.setAttribute("y",200);
+            imgElement.setAttribute("widtht",8);
+            imgElement.setAttribute("heigh",5);
+            imgElement.setAttribute("visibleMinZoom", 1000);
+            imgElement.setAttribute("visibleMaxZoom", 600000);
+            imgElement.setAttribute("font-size",10.5)
+            imgElement.textContent = "hello";
+            let result = UtilFuncs.getImageProps(imgElement, SvgMapElementType.TEXT, null, null, null);
+            expect(result).toEqual({
+                "cdx": 0,
+                "cdy": 0,
+                "commonQuery": null,
+                "crossorigin": null,
+                "elemClass": undefined, //undefinedじゃなくてnullを返すべきでは？
+                "height": 10.5,
+                "href": undefined,
+                "href_fragment": undefined,
+                "imageFilter": null,
+                "maxZoom": 6000,
+                "metadata": undefined,
+                "minZoom": 10,
+                "nonScaling": false,
+                "opacity": 0,
+                "pixelated": false,
+                "text": "hello",
+                "title": undefined,
+                "transform": undefined,
+                "visible": true,
+                "width": 10.5,
+                "x": 100,
+                "y": 200
+                });
+        });
+        
     });
 });
