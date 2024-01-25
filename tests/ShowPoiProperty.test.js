@@ -30,6 +30,6 @@ describe("unittest for ShowPoiProperty",()=>{
             // 関数削除
             result = showPoiProperty.setShowPoiProperty(null, "tasikasuuji");
             //　何も試験ができない
-        })
+        });
     });
 });
