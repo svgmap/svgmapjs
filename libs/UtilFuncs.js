@@ -730,6 +730,11 @@ class UtilFuncs {
 		}
 	}.bind(this);
 	
+	/**
+	 * 
+	 * @param {Object} svgDoc - SVG Object
+	 * @returns {Object}
+	 */
 	static getSymbols(svgDoc){ // 2013.7.30 -- POI編集のsymbol選択を可能にするとともに、defsは、useより前に無いといけないという制約を払った
 		var symbols = new Array();
 		var defsNodes = svgDoc.getElementsByTagName("defs");

@@ -297,5 +297,37 @@ describe("unittest for UtilFuncs",()=>{
                 });
         });
         
+        it("getNonScalingOffset", ()=>{
+            let svgElement = document.createElement("svg");
+            let result = UtilFuncs.getNonScalingOffset(svgElement);
+            expect(result).toBe(""); // 引数のsvgPoiNodeとsvgElementの違いは何？
+        });
+
+        it("get a Symbol",async ()=>{
+            const parser = new DOMParser();
+            const xml = await fs.readFile("./resources/svgDoc_singleSymbol.svg", "UTF-8");
+            const xmlObj = parser.parseFromString(xml,"text/xml");
+            
+            let result = UtilFuncs.getSymbols(xmlObj);
+            console.log(result);
+            expect(result["#p0"]).toEqual({
+                type: 'symbol',
+                id: 'p0',
+                path: 'mappin.png',
+                offsetX: -8,
+                offsetY: -25,
+                width: 19,
+                height: 27
+              });
+        });
+
+        it("get Symbols",async ()=>{
+            const parser = new DOMParser();
+            const xml = await fs.readFile("./resources/svgDoc_multiSymbols.svg", "UTF-8");
+            const xmlObj = parser.parseFromString(xml,"text/xml");
+            
+            let result = UtilFuncs.getSymbols(xmlObj);
+            expect(Object.keys(result)).toHaveLength(2);
+        });
     });
 });
