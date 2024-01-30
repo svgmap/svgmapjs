@@ -17,6 +17,17 @@ class PathRenderer{
 		this.#mapViewerProps = mapViewerProps;
 	}
 	
+	defaultHilightStyle={
+		stroke:{
+			color:'rgba(255,0,0,1)',
+			widthIncrement:6,
+		},
+		fill:{
+			color:'rgba(255,0,0,1)',
+			lineWidth:6,
+		}
+	}
+	
 	setSVGcirclePoints( pathNode ,  inCanvas , child2canvas , clickable , category , cStyle , GISgeometry ){
 		var cx = Number(pathNode.getAttribute("cx"));
 		var cy = Number(pathNode.getAttribute("cy"));
@@ -397,18 +408,29 @@ class PathRenderer{
 		if ( clickable && !canvasNonFillFlag && ( this.#mapTicker.pathHitTester.enable || this.#mapTicker.pathHitTester.centralGetter ) ){ // ヒットテスト要求時の面の場合　且つ　面検索
 			if( context.isPointInPath(this.#mapTicker.pathHitTester.x,this.#mapTicker.pathHitTester.y) || context.isPointInStroke(this.#mapTicker.pathHitTester.x,this.#mapTicker.pathHitTester.y) ){ // テストしヒットしてたら目立たせる isPointInStrokeも実施してみる
 				hitted = true;
-				var pathWidth = context.lineWidth;
-				context.lineWidth = 6;
-				var pathStyle = context.fillStyle;
-				context.fillStyle = 'rgb(255,00,00)';
-				context.fill();
-				context.stroke();
-				context.fillStyle = pathStyle;
-				context.lineWidth = pathWidth;
+				
+				var hilightFillStyle;
+				if ( clickable.hilightFillStyle){
+					if ( clickable.hilightFillStyle.color && clickable.hilightFillStyle.lineWidth){
+						hilightFillStyle= clickable.hilightFillStyle;
+					}
+				} else {
+					hilightFillStyle=this.defaultHilightStyle.fill;
+				}
+				if ( hilightFillStyle ){
+					var pathWidth = context.lineWidth;
+					context.lineWidth = hilightFillStyle.lineWidth;
+					var pathStyle = context.fillStyle;
+					context.fillStyle = hilightFillStyle.color;
+					context.fill();
+					context.stroke();
+					context.fillStyle = pathStyle;
+					context.lineWidth = pathWidth;
+				}
 			}
 		}
 		
-		if ( clickable && canvasNonFillFlag &&  !this.#mapTicker.pathHitTester.pointPrevent ){ 
+		if ( clickable && canvasNonFillFlag  ){ 
 			var tmpLineWidth = context.lineWidth;
 			var tmpStrokeStyle = context.strokeStyle;
 			if ( context.lineWidth < 6 ){ // 細すぎる線はヒットテスト用のダミー太線を隠して配置する 6pxは決め打値
@@ -420,21 +442,22 @@ class PathRenderer{
 			if (this.#mapTicker.pathHitTester.enable || this.#mapTicker.pathHitTester.centralGetter ){ // ヒットテスト要求時の線検索
 				if(  context.isPointInStroke(this.#mapTicker.pathHitTester.x,this.#mapTicker.pathHitTester.y)  ){ // テストしヒットしてたら目立たせる isPointInStrokeに変更し線上なら」どこでもヒット可能にしてみる
 					hitted = true;
-					this.#mapTicker.pathHitTester.pointPrevent = true;
-					context.lineWidth = tmpLineWidth+6;
-					context.strokeStyle = 'rgba(255,0,0,1)';
-					this.#mapTicker.pathHitTester.pointPrevent = false;
-					context.stroke();
+					
+					var hilightStrokeStyle;
+					if ( clickable.hilightStrokeStyle){
+						if ( clickable.hilightStrokeStyle.color && clickable.hilightStrokeStyle.widthIncrement ){
+							hilightStrokeStyle = clickable.hilightStrokeStyle;
+						}
+					} else {
+						hilightStrokeStyle = this.defaultHilightStyle.stroke;
+					}
+					if ( hilightStrokeStyle ){
+						context.lineWidth = tmpLineWidth+hilightStrokeStyle.widthIncrement;
+						context.strokeStyle = hilightStrokeStyle.color;
+						context.stroke();
+					}
 				}
 			}
-			/**
-			// 線の場合　疑似ヒットポイントを設置(旧版との互換維持のため) ToDo消せるようにもしようね 2022/4/12
-			context.beginPath();
-			context.strokeStyle = 'rgba(255,00,00,0.8)';
-			context.lineWidth = 3;
-			context.arc(hitPoint.x,hitPoint.y,2,0,2*Math.PI,true);
-			context.stroke();
-			**/
 			context.lineWidth = tmpLineWidth;
 			context.strokeStyle = tmpStrokeStyle;
 			

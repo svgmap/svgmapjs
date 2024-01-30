@@ -49,6 +49,7 @@
 // 2022/10/21 ラスターGIS: filterをサポート
 // 2023/05/11 getBufferedPolygon
 // 2023/11/06 buildIntersection / VectorGIS の高度化 (options.uniteSource1/2,areaCompare)
+// 2023/11/20 ベクタ図形をラスタ化した後にラスタGISをかけるパターンに対応 (imageIID=="layerCanvasImage" 苦しいパッチでサイドエフェクトあり得るかもなので、あとで直すかも?)
 //
 // ISSUES:
 //
@@ -1715,8 +1716,13 @@ class SvgMapGIS {
 //			console.log("Hit imageCache");
 			this.#returnImageRanderedCanvas(this.#imageCache[imageURL_int],callbackFunc, callbackFuncParams, imageStyle)
 		} else {
-			var documentImage = document.getElementById(imageIID);
-			var imgSrcURL = documentImage.getAttribute("src");
+			var documentImage, imgSrcURL;
+			if ( imageIID=="layerCanvasImage"){ // 苦しいパッチ・・ 2023/11/20 (ベクタ図形をラスタ化した後にラスタGISをかけるパターンに対応)
+				imgSrcURL="http";
+			} else {
+				documentImage = document.getElementById(imageIID);
+				imgSrcURL = documentImage.getAttribute("src");
+			}
 			if ( imgSrcURL.indexOf("http")!=0 || this.#getImageURL(imgSrcURL)==imgSrcURL){
 				//console.log("use image element's image :", documentImage); 
 				this.#returnImageRanderedCanvas(documentImage,callbackFunc, callbackFuncParams, imageStyle);
