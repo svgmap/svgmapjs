@@ -196,6 +196,8 @@
 // 2023/06/22 : wheelイベント(含タッチパッドのジェスチャ)によるズーム処理を改良
 // 2023/11/27 : captureGISgeometriesOption : add captureAlsoAsBitImage
 // 2023/11/27 : svgImageProps.isClickableをbooelanではなくobjectに。ハイライトのカスタマイズを可能に
+// 2023/12/28 : SVGMap*Class*.jsはクラス定義を、SVGMap*module.jsは、SvgMapインスタンスの生成を行うコード(ほぼ空)に分離。
+// 2024/02/06 : LayerSpecificWebAppHandlerのLayerUIからの分離に対応。
 //
 // Issues:
 // 2022/03/17 getVectorObjectsAtPointの作法が良くない
@@ -244,12 +246,13 @@
 
 'use strict'; // 2022/05/06 Strictに移行します
 
-import { SvgMapLayerUI } from './SVGMapLv0.1_LayerUI2_r5module.js';
+import { SvgMapLayerUI } from './SVGMapLv0.1_LayerUI_r6module.js';
 import { SvgMapAuthoringTool } from './SVGMapLv0.1_Authoring_r8_module.js';
 import { SvgMapCustomLayersManager } from './SVGMapLv0.1_CustomLayersManager_r3module.js';
 import { SvgMapCesiumWrapper } from './3D_extension/SVGMapLv0.1_CesiumWrapper_r4module.js';
 
 // coreJsの部品群
+import { LayerSpecificWebAppHandler } from './libs/LayerSpecificWebAppHandler.js';
 import { MatrixUtil, Mercator } from './libs/TransformLib.js';
 import { ZoomPanManager } from './libs/ZoomPanManager.js'
 import { UAtester } from './libs/UAtester.js'
@@ -307,6 +310,7 @@ class SvgMap {
 	
 	// SVGMap.jsの拡張クラスのインスタンス
 	#svgMapLayerUI ;
+	#layerSpecificWebAppHandler;
 	#svgMapAuthoringTool; 
 	#svgMapCustomLayersManager
 	#svgMapCesiumWrapper;
@@ -346,11 +350,14 @@ class SvgMap {
 		this.#matUtil = new MatrixUtil();
 		this.#proxyManager = new ProxyManager();
 		this.#svgMapAuthoringTool = new SvgMapAuthoringTool(this, this.#mapViewerProps);
-		this.#svgMapLayerUI = new SvgMapLayerUI(this, this.#svgMapAuthoringTool);
+		this.#layerSpecificWebAppHandler = new LayerSpecificWebAppHandler(this, this.#svgMapAuthoringTool, this.#getLayerStatus);
+		this.#svgMapLayerUI = new SvgMapLayerUI(this, this.#layerSpecificWebAppHandler);
+		this.#layerSpecificWebAppHandler.setLayerUIobject(this.#svgMapLayerUI);
+		
 		this.#svgMapCustomLayersManager = new SvgMapCustomLayersManager(this, this.#svgMapLayerUI.getLayersCustomizer );
 		this.#resourceLoadingObserver = new ResourceLoadingObserver(this.#mapViewerProps, this.#svgImagesProps, this.#svgImages, this.#refreshScreen, this.#viewBoxChanged);
 		
-		this.#layerManager = new LayerManager(this.#svgImagesProps, this.#svgImages, this.#resourceLoadingObserver.loadingImgs, this.#refreshScreen);
+		this.#layerManager = new LayerManager(this.#svgImagesProps, this.#svgImages, this.#resourceLoadingObserver.loadingImgs, this.#refreshScreen );
 		this.#mapTicker = new MapTicker(this, this.#matUtil, this.#layerManager.isEditingLayer, this.#layerManager.getLayerName, this.#resourceLoadingObserver.setLoadCompleted, this.#svgMapAuthoringTool); // 照準があるときは、Ticker機能をONにする 2013/1/11
 		this.#customModal = new CustomModal( this.#mapTicker );
 		
@@ -638,9 +645,11 @@ class SvgMap {
 		if ( docId == "root" ){
 			if ( typeof this.#setLayerUI == "function" ){
 				this.#setLayerUI({
-					updateLayerListUITiming : "setRootLayersProps", // 2021/10/29
-					getLayerStatus : this.#getLayerStatus, // 2022/03/11
+					// updateLayerListUITiming : "setRootLayersProps", // 2021/10/29 ->2024/2/7 obsoluted
+					// getLayerStatus : this.#getLayerStatus, // 2022/03/11 =>LayerSpecificWebAppHandlerに移動したので不要 2024/2/5
 				}); // add 2013/1 moved from  handleResult 2014/08
+				this.#layerSpecificWebAppHandler.initLayerSpecificUI();
+				//this.#layerSpecificWebAppHandler.startLayerLoadingMonitor();
 				this.#setLayerUI = null; // added 2016/10/13 最初にロードされた直後のみ呼び出すようにした（たぶんこれでＯＫ？）
 			}
 			this.#checkDeletedNodes( this.#mapViewerProps.mapCanvas );
@@ -1848,6 +1857,13 @@ class SvgMap {
 		console.log("registLayerUiSetter:",layerUIinitFunc, layerUIupdateFunc);
 		this.#setLayerUI = layerUIinitFunc;
 		this.#updateLayerListUIint = layerUIupdateFunc;
+		/**
+		this.#updateLayerListUIint = function(){
+			this.#layerSpecificWebAppHandler.syncLayerSpecificUi(); // 非表示のレイヤーについて、レイヤーwebAppを終了させる
+			layerUIupdateFunc();
+			this.#layerSpecificWebAppHandler.checkLayerListAndRegistLayerUI();
+		}.bind(this);
+		**/
 	};
 	reLoadLayer(...params){ return (this.#reLoadLayer(...params))};
 	resumeToggle(...params){ return (this.#resumeManager.resumeToggle(...params))};
