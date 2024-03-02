@@ -126,16 +126,26 @@ class SvgMapLayerUI {
 	}
 	
 	#layerListOpenClose(){
+		// console.log("layerListOpenClose");
+		if ( this.#layerList.style.height == this.#layerListFoldedHeight + "px" ){ // layer list is colsed
+			this.#setLayerListOpenClose(true);
+		} else { // opened
+			this.#setLayerListOpenClose(false);
+		}
+	}
+
+	#setLayerListOpenClose( openFlg ){
 		var uiOpenBtn = document.getElementById("layerListOpenButton");
-		console.log("layerListOpenClose");
 		this.#layerTableDiv = document.getElementById("layerTableDiv");
-		if ( this.#layerList.style.height== this.#layerListFoldedHeight + "px" ){ // layer list is colsed
+		if ( openFlg && (this.#layerList.style.height == this.#layerListFoldedHeight + "px")) {
+			// layer list close to open
 			this.#updateLayerTable();
 			this.#layerList.style.height=this.#layerListMaxHeightStyle;
 			uiOpenBtn.firstChild.src=BuiltinIcons.UTpng;
 			this.#layerTableDiv.style.display="";
 			this.#uiOpened = true;
-		} else { // opened
+		} else if (!openFlg && (this.#layerList.style.height != this.#layerListFoldedHeight + "px")) {
+			// layer list open to close
 			this.#layerList.style.height= this.#layerListFoldedHeight + "px";
 			uiOpenBtn.firstChild.src=BuiltinIcons.DTpng;
 			this.#layerTableDiv.style.display="none";
@@ -153,7 +163,6 @@ class SvgMapLayerUI {
 		}
 		return ( gfolded );
 	}
-
 
 	#setLayerTable(tb, layerProps){
 	//	console.log("call setLayerTable:",tb);
@@ -209,7 +218,6 @@ class SvgMapLayerUI {
 		window.setTimeout(function(){this.#setLayerTableStep2()}.bind(this),30);
 	}
 
-		
 	#setLayerListmessage( head , foot ){ // added 2018.2.6
 		this.#layerListmessageHead = head;
 		this.#layerListmessageFoot = foot;
@@ -234,7 +242,6 @@ class SvgMapLayerUI {
 	//		layerListMaxHeight = layerList.offsetHeight;
 		}
 	}
-
 
 	#incrementGcountLabel(groupName){
 		var gcLabel = document.getElementById("gc_"+groupName);
@@ -471,89 +478,98 @@ class SvgMapLayerUI {
 	//	console.log("CALLED initLayerList");
 		this.#layerGroupStatus = new Object();
 		this.#layerList = document.getElementById("layerList");
-	//	console.log("ADD EVT");
 		
 		var llUItop;
 		if ( this.#layerList ){
-			this.#layerList.addEventListener("wheel" , function(event){UtilFuncs.MouseWheelListenerFunc(event)}.bind(this), false); // added 2019/04/15
-			this.#layerList.addEventListener("mousewheel" , function(event){UtilFuncs.MouseWheelListenerFunc(event)}.bind(this), false);
-			this.#layerList.addEventListener("DOMMouseScroll" , function(event){UtilFuncs.MouseWheelListenerFunc(event)}.bind(this), false);
-			this.#layerList.style.zIndex="20";
-			this.#layerListMaxHeightStyle = this.#layerList.style.height;
-			var lps = this.#svgMap.getRootLayersProps();
-			var visibleLayers=0;
-			var visibleLayersNameArray=[];
-			const visibleNum=5;  // 表示レイヤ名称数
-			for ( var i = lps.length -1 ; i >=0  ; i-- ){
-				if (lps[i].visible){
-					++visibleLayers;
-					if ( visibleLayers <= visibleNum ){ visibleLayersNameArray.push(lps[i].title); }
-					else if ( visibleLayers == visibleNum+1 ){ visibleLayersNameArray.push("..."); }
-				}
-			}
-			
+
+			this.#initLayerListElem();
+
 			llUItop = document.createElement("div");
-			
-			var llUIlabel = document.createElement("label");
-			llUIlabel.id="layerListmessage";
-			llUIlabel.setAttribute("for","layerListOpenButton");
-			llUIlabel.setAttribute("title", visibleLayersNameArray);
-		//	layerList.appendChild(llUIlabel);
-			llUItop.appendChild(llUIlabel);
-			
-			var llUIbutton = document.createElement("button");
-			llUIbutton.id="layerListOpenButton";
-		//	llUIbutton.type="button";
-			llUIbutton.innerHTML="<img style='pointer-events: none;' src='"+BuiltinIcons.DTpng+"'>";
-			llUIbutton.style.position="absolute";
-			llUIbutton.style.right="0px";
-				llUIbutton.addEventListener("click",function(event){this.#layerListOpenClose(event)}.bind(this));
-		//	layerList.appendChild(llUIbutton);
-			llUItop.appendChild(llUIbutton);
-			
-			var layersCustomizerPath = this.#layerList.getAttribute("data-customizer");
-			if ( layersCustomizerPath ){
-				var layersCustomizerIcon = document.createElement("img");
-				layersCustomizerIcon.src = BuiltinIcons.hamburger;
-				layersCustomizerIcon.style.position="absolute";
-				layersCustomizerIcon.style.right="35px";
-				layersCustomizerIcon.style.cursor="pointer";
-				llUItop.appendChild(layersCustomizerIcon);
-				layersCustomizerIcon.addEventListener("click",function(event){
-					this.#layersCustomizer = window.open(layersCustomizerPath,"layersCustomizer","toolbar=yes,menubar=yes,scrollbars=yes");
-				}.bind(this));
-			}
+			this.#initLayerListUiTopLabelElem(llUItop);
+			this.#initLayerListUiTopButtonElem(llUItop);
+			this.#initLayersCustomizerIcon(llUItop);
 			
 			this.#layerList.appendChild(llUItop);
 			
-			
-			
-			var llUIdiv = document.createElement("div");
-			this.#layerTableDiv = llUIdiv;
-			llUIdiv.id="layerTableDiv";
-			llUIdiv.style.width = "100%";
-			llUIdiv.style.height = "100%";
-			llUIdiv.style.overflowY = "scroll";
-			llUIdiv.style.display = "none";
-			
-			this.#layerList.appendChild(llUIdiv);
-			
-			var llUItable = document.createElement("table");
-			llUItable.id="layerTable";
-			llUItable.setAttribute("border" , "0");
-			llUItable.style.width="100%";
-			llUItable.style.tableLayout ="fixed";
-			llUItable.style.whiteSpace ="nowrap";
-			
-			
-			llUItable.appendChild(this.#getColgroup());
-			
-			llUIdiv.appendChild(llUItable);
-			
-			llUIlabel.innerHTML = this.#layerListmessageHead + visibleLayers + this.#layerListmessageFoot;
+			this.#initLayerListUiElem();
 		}
 		window.setTimeout(function(llUItop){this.#initLayerListStep2(llUItop)}.bind(this),30, llUItop);
+	}
+
+	#initLayerListElem() {
+		this.#layerList.addEventListener("wheel" , function(event){UtilFuncs.MouseWheelListenerFunc(event)}.bind(this), false); // added 2019/04/15
+		this.#layerList.addEventListener("mousewheel" , function(event){UtilFuncs.MouseWheelListenerFunc(event)}.bind(this), false);
+		this.#layerList.addEventListener("DOMMouseScroll" , function(event){UtilFuncs.MouseWheelListenerFunc(event)}.bind(this), false);
+		this.#layerList.style.zIndex="20";
+		this.#layerListMaxHeightStyle = this.#layerList.style.height;
+	}
+
+	#initLayerListUiTopLabelElem(layerListUiTopElem) {
+		var lps = this.#svgMap.getRootLayersProps();
+		var visibleLayers=0;
+		var visibleLayersNameArray=[];
+		const visibleNum=5;  // 表示レイヤ名称数
+		for ( var i = lps.length -1 ; i >=0  ; i-- ){
+			if (lps[i].visible){
+				++visibleLayers;
+				if ( visibleLayers <= visibleNum ){ visibleLayersNameArray.push(lps[i].title); }
+				else if ( visibleLayers == visibleNum+1 ){ visibleLayersNameArray.push("..."); }
+			}
+		}
+		var llUIlabel = document.createElement("label");
+		llUIlabel.id="layerListmessage";
+		llUIlabel.setAttribute("for","layerListOpenButton");
+		llUIlabel.setAttribute("title", visibleLayersNameArray);
+		llUIlabel.innerHTML = this.#layerListmessageHead + visibleLayers + this.#layerListmessageFoot;
+		layerListUiTopElem.appendChild(llUIlabel);
+	}
+
+	#initLayerListUiTopButtonElem(layerListUiTopElem) {
+		var llUIbutton = document.createElement("button");
+		llUIbutton.id="layerListOpenButton";
+		llUIbutton.innerHTML="<img style='pointer-events: none;' src='"+BuiltinIcons.DTpng+"'>";
+		llUIbutton.style.position="absolute";
+		llUIbutton.style.right="0px";
+		llUIbutton.addEventListener("click",function(event){this.#layerListOpenClose(event)}.bind(this));
+		layerListUiTopElem.appendChild(llUIbutton);
+	}
+
+	#initLayersCustomizerIcon(layerListUiTopElem) {
+		var layersCustomizerPath = this.#layerList.getAttribute("data-customizer");
+		if ( layersCustomizerPath ){
+			var layersCustomizerIcon = document.createElement("img");
+			layersCustomizerIcon.src = BuiltinIcons.hamburger;
+			layersCustomizerIcon.style.position="absolute";
+			layersCustomizerIcon.style.right="35px";
+			layersCustomizerIcon.style.cursor="pointer";
+			layerListUiTopElem.appendChild(layersCustomizerIcon);
+			layersCustomizerIcon.addEventListener("click",function(event){
+				this.#layersCustomizer = window.open(layersCustomizerPath,"layersCustomizer","toolbar=yes,menubar=yes,scrollbars=yes");
+			}.bind(this));
+		}
+	}
+
+	#initLayerListUiElem() {
+		var llUIdiv = document.createElement("div");
+		this.#layerTableDiv = llUIdiv;
+		llUIdiv.id="layerTableDiv";
+		llUIdiv.style.width = "100%";
+		llUIdiv.style.height = "100%";
+		llUIdiv.style.overflowY = "scroll";
+		llUIdiv.style.display = "none";
 		
+		this.#layerList.appendChild(llUIdiv);
+		
+		var llUItable = document.createElement("table");
+		llUItable.id="layerTable";
+		llUItable.setAttribute("border" , "0");
+		llUItable.style.width="100%";
+		llUItable.style.tableLayout ="fixed";
+		llUItable.style.whiteSpace ="nowrap";
+
+		llUItable.appendChild(this.#getColgroup());
+		
+		llUIdiv.appendChild(llUItable);
 	}
 
 	#initLayerListStep2(llUItop){ // レイヤリストのレイアウト待ち後サイズを決める　もうちょっとスマートな方法ないのかな・・
@@ -566,7 +582,7 @@ class SvgMapLayerUI {
 			
 			this.#layerListMaxHeight = this.#layerList.offsetHeight;
 			
-		//	console.log("LL dim:",layerListMaxHeightStyle,layerListFoldedHeight);
+			// console.log("LL dim:",layerListMaxHeightStyle,layerListFoldedHeight);
 			
 			this.#layerList.style.height = this.#layerListFoldedHeight + "px";
 		}
@@ -598,7 +614,6 @@ class SvgMapLayerUI {
 		
 		return ( llUIcolgroup );
 	}
-
 
 	#toggleGroupFold( e ){
 		var lid = this.#getLayerId(e);
