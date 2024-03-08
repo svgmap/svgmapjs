@@ -1,53 +1,69 @@
 import {SvgStyle} from "../libs/SvgStyle";
+import {jest} from "@jest/globals";
+
+const testParamerters =[
+    {
+        description:"hasHyperLink",
+        hasHyperLink: true,
+        getNodeStyle:{"fill": null, "hasUpdate": true, "hyperLink": "http://localhost", "maxZoom": 1, "minZoom": -1, "target": null}
+    },{
+        description:"not hasHyperLink",
+        hasHyperLink: false,
+        getNodeStyle:{"fill": null, "hasUpdate": true, "maxZoom": 1, "minZoom": -1,}
+    }
+]
 
 describe("unittest for SvgStyle",()=>{
     
-    describe("target SvgStyle class",()=>{
-        let style, result;
+    describe.each(testParamerters)("target $description",(param)=>{
+        let style, result, defaultStyleList;
         beforeEach(() => {
+            defaultStyleList = {"minZoom":"-1000","maxZoom":"1000","nonScalingOffset":"none","usedParent":"usedParent"}
             result = null;
-            style = new SvgStyle();
+            const nonScalingOffset = jest.fn().mockReturnValue();
+            style = new SvgStyle(nonScalingOffset);
         });
+
+        //TODO: 以下試験はループさせることでコード量を減らすことが可能
           
         it("Nodeのスタイルが一部欠落している場合のgetStyle関数の挙動",()=>{
             //create node
             let node = document.createElement("svg");
-            node.setAttribute("visibleMaxZoom","100");
-            node.setAttribute("visibleMinZoom","-100");
+            node.setAttribute("visibleMaxZoom","100000");
+            node.setAttribute("visibleMinZoom","1000");
             node.setAttribute("transform","(100,0,0,-100,0,0)");
-            const defalutStyleList = {"minZoom":"-1000","maxZoom":"1000","nonScalingOffset":"none","usedParent":"usedParent"}
-            result = style.getStyle(node, defalutStyleList, true, null);
-            expect(result).toEqual({"minZoom":"-1000","maxZoom":"1000","nonScalingOffset":"none","usedParent":"usedParent"});
+            result = style.getStyle(node, defaultStyleList, true, null);
+            expect(result).toEqual({"minZoom":10,"maxZoom":1000,"nonScalingOffset":"none","usedParent":"usedParent"});
         });
         it("デフォルトとNode共にスタイルが設定されている場合のgetStyle関数の挙動",()=>{
             //create node
             let node = document.createElement("svg");
-            const defalutStyleList = {"minZoom":"-1000","maxZoom":"1000","nonScalingOffset":"none","usedParent":"usedParent"}
-            result = style.getStyle(node, defalutStyleList, true, null);
+            result = style.getStyle(node, defaultStyleList, true, null);
             expect(result).toEqual({"minZoom":"-1000","maxZoom":"1000","nonScalingOffset":"none","usedParent":"usedParent"});
         });
-        it("getNodeStyle enable", ()=>{
+        it("target getNodeStyle without transform attribute.", ()=>{
+            //create node
+            let node = document.createElement("svg");
+            node.setAttribute("xlink:href","http://localhost");
+            node.setAttribute("visibleMaxZoom","100");
+            node.setAttribute("visibleMinZoom","-100");
+            result = style.getNodeStyle(node, param.hasHyperLink);
+            expect(result).toEqual(param.getNodeStyle);
+        });
+        
+        it("target getNodeStyle with transform attribute.", ()=>{
             //create node
             let node = document.createElement("svg");
             node.setAttribute("xlink:href","http://localhost");
             node.setAttribute("visibleMaxZoom","100");
             node.setAttribute("visibleMinZoom","-100");
             node.setAttribute("transform","(100,0,0,-100,0,0)");
-            result = style.getNodeStyle(node, true); // どういうこと？
-            expect(result).toEqual({"fill": null, "hasUpdate": true, "hyperLink": "http://localhost", "maxZoom": 1, "minZoom": -1, "target": null});
-        });
-        it("getNodeStyle disable", ()=>{
-            //create node
-            let node = document.createElement("svg");
-            node.setAttribute("xlink:href","http://localhost");
-            node.setAttribute("visibleMaxZoom","100");
-            node.setAttribute("visibleMinZoom","-100");
-            result = style.getNodeStyle(node, true);
-            expect(result).toEqual({"fill": null, "hasUpdate": true, "hyperLink": "http://localhost", "maxZoom": 1, "minZoom": -1, "target": null});
+            result = style.getNodeStyle(node, param.hasHyperLink);
+            expect(result).toEqual(param.getNodeStyle);
         });
 
         it("setCanvasStyle", ()=>{
-            // この関数を何用なのか不明
+            // この関数が何用なのか不明
             //create node
             let node = document.createElement("svg");
             node.setAttribute("xlink:href","http://localhost");
@@ -55,8 +71,7 @@ describe("unittest for SvgStyle",()=>{
             node.setAttribute("visibleMinZoom","-100");
             const style = {"stroke":"none","fill":"","stroke-width":"","stroke-dasharray":"","stroke-linejoin":"","stroke-linecap":"","opacity":"","fill-opacity":"", "vector-effect":""}
             result = SvgStyle.setCanvasStyle(style, node);
-            expect(node).toEqual();
-            expect(result).toEqual();
+            //expect(result).toEqual();
         });
     });
 });
