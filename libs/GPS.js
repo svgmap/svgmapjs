@@ -1,22 +1,22 @@
 class GPS{
 	#gpsif=null; // 2017.8.15 for iOS safari issues? 
 	#svgMapObj;
-	
-	
+
 	constructor(svgMapObj){
 		this.#svgMapObj = svgMapObj;
+		// UAtesterから取得するのが筋な気がする
 		var uaProps = this.#svgMapObj.getUaProp();
 		var gpsb = document.getElementById("gpsButton");
 		if (gpsb) {
 			if ( navigator.geolocation){
 	//			alert( "I can use GPS!");
 				//* move to initNavigationUIs() gpsb.styling
-				
 				// for safari issue hack
 				// なぜかiOS SafariはsvgMapが動いているとgeolocationAPIがまともに動かないので、別window(iframe)でgoelocationさせるHackを実装 2017.6
 				if ( uaProps.isSP && navigator.userAgent.indexOf("Safari") > 0 && navigator.userAgent.indexOf("Chrome") < 0){
 //				if ( true ){
 					this.#gpsif = document.createElement("iframe");
+					this.#gpsif.setAttribute("id","safari4iframe");
 					document.documentElement.appendChild(this.#gpsif);
 					console.log( "contentWindow:",this.#gpsif.contentWindow.document );
 					var ifd = this.#gpsif.contentWindow.document.documentElement;
