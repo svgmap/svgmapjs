@@ -5,23 +5,23 @@ const urlPatterns = [
 	{
 		description:"pure url",
 		url:"http://hogehoge.com",
-		checkResume: undefined
+		checkResume: "http://hontohakotti.com/main.svg#xywh=global:0.000000,0.000000,0.000000,0.000000"
 	},{
 		description:"url + a query parameter.",
 		url:"http://hogehoge.com?param=1",
-		checkResume: undefined
+		checkResume: "http://hontohakotti.com/main.svg#xywh=global:0.000000,0.000000,0.000000,0.000000"
 	},{
 		description:"url + multi query parameters.",
 		url:"http://hogehoge.com?param=1&param2",
-		checkResume: undefined 
+		checkResume: "http://hontohakotti.com/main.svg#xywh=global:0.000000,0.000000,0.000000,0.000000"
 	},{
 		description:"url + hash tag",
 		url:"http://hogehoge.com#param=1",
-		checkResume: undefined
+		checkResume: "http://hontohakotti.com/main.svg#xywh=global:0.000000,0.000000,0.000000,0.000000"
 	},{
 		description:"url + hash tag(multi parameters)",
 		url:"http://hogehoge.com#param=1&param2",
-		checkResume: undefined
+		checkResume: "http://hontohakotti.com/main.svg#xywh=global:0.000000,0.000000,0.000000,0.000000"
 	}
 ]
 
@@ -46,7 +46,9 @@ describe("target ResumeManager.",()=>{
 			resumemanager = new ResumeManager(mock_svgMapObject, mock_svgMapCustomLayersManager, mock_parseSVGfunc);
 		});
 		beforeEach(()=>{
-			mock_location = jest.spyOn(global, 'location', 'get').mockReturnValue({ href: 'http://kondokoso.com', pathname: "/main.svg", "origin":"http://hontohakotti.com"});
+			mock_location = jest.spyOn(global, 'location', 'get').mockReturnValue(
+				{ href: 'http://kondokoso.com', pathname: "/main.svg", "origin":"http://hontohakotti.com"}
+				);
 		});
 		afterEach(()=>{
 			if(mock_location != null){
@@ -62,12 +64,12 @@ describe("target ResumeManager.",()=>{
 			let dummy_symobls;
 			
 			let result = resumemanager.checkResume(dummy_documentElemnt, dummy_symobls);
-			expect(result).toBe(pattern.checkResume);
+			expect(result).toBe(undefined);
 		});
 
 		it("get PermanentLink",()=>{
 			let result = resumemanager.getBasicPermanentLink(false);
-			expect(result).toBe();
+			expect(result.href).toEqual(pattern.checkResume);
 		});
 	});
 });
