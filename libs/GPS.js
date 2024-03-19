@@ -4,7 +4,7 @@ class GPS{
 
 	constructor(svgMapObj){
 		this.#svgMapObj = svgMapObj;
-		// UAtesterから取得するのが筋な気がする
+		// TODO:UAtesterから取得するのが筋な気がする
 		var uaProps = this.#svgMapObj.getUaProp();
 		var gpsb = document.getElementById("gpsButton");
 		if (gpsb) {
