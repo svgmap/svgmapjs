@@ -69,10 +69,11 @@ class PathRenderer{
 		var pp = pathNode.getAttribute("points");
 		if (pp){
 			var points = (pp.replace(/,/g," ")).split(" ");
-			if ( points.length > 3 ){
+			let points_length = points.length; // points.lengthは都度配列をカウントしているためキャッシュ化
+			if ( points_length > 3 ){
 				var repld="M";
 				
-				for (var i = 0 ; i < (points.length/2) ; i++){
+				for (var i = 0 ; i < (points_length/2) ; i++){
 					repld += points[i*2] + "," + points[i*2+1];
 					if ( i==0){
 						repld+="L";
@@ -166,7 +167,8 @@ class PathRenderer{
 		var command = d[i];
 		var cp;
 		var closed = false;
-		while ( i < d.length ){
+		let d_length = d.length; // lengthは都度配列をカウントしているためキャッシュ化
+		while ( i < d_length ){
 			if ( cp ){
 				prevX = cp.x;
 				prevY = cp.y;
