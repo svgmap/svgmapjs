@@ -16,7 +16,18 @@ class PathRenderer{
 		this.#mapTicker = mapTicker;
 		this.#mapViewerProps = mapViewerProps;
 	}
-	
+
+	/**
+	 * 
+	 * @param {Element} pathNode 
+	 * @param {canvasNode?} inCanvas 
+	 * @param {*} child2canvas 
+	 * @param {boolean} clickable 
+	 * @param {*} category 
+	 * @param {*} cStyle 
+	 * @param {*} GISgeometry 
+	 * @returns {Object}
+	 */
 	setSVGcirclePoints( pathNode ,  inCanvas , child2canvas , clickable , category , cStyle , GISgeometry ){
 		var cx = Number(pathNode.getAttribute("cx"));
 		var cy = Number(pathNode.getAttribute("cy"));
