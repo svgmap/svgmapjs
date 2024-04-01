@@ -26,7 +26,7 @@ class EssentialUIs{
 		this.#mapViewerProps = mapViewerProps;
 		this.#zoomPanManager = zoomPanManager;
 		this.#mapTicker = mapTicker;
-		this.#matUtil = matUtil;
+		this.#matUtil = matUtil;	// TODO: Object化する必要あるか確認。Static関数でいいならメモリ使用量を少し減らせるかも？
 		this.#hideAllTileImgs = hideAllTileImgs;
 		this.#getRootSvg2Canvas = getRootSvg2Canvas;
 		this.#wheelZooming = 0;
@@ -338,7 +338,19 @@ class EssentialUIs{
 	}
 
 	// 中心緯経度書き換え
+	// TODO:中心座標Labelを更新する関数なはずなのにScaleも更新している
+	// 単一責任の原則から外れている気がするので関数分離するのがよいと思っています。
+	// もし中心座標更新に伴う画面更新を指すならば関数名と#centerPos(ラベル名)が同一により混乱を招くため、
+	// 変数名を変更するのがベターかと思います。以下、例
+	/**
+	 *  updateAboutCenterPos(){
+	 * 		updateTextOfCenterPos();
+	 *      updateTextOfvScale();
+	 *  }
+	 */
 	updateCenterPos() {
+		// ISSUE:この関数がコールされる前に#centerPosラベルの取得はされるのか不明
+		// 取得系はコンストラクタの中でやってもいいと思っています。
 		if ( this.#centerPos ){
 			var cent = this.getCentralGeoCoorinates();
 	//		console.log("centralGeo:", cent.lat , cent.lng);
@@ -354,7 +366,6 @@ class EssentialUIs{
 		if ( func ){
 			this.updateCenterPos = func;
 		}
-		
 	}
 
 	getVerticalScreenScale( screenLength ){
@@ -369,7 +380,6 @@ class EssentialUIs{
 	getCentralGeoCoorinates(){
 		var rscx = this.#mapViewerProps.rootViewBox.x + this.#mapViewerProps.rootViewBox.width / 2.0;
 		var rscy = this.#mapViewerProps.rootViewBox.y + this.#mapViewerProps.rootViewBox.height / 2.0;
-		
 		var geoCentral = this.#matUtil.SVG2Geo( rscx , rscy , this.#mapViewerProps.rootCrs );
 		return geoCentral
 	}
@@ -395,7 +405,7 @@ class EssentialUIs{
 
 	geo2Screen( lat ,lng ){
 		var latitude ,longitude;
-		
+		// TODO あんまりきれいじゃない。要修正。
 		if ( !lng ){
 			latitude = lat.lat;
 			longitude = lat.lng;
@@ -448,7 +458,16 @@ class EssentialUIs{
 		this.#svgMapObj.refreshScreen();
 	}
 
-	// 地理(グローバル)座標系で指定したエリアを包含する最小のviewportを設定する
+	/**
+	 * 地理(グローバル)座標系で指定したエリアを包含する最小のviewportを設定する
+	 * 
+	 * @param {Number} lat     //degree
+	 * @param {Number} lng     //degree
+	 * @param {Number} latSpan //単位がわかりません
+	 * @param {Number} lngSpan //単位がわかりません
+	 * @param {boolean} norefresh 
+	 * @returns boolean
+	 */
 	setGeoViewPort( lat, lng, latSpan , lngSpan , norefresh){
 		if (  !latSpan || !lngSpan ){
 			return ( false );
