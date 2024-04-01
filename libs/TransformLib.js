@@ -122,8 +122,8 @@ class MatrixUtil {
 		}
 	}
 	/**
-	 * @param {int} x - 何か不明
-	 * @param {int} y - 何か不明
+	 * @param {Number} x - 何か不明
+	 * @param {Number} y - 何か不明
 	 * @param {GenericMatrix} mat -???
 	 * @param {any} calSize : any
 	 * nonScaling : any
@@ -186,8 +186,8 @@ class MatrixUtil {
 	/***
 	 * SVG座標から緯度経度への変換
 	 * 
-	 * @param {int} svgX 
-	 * @param {int} svgY 
+	 * @param {Number} svgX 
+	 * @param {Number} svgY 
 	 * @param {GenericMatrix} crs 
 	 * @param {GenericMatrix} inv 
 	 */
@@ -214,8 +214,8 @@ class MatrixUtil {
 	/***
 	 * 緯度経度からSVG座標への変換
 	 * 
-	 * @param {float} lat - 緯度
-	 * @param {float} lng - 軽度
+	 * @param {Number} lat - 緯度
+	 * @param {Number} lng - 軽度
 	 * @param {GenericMatrix} crs - 座標参照系(Coordinate Reference System:CRS)
 	 * 
 	 */
@@ -299,6 +299,8 @@ class MatrixUtil {
 	
 	// 逆座標変換のための変換マトリクスを得る
 	getInverseMatrix( matrix ){
+		console.log(">>>>>>>>>>>>>>>>>>>>");
+		console.log(matrix);
 		if ( matrix.inverse ){
 			return { 
 				transform: matrix.inverse,
