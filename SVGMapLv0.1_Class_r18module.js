@@ -340,7 +340,7 @@ class SvgMap {
 			that.#initLoad();
 		}.bind(this));
 		UtilFuncs.addEvent(window,"hashchange",function(){
-			that.#resumeManager.resumeFirstTime = true;
+			// that.#resumeManager.resumeFirstTime = true; // 2024/5/2 ハッシュの変化でresumeの挙動を変えるのはおかしいと思われるのでコメントアウト
 			that.#refreshScreen();
 			if ( typeof this.#updateLayerListUIint == "function" ){ // レイヤリストUIが不整合起こす場合がある(レイヤをon/of指示するケース)。さらにそれに連動してUI自動起動も起きない
 				setTimeout(function(){this.#updateLayerListUIint()}.bind(this),300);
