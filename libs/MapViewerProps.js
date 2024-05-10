@@ -5,7 +5,7 @@ class MapViewerProps{
 	rootCrs;
 	uaProps;
 	
-	mapCanvas;
+	mapCanvas;	// ResourceLoadingObserver.jsで使用しているようですが、Setterがないため使い方不明
 	mapCanvasWrapper;
 	
 	constructor(){
