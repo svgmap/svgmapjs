@@ -299,8 +299,6 @@ class MatrixUtil {
 	
 	// 逆座標変換のための変換マトリクスを得る
 	getInverseMatrix( matrix ){
-		console.log(">>>>>>>>>>>>>>>>>>>>");
-		console.log(matrix);
 		if ( matrix.inverse ){
 			return { 
 				transform: matrix.inverse,

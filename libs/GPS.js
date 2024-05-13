@@ -47,7 +47,6 @@ class GPS{
 	gpsSuccess=function(position){
 	//	alert("lat:" + position.coords.latitude + " lng:" + position.coords.longitude + " acc:" + position.coords.accuracy);
 	//	console.log("Callback from iframe lat:" + position.coords.latitude + " lng:" + position.coords.longitude + " acc:" + position.coords.accuracy,"  this:",this);
-		console.log("gpsSuccess:",position);
 		this.#svgMapObj.setGeoCenter( position.coords.latitude , position.coords.longitude , position.coords.accuracy * 10 / 100000  );
 
 	}.bind(this);
