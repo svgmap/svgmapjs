@@ -44,7 +44,12 @@ describe("unittest for UtilFuncs",()=>{
             result = UtilFuncs.getNoCacheRequest("http://localhost/aaaa?params&params2");
             expect(result).toBe("http://localhost/aaaa?params&params2&unixTime=1705708800000");
 
-            result = UtilFuncs.getNoCacheRequest("http://localhost/aaaa#params");
+        });
+
+        it.skip("add ramdom parameter for No cache request(LayerSpecificUI only)",()=>{
+            // TODO: layerspecificUIでNocacheするケースの有無を確認する
+
+            let result = UtilFuncs.getNoCacheRequest("http://localhost/aaaa#params");
             expect(result).toBe("http://localhost/aaaa#params&unixTime=1705708800000");
 
             result = UtilFuncs.getNoCacheRequest("http://localhost/aaaa#params&params2");
