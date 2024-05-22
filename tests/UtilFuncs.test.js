@@ -34,18 +34,17 @@ describe("unittest for UtilFuncs",()=>{
             const mockDate = new Date("2024-01-20");
             mock = jest.spyOn(global, "Date").mockImplementation(() => mockDate)
             mock = jest.spyOn(UtilFuncs,"getNonScalingOffset").mockReturnValue({"x":5, "y":3,"nonScaling":true});
-            // valila url
+            // vanilla url
             let result = UtilFuncs.getNoCacheRequest("http://localhost/aaaa");
             expect(result).toBe("http://localhost/aaaa?unixTime=1705708800000");
-            // valila url
+            // vanilla url
             result = UtilFuncs.getNoCacheRequest("http://localhost/aaaa?params");
             expect(result).toBe("http://localhost/aaaa?params&unixTime=1705708800000");
-
+            // vanilla url and 2 queries
             result = UtilFuncs.getNoCacheRequest("http://localhost/aaaa?params&params2");
             expect(result).toBe("http://localhost/aaaa?params&params2&unixTime=1705708800000");
 
             result = UtilFuncs.getNoCacheRequest("http://localhost/aaaa#params");
-            // TODO:ここは想定通りか確認
             expect(result).toBe("http://localhost/aaaa#params&unixTime=1705708800000");
 
             result = UtilFuncs.getNoCacheRequest("http://localhost/aaaa#params&params2");
@@ -164,24 +163,23 @@ describe("unittest for UtilFuncs",()=>{
                 "cdy": 0,
                 "commonQuery": null,
                 "crossorigin": null,
-                "elemClass": undefined,
+                "elemClass": null,
                 "height": 0,
-                "href": null,
+                "href": "",
                 "href_fragment": undefined,
                 "imageFilter": null,
                 "maxZoom": undefined,
-                "metadata": null,
+                "metadata": undefined,
                 "minZoom": undefined,
-                "nonScaling": false,
+                "nonScaling": true,
                 "opacity": 0,
                 "pixelated": false,
                 "text": undefined,
-                "title": null,
                 "transform": undefined,
                 "visible": true,
                 "width": 0,
-                "x": 0,
-                "y": 0
+                "x": 5,
+                "y": 3
                 });
         });
 
@@ -200,24 +198,18 @@ describe("unittest for UtilFuncs",()=>{
                 "cdy": 0,
                 "commonQuery": null,
                 "crossorigin": null,
-                "elemClass": undefined,
-                "height": undefined,
-                "href": undefined,
                 "href_fragment": undefined,
                 "imageFilter": null,
-                "maxZoom": undefined,
-                "metadata": null,
-                "minZoom": undefined,
+                "maxZoom": 0,
+                "metadata": undefined,
+                "minZoom": 0,
                 "nonScaling": false,
                 "opacity": 0,
                 "pixelated": false,
                 "text": undefined,
-                "title": null,
+                "title": undefined,
                 "transform": undefined,
                 "visible": true,
-                "width": 0,
-                "x": 0,
-                "y": 0
                 });
         });
 
@@ -299,6 +291,8 @@ describe("unittest for UtilFuncs",()=>{
         
         it("getNonScalingOffset", ()=>{
             let svgElement = document.createElement("svg");
+            svgElement.setAttribute("transform", "ref(svg,13000,-5000)");
+		    console.log("getNonScalingOffset Method Start... : ", performance.now());
             let result = UtilFuncs.getNonScalingOffset(svgElement);
             expect(result).toBe(""); // 引数のsvgPoiNodeとsvgElementの違いは何？
         });
