@@ -1,10 +1,8 @@
-// 
-// Description:
-// SVGMap Standard LayerUI2 for SVGMapLv0.1 >rev17
+// SVGMap Layer Specific WebApp Handler Module
 // 
 //  Programmed by Satoru Takagi
 //  
-//  Copyright (C) 2016-2021 by Satoru Takagi @ KDDI CORPORATION
+//  Copyright (C) 2024 by Satoru Takagi @ KDDI CORPORATION
 //  
 // License: (GPL v3)
 //  This program is free software: you can redistribute it and/or modify
@@ -20,6 +18,10 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // 
 // History:
+// 2023/12-     : SVGMapLayerUIから、レイヤー固有WebApp部を切り離し、コアモジュール直下でインポート (レイヤUIとレイヤ制御の切り離し)
+// 
+
+// History of SVGMapLayerUI:
 // 2016/10/14 : svgMapLayerUI2 Rev.1 : SVGMapLvl0.1_r12の新機能を実装する全く新しいUIを再構築開始 まだ全然粗削りです。
 // 2016/10/14 : JQueryUI/multiselectを切り離してスクラッチで構築
 // 2016/10/14 : グループで折りたたむ機能、リストを広げたまま他の作業が行える機能
@@ -54,296 +56,67 @@
 // 2022/03/08-: コアFWとともに、svgImagesProps[].controllerを構造化、*.svgScript導入しlsUIで実行、従来型*.scriptを廃止
 // 2022/05/31 : ESM, Class化
 // 2023/07/25 : Firefoxの最新版では、力業のiFrameReady()がDOMContentLoadedタイミングをつかんだ処理ができないケースが多い、そこでloadイベント処理のリトライを行うルーチンを入れた（この実装までにかなりの試行錯誤があった）
-// 2023/08/24 : ↑の問題がChromeでも起きる環境があることが判明。iframeのhtmlのキャッシュを無効化することで対応。そろそろ仕様変更などの本質的な対策が求められる。
+// 2023/08/24 : ↑の問題がChromeでも起きる環境があることが判明。iframeのhtmlのキャッシュを無効化することで対応。そろそろ仕様変更などの本質的な対策が求められる
 
-// ISSUES, ToDo: 
-// 2021/10/14 rootsvgのDOM直編集ではupdateLayerTableが反映されるタイミングが直にない～updateLayerTableを多数呼びたくない理由は、LayerListTableの後進にオーバヘッドがかかるから　なので、それをせずにならば(例えばrefreshScreen毎に)いくら呼んでも気にならないはず
-// 
-// (PARTIALLY FIXED) 2021/10/13 updateLayerTableを呼ばないとlayerUIframeがレイヤON/OFF状態とシンクロしない
-// (FIXED?) IE,Edgeでdata-controller-src動作しない
-//  レイヤ固有UIを別ウィンドウ化できる機能があったほうが良いかも
-//   ただしこの機能は新たなcontextを生成する形でないと実装できないようです。
-//   See also: http://stackoverflow.com/questions/8318264/how-to-move-an-iframe-in-the-dom-without-losing-its-state
-//  (FIXED? 2017.9.8) レイヤUI表示ボタンが時々表示されない時がある (少なくとも一か所課題を発見し修正。本体も改修(getRootLayersProps))
-//  zoomPanMapCompletedは、fetchとXHRだけを見ているが、IndexedDBやworkerも見るようにすべき
+import { SvgMapGIS } from '../SVGMapLv0.1_GIS_r4_module.js';
+import { UtilFuncs } from '../libs/UtilFuncs.js';
+import { GlobalMessageDisplay } from './GlobalMessageDisplay.js';
 
-
-
-// global vars
-/**
- var layerList, uiOpen , layerTableDiv , uiOpened , layerGroupStatus ; // layerGroupStatusは今はグループ折り畳み状態のみ管理
- var layerSpecificUI; // layerSpecificUIの要素
- var layerListMaxHeightStyle, layerListMaxHeight, layerListFoldedHeight , layerSpecificUiDefaultStyle = {} , layerSpecificUiMaxHeight = 0;
- var lsUIbdy, lsUIbtn;
- var preDefinedTargetUiElement=null;
- var transferCustomEvent2iframe = [];
- var GlobalMessageprefix = "gMsg_";
- var maxGlobalMessages = 5;
- var globalMessageID="globalMessage";
-**/
-import { SvgMapGIS } from './SVGMapLv0.1_GIS_r4_module.js';
-import { BuiltinIcons } from './libs/BuiltinIcons.js';
-
-class SvgMapLayerUI {
+class LayerSpecificWebAppHandler {
 
 	static #totalLoadCompletedGuardTime = 20; // XHRでの非同期読み込みを含め読み込み完了検知のためのガードタイム 2021/6/18
-		
-	#layerList;
+	static #openFrame = "openFrame";
+	static #closeFrame = "closeFrame";
+	static #appearFrame = "appearFrame";
+	static #hideFrame = "hideFrame";
+	
+//	#layerList;
 	//#uiOpen; //ないかも
-	#layerTableDiv;
-	#uiOpened;
-	#layerGroupStatus; // layerGroupStatusは今はグループ折り畳み状態のみ管理
-	#layerSpecificUI; // layerSpecificUIの要素
+//	#layerTableDiv;
+//	#uiOpened;
+//	#layerGroupStatus; // layerGroupStatusは今はグループ折り畳み状態のみ管理
+	#layerSpecificUI; // layerSpecificUIのコンテナ要素
 	#svgMap;
-	#svgMapGIStool;
+	#svgMapGIStool; // ISSUE SVGMapGISは、今後はそもそも各LayerWebApp側でimportするだけで十分なのではないか説(今は従来継承のために起動時暗黙インスタンスにしてある)
 	#svgMapAuthoringTool;
+	#svgMapLayerUI;
 	
-	#layersCustomizer;
+//	#layersCustomizer;
 	
-	constructor(svgMapObj, svgMapAuthoringToolObj){
+	#layerSpecificUiDefaultStyle = {};
+	#layerSpecificUiMaxHeight = 0;
+	
+	#getLayerStatus;
+	
+	#globalMessageDisplay;
+
+	constructor(svgMapObj, svgMapAuthoringToolObj, getLayerStatusFunc){
 		this.#svgMap=svgMapObj;
 		this.#svgMapAuthoringTool = svgMapAuthoringToolObj;
-		svgMapObj.registLayerUiSetter( function(opt){this.#initLayerList(opt)}.bind(this) , function(){this.#updateLayerTable()}.bind(this));
+		/**
+		svgMapObj.registLayerUiSetter( 
+			function(opt){
+				this.#initLayerList(opt);
+			}.bind(this) , 
+			function(){
+				this.#updateLayerTable();
+			}.bind(this)
+		);
+		**/
 		this.#svgMapGIStool=new SvgMapGIS(svgMapObj, window.jsts);
+		this.#getLayerStatus = getLayerStatusFunc.bind(this.#svgMap);
+		this.#globalMessageDisplay = new GlobalMessageDisplay();
 		console.log("construct layerUI: svgMapGIStool:",this.#svgMapGIStool," svgMapAuthoringTool:", this.#svgMapAuthoringTool);
 	}
 	
-	#layerListOpenClose(){
-		var uiOpenBtn = document.getElementById("layerListOpenButton");
-		console.log("layerListOpenClose");
-		this.#layerTableDiv = document.getElementById("layerTableDiv");
-		if ( this.#layerList.style.height== this.#layerListFoldedHeight + "px" ){ // layer list is colsed
-			this.#updateLayerTable();
-			this.#layerList.style.height=this.#layerListMaxHeightStyle;
-			uiOpenBtn.firstChild.src=BuiltinIcons.UTpng;
-			this.#layerTableDiv.style.display="";
-			this.#uiOpened = true;
-		} else { // opened
-			this.#layerList.style.height= this.#layerListFoldedHeight + "px";
-			uiOpenBtn.firstChild.src=BuiltinIcons.DTpng;
-			this.#layerTableDiv.style.display="none";
-			this.#uiOpened = false;
-		}
-	}
-
-	#getGroupFoldingStatus( groupName ){ // グループ折り畳み状況回答
-		var gfolded;
-		if ( this.#layerGroupStatus[groupName] ){ // グループ折り畳み状態を得る[デフォルトはopen]
-			gfolded = this.#layerGroupStatus[groupName];
-		} else {
-			gfolded = false;
-			this.#layerGroupStatus[groupName] = gfolded;
-		}
-		return ( gfolded );
-	}
-
-	#updateLayerTable(){
+	#syncLayerSpecificUi(){
 	//	console.log("CALLED updateLayerTable : caller:",updateLayerTable.caller);
-		var tb = document.getElementById("layerTable");
 		var lps = this.#svgMap.getRootLayersProps();
 		for ( var i = lps.length -1 ; i >=0  ; i-- ){
 			this.#syncLayerSpecificUiExistence( lps[i].id, lps[i].visible ); // 基幹処理(レイヤ固有UI)をレイヤリストUI更新(setLayerTable)から分けた
 		}
-		if ( tb ){
-			var ltst= this.#layerTableDiv.scrollTop;
-			this.#removeAllLayerItems(tb);
-			this.#setLayerTable(tb, lps);
-			this.#layerTableDiv.scrollTop = ltst;
-		}
-		this.#checkLayerListAndRegistLayerUI();
 	}
-
-	#setLayerTable(tb, layerProps){
-	//	console.log("call setLayerTable:",tb);
-		var groups = new Object(); // ハッシュ名のグループの最後のtr項目を収めている
-		var lps;
-		if ( !lps ) {
-			lps = this.#svgMap.getRootLayersProps();
-		} else {
-			lps = layerProps;
-		}
-	//	console.log(lps);
-		var visibleLayers=0;
-		var visibleLayersNameArray=[];
-		const visibleNum=5;  // 表示レイヤ名称数
-		for ( var i = lps.length -1 ; i >=0  ; i-- ){
-			var tr = this.#getLayerTR(lps[i].title, lps[i].id, lps[i].visible , false , lps[i].groupName);
-			if (lps[i].groupName ){ 
-				// グループがある場合の処理
-				
-				var gfolded = this.#getGroupFoldingStatus( lps[i].groupName ); // グループ折り畳み状況獲得
-				
-				if ( groups[lps[i].groupName] ){ // すでにグループが記載されている場合
-					//そのグループの最後の項目として追加
-					var lastGroupMember = groups[lps[i].groupName];
-					if ( ! gfolded ){
-						tb.insertBefore(tr, lastGroupMember.nextSibling);
-					}
-					groups[lps[i].groupName] = tr;
-				} else {
-					// 新しくグループ用trを生成・項目追加
-					var groupTr =  this.#getGroupTR(lps[i], gfolded);
-					tb.appendChild(groupTr);
-					// その後にレイヤー項目を追加
-					groups[lps[i].groupName] = tr;
-					if ( ! gfolded ){
-						tb.appendChild(tr);
-					}
-				}
-				if (lps[i].visible){
-					this.#incrementGcountLabel(lps[i].groupName);
-				}
-			} else { // グループに属さない場合、単に項目追加
-				tb.appendChild(tr);
-			}
-			if (lps[i].visible){
-				++visibleLayers;
-				if ( visibleLayers <= visibleNum ){ visibleLayersNameArray.push(lps[i].title); }
-				else if ( visibleLayers == visibleNum+1 ){ visibleLayersNameArray.push("..."); }
-			}
-		}
-		document.getElementById("layerListmessage").innerHTML = this.#layerListmessageHead + visibleLayers + this.#layerListmessageFoot;
-		document.getElementById("layerListmessage").title = visibleLayersNameArray;
-		window.setTimeout(function(){this.#setLayerTableStep2()}.bind(this),30);
-	}
-
-	#layerListmessageHead = "Layer List: ";
-	#layerListmessageFoot = " layers visible";
-		
-	#setLayerListmessage( head , foot ){ // added 2018.2.6
-		this.#layerListmessageHead = head;
-		this.#layerListmessageFoot = foot;
-		/**
-		if ( document.getElementById("layerListmessage")){
-			document.getElementById("layerListmessage").innerHTML = layerListmessageHead + visibleLayers + layerListmessageFoot;
-		}
-		**/
-	}
-
-	#setLayerTableStep2(){
-		var tableHeight = document.getElementById("layerTable").offsetHeight;
-		if ( tableHeight == 0 ){ // patch 2020/10/28 (レイヤリスト閉じているときにレイヤ追加されたりしてupdateLayerTableすると2クリックしないと開かない微妙な不具合)
-			return;
-		}
-	//	console.log(tableHeight, layerListMaxHeight , layerListFoldedHeight , layerListMaxHeightStyle );
-		if ( tableHeight < this.#layerListMaxHeight - this.#layerListFoldedHeight - 2 ){
-			this.#layerList.style.height = (tableHeight + this.#layerListFoldedHeight + 2) + "px";
-			console.log("reorder:",this.#layerList.style.height);
-		} else {
-			this.#layerList.style.height = this.#layerListMaxHeightStyle;
-	//		layerListMaxHeight = layerList.offsetHeight;
-		}
-	}
-
-
-	#incrementGcountLabel(groupName){
-		var gcLabel = document.getElementById("gc_"+groupName);
-		var gcTxtNode = gcLabel.childNodes.item(0);
-		var gCount = Number( gcTxtNode.nodeValue ) + 1;
-	//	console.log(groupName,gcTxtNode,gcTxtNode.nodeValue,gCount);
-		gcTxtNode.nodeValue = gCount;
-	}
-
-	#getLayerTR(title, id ,visible,hasLayerList,groupName){
-		var tr = document.createElement("tr");
-		tr.id ="layerList_"+id;
-		if ( groupName ){
-			tr.dataset.group =groupName;
-			tr.className = "layerItem";
-		} else {
-			tr.className = "layerItem noGroup";
-		}
-		var cbid = "cb_"+id; // id for each layer's check box
-		var btid = "bt_"+id; // id for each button for layer specific UI
-		var ck = "";
-		
-		// レイヤラベルおよびオンオフチェックボックス生成.
-		// checkBox
-		var lcbtd = document.createElement("td");
-		var lcb = document.createElement("input");
-		lcb.className = "layerCheck";
-		lcb.type="checkBox";
-		lcb.id=cbid;
-		if ( visible ){
-			lcb.checked=true;
-			tr.style.fontWeight="bold"; // bold style for All TR elem.
-		}
-		lcb.addEventListener("change",function(event){this.#toggleLayer(event)}.bind(this));
-		lcbtd.appendChild(lcb);
-		tr.appendChild(lcbtd);
-		// label
-		var labeltd = document.createElement("td");
-		labeltd.setAttribute("colspan","3");
-		labeltd.style.overflow="hidden";
-		var label = document.createElement("label");
-		label.title=title;
-		label.setAttribute("for",cbid);
-		label.className="layerLabel";
-		label.innerHTML=title;
-		labeltd.appendChild(label);
-		tr.appendChild(labeltd);
-		
-		// レイヤ固有UIのボタン生成
-		var td = document.createElement("td");
-		var btn = document.createElement("button");
-		btn.innerHTML="<img style='pointer-events: none;' src='"+BuiltinIcons.RTpng+"'>";
-	//	btn.type="button";
-		btn.className="layerUiButton";
-		btn.id = btid;
-	//	btn.value=">";
-	//	btn.setAttribute("onClick","svgMapLayerUI.showLayerSpecificUI(event)");
-		btn.addEventListener("click", function(event){this.#showLayerSpecificUI(event)}.bind(this), false);
-		if ( visible ){
-			btn.disabled=false;
-		} else {
-			btn.disabled=true;
-		}
-		if ( !hasLayerList){
-			btn.style.visibility="hidden";
-		}
-		
-		td.appendChild(btn);
-		tr.appendChild(td);
-		
-		
-		return ( tr );
-	}
-
-
-	#hasUnloadedLayers = false;
-
-	#checkLayerListAndRegistLayerUI(){
-		// レイヤーの読み込み完了まで　レイヤーリストのチェックを行い、レイヤ固有UIを設置する
-	//	if ( !count ){count=1}
-		var layerProps=this.#svgMap.getRootLayersProps();
-		this.#hasUnloadedLayers = false;
-		for ( var i = 0 ; i < layerProps.length ; i++ ){
-			if ( layerProps[i].visible ){
-	//			console.log("chekc for layerui existence :  svgImageProps:",layerProps[i].svgImageProps , "   hasDocument:",layerProps[i].hasDocument);
-				if ( layerProps[i].svgImageProps && layerProps[i].hasDocument ){ // svgImagePropsが設定されていたとしてもまだ読み込み完了していると保証できないと思うので、hasDocumentを併せて評価する 2017.9.8
-	//				var ctbtn = document.getElementById("bt_"+layerProps[i].id);
-	//				setTimeout(checkController,50,layerProps[i].svgImageProps, ctbtn); // 時々失敗するので50msec待って実行してみる・・ 2016.11.17　このTimeOutはもう不要と思う 2017.9.8
-					this.#checkController(layerProps[i].svgImageProps, layerProps[i].id); // 上記より直接呼出しに戻してみる 2017.9.8
-					
-				} else {
-					this.#hasUnloadedLayers = true;
-				}
-			}
-		}
-	//	console.log( "hasUnloadedLayers:",hasUnloadedLayers,count);
-		/** 2020/2/13このループは、unloadedLayersUIupdateを動かすことで不要にできたはず
-		if ( hasUnloadedLayers && count < 5){ // 念のためリミッターをかけておく
-			setTimeout(checkLayerListAndRegistLayerUI,200,count+1);
-		}
-		**/
-	}
-
-	#unloadedLayersUIupdate(){ // 2020/2/13 ロードの遅延が大きいレイヤーのレイヤUIボタンが出現しないケースの対策
-		if ( this.#hasUnloadedLayers ){
-			this.#checkLayerListAndRegistLayerUI();
-		}
-	}
-
+	
 	#launchController(layerID, cbf){ // 2021/05/06 APIからレイヤ固有UI(コントローラ)を起動する機能を追加中
 		// cbfの第一引数にコントローラwindowが入るようにしたい
 		var layerProps=this.#svgMap.getRootLayersProps();
@@ -364,10 +137,16 @@ class SvgMapLayerUI {
 			console.error("This layer is not yet loaded, EXIT.");
 		}
 	}
-		
+
+	setLayerUIobject(layerUiObj){
+		this.#svgMapLayerUI = layerUiObj;
+	}
+	
 	#checkController(svgImageProps, layerId, forceLaunch, cbf ){
 		// レイヤ固有UIを実際に設置する
 		// さらに、レイヤ固有UIのオートスタートなどの制御を加える 2017.9.8 - 9.22
+		// さらに、イヤーUIに、レイヤ固有UIの起動UIがある場合、それをイネーブルにする関数があれば呼び出す
+		// console.log("checkController:",layerId);
 		var ctrUrl; // ":"+path+hash(ソース埋め込みパターン),  ":"+hash(svgScriptパターン),path(通常のコントローラがあるパターン)
 		var lsuiDoc = this.#layerSpecificUI.ownerDocument;
 		
@@ -386,10 +165,17 @@ class SvgMapLayerUI {
 			} else {
 				ctrUrl =svgImageProps.controller.url ;
 			}
+			/** この処理はここにあるのは気持ち悪いので、LayerUIにもし該当関数があったら、それに任せる
 			var ctbtn = document.getElementById("bt_"+layerId);
 			if ( ctbtn ){ // グループが閉じられている場合などにはボタンがないので
 				ctbtn.style.visibility="visible";
 				ctbtn.dataset.url = ctrUrl;
+			}
+			**/
+			
+			// レイヤーUIに、レイヤ固有UIの起動UIがある場合、それをイネーブルにする関数があればそれを呼び出す
+			if ( typeof this.#svgMapLayerUI.setLayerSpecificWebAppLaunchUiEnable =="function"){
+				this.#svgMapLayerUI.setLayerSpecificWebAppLaunchUiEnable(layerId,ctrUrl);
 			}
 	//		console.log("checkController: ctbtn.dataset.url: ",ctbtn.dataset.url);
 		}
@@ -399,6 +185,7 @@ class SvgMapLayerUI {
 			// 対応するレイヤー固有UIframeがないときだけ、appearOnLayerLoad||hiddenOnLayerLoad処理が走る
 			// #exec=appearOnLayerLoad,hiddenOnLayerLoad,onClick(default) 追加
 			if ( !lsuiDoc.getElementById( this.#getIframeId(layerId) ) ){
+				// console.log("checkController:",ctrUrl);
 				var lhash = this.#getHash(ctrUrl);
 				if ( svgImageProps.svgScript && (!lhash||!lhash.exec) ){ // svgScriptがあるパターンでlayerUIでexecしていない場合はexecさせる
 					if (!lhash ){
@@ -414,9 +201,10 @@ class SvgMapLayerUI {
 						lhash.exec="appearOnLayerLoad";
 					}
 				}
-				console.log("ctrUrl:",ctrUrl,"  lhash:",lhash)
+				// console.log("ctrUrl:",ctrUrl,"  lhash:",lhash)
 				if (lhash && lhash.exec){
-					if ( lhash.exec=="appearOnLayerLoad" || lhash.exec=="hiddenOnLayerLoad" ){
+					if ( lhash.exec.toLowerCase()=="appearonlayerload" || lhash.exec.toLowerCase()=="hiddenonlayerload" ){
+						/**
 						var psEvt = {
 							target:{
 								dataset:{
@@ -425,14 +213,20 @@ class SvgMapLayerUI {
 								id: "bt_"+layerId
 							}
 						};
+						**/
+						var hiddenOnLaunch = false;
 						if ( lhash.exec=="hiddenOnLayerLoad" ){
-							psEvt.target.hiddenOnLaunch = true;
+							hiddenOnLaunch = true;
 						}
+						/**
 						if ( cbf ){
 							psEvt.target.callBackFunction = cbf;
 						}
-						console.log("Find #exec=appearOnLayerLoad,hiddenOnLayerLoad Auto load LayerUI : pseudo Event:", psEvt);
-						this.#showLayerSpecificUI(psEvt); // showLayerSpecificUIを強制起動 ただしUIは非表示にしたいケースある(hiddenOnLayerLoad)
+						**/
+//						console.log("Find #exec=appearOnLayerLoad,hiddenOnLayerLoad Auto load LayerUI : pseudo Event:", psEvt);
+						console.log("Find #exec=appearOnLayerLoad,hiddenOnLayerLoad Auto load LayerUI : layerId,ctrUrl,hiddenOnLaunch,cbf:", layerId,ctrUrl,hiddenOnLaunch,cbf);
+//						this.#showLayerSpecificUI(psEvt); // showLayerSpecificUIを強制起動 ただしUIは非表示にしたいケースある(hiddenOnLayerLoad)
+						this.#showLayerSpecificUI(layerId,ctrUrl,hiddenOnLaunch,cbf); // showLayerSpecificUIを強制起動 ただしUIは非表示にしたいケースある(hiddenOnLayerLoad)
 					}
 				}
 			}
@@ -440,304 +234,6 @@ class SvgMapLayerUI {
 	}
 
 
-	#getGroupTR(lp, gfolded){ // グループ項目を生成する
-		
-		var groupTr = document.createElement("tr");
-		groupTr.dataset.group = lp.groupName;
-		groupTr.className="groupItem"
-		groupTr.style.width="100%";
-		groupTr.id = "gtr_"+lp.groupName;
-		var isBatchGroup = false;
-		
-		// グループのラベル
-		var groupTD = document.createElement("td");
-		groupTD.style.fontWeight="bold";
-		groupTD.setAttribute("colspan","3");
-		groupTD.className = "groupLabel";
-		groupTD.style.overflow="hidden";
-		
-		var groupTDlabel = document.createElement("label");
-		groupTDlabel.title=lp.groupName;
-		var gbid = "gb_"+lp.groupName; // for fold checkbox
-		groupTDlabel.setAttribute("for", gbid);
-		
-		var gLabel = document.createTextNode("[" + lp.groupName + "]");
-		groupTDlabel.appendChild(gLabel);
-		groupTD.appendChild(groupTDlabel);
-		
-		// グループの所属メンバー数
-		var groupCountTD = document.createElement("td");
-		groupCountTD.className = "groupLabel";
-	//	groupCountTD.style.overflow="hidden";
-		groupCountTD.align="right";
-		
-		var groupCountlabel = document.createElement("label");
-		groupCountlabel.id = "gc_"+lp.groupName;
-
-		groupCountlabel.setAttribute("for", gbid);
-		
-		var gCount = document.createTextNode("0");
-		groupCountlabel.appendChild(gCount);
-		groupCountTD.appendChild(groupCountlabel);
-		
-		
-		// バッチチェックボックス
-		var bid="";
-		if ( lp.groupFeature == "batch"){
-			groupTD.setAttribute("colspan","2");
-			var batchCheckBoxTd = document.createElement("td");
-			
-			isBatchGroup = true;
-			bid="ba_"+lp.groupName;
-			
-			var batchCheckBox = document.createElement("input");
-			batchCheckBox.type="checkBox";
-			batchCheckBox.id=bid;
-			batchCheckBox.addEventListener("change",function(event){this.#toggleBatch(event)}.bind(this),false);
-			
-			batchCheckBoxTd.appendChild(batchCheckBox);
-			
-	//		groupTD.appendChild(batchCheckBox);
-			if ( lp.visible ){
-				batchCheckBox.checked="true";
-			}
-			groupTr.appendChild(groupTD);
-			groupTr.appendChild(groupCountTD);
-			groupTr.appendChild(batchCheckBoxTd);
-			
-		} else {
-			groupTr.appendChild(groupTD);
-			groupTr.appendChild(groupCountTD);
-		}
-		
-		// group fold button
-		var foldTd = document.createElement("td");
-		var foldButton = document.createElement("button");
-		foldButton.id = gbid;
-	//	foldButton.type="button";
-		foldButton.addEventListener("click",function(event){this.#toggleGroupFold(event)}.bind(this),false);
-		if ( ! gfolded ){
-			foldButton.innerHTML="<img style='pointer-events: none;' src='"+BuiltinIcons.UTpng+"'>";
-		} else {
-			foldButton.innerHTML="<img style='pointer-events: none;' src='"+BuiltinIcons.DTpng+"'>";
-		}
-		foldTd.appendChild(foldButton);
-		groupTr.appendChild(foldTd);
-		
-		return ( groupTr );
-	}
-
-
-	#removeAllLayerItems(tb){
-		for ( var i = tb.childNodes.length-1;i>=0;i--){
-			tb.removeChild(tb.childNodes[i]);
-		}
-		tb.appendChild(this.#getColgroup());
-	}
-
-	#getLayerId( layerEvent ){
-		var lid = (layerEvent.target.id).substring(3);
-		return ( lid );
-	}
-
-	#toggleLayer(e){
-		var lid = this.#getLayerId(e);
-		console.log("this:",this);
-	//	console.log("call toggle Layer",e.target.id,e.target.checked,lid);
-		this.#svgMap.setRootLayersProps(lid, e.target.checked , false );
-		
-		// 後でアイテム消さないように効率化したい・・ (refreshLayerTable..)
-		if ( this.#updateLayerListUITiming == "legacy" ){
-			this.#updateLayerTable(); // これはrefreshScreenから自動で呼ばれる 2021/10/14 (ただしrev17の改修以降なので・・)
-		}
-		this.#svgMap.refreshScreen();
-	}
-
-	#toggleBatch(e){
-		var lid = this.#getLayerId(e);
-	//	console.log("call toggle Batch",e.target.id,e.target.checked,lid);
-		var batchLayers = this.#svgMap.getSwLayers( "batch" ); 
-	//	console.log("this ID might be a batch gruop. :"+ lid,batchLayers);
-		
-	//	svgMap.setRootLayersProps(lid, e.target.checked , false );
-		
-		// ひとつでもhiddenのレイヤーがあれば全部visibleにする
-		var bVisibility = "hidden";
-		for ( var i = 0 ; i < batchLayers[lid].length ; i++){
-			if ( (batchLayers[lid])[i].getAttribute("visibility" ) == "hidden"){
-				bVisibility = "visible";
-				break;
-			}
-		}
-		for ( var i = 0 ; i < batchLayers[lid].length ; i++){
-			(batchLayers[lid])[i].setAttribute("visibility" , bVisibility);
-		}
-		
-		// 後でアイテム消さないように効率化する・・ (refreshLayerTable..)
-		this.#updateLayerTable(); // こちらはDOM直接操作しているので必要
-		this.#svgMap.refreshScreen();
-	}
-
-	#MouseWheelListenerFunc(e){
-		//レイヤリストのホイールスクロールでは地図の伸縮を抑制する
-	//	e.preventDefault();
-		e.stopPropagation();
-	}
-
-	#layerListMaxHeightStyle;
-	#layerListMaxHeight;
-	#layerListFoldedHeight;
-	#layerSpecificUiDefaultStyle = {};
-	#layerSpecificUiMaxHeight = 0;
-	#updateLayerListUITiming="legacy";// 2021/10/29 core FWがupdateLayerListUIを呼び出すタイミング (<rev17 10月以前版は"legacy", 10月以降は"setRootLayersProps", 将来はrootDOMchangedかな・・・
-	#getLayerStatus;
-		
-	#initLayerList(initOptions){
-		if ( initOptions ){
-			if (initOptions.updateLayerListUITiming){
-				this.#updateLayerListUITiming = initOptions.updateLayerListUITiming;
-			}
-			if (initOptions.getLayerStatus){
-				this.#getLayerStatus = initOptions.getLayerStatus.bind(this.#svgMap);
-				console.log("has getLayerStatus:",this.#getLayerStatus);
-			}
-		}
-	//	console.log("CALLED initLayerList");
-		this.#layerGroupStatus = new Object();
-		this.#layerList = document.getElementById("layerList");
-	//	console.log("ADD EVT");
-		
-		var llUItop;
-		if ( this.#layerList ){
-			this.#layerList.addEventListener("wheel" , function(event){this.#MouseWheelListenerFunc(event)}.bind(this), false); // added 2019/04/15
-			this.#layerList.addEventListener("mousewheel" , function(event){this.#MouseWheelListenerFunc(event)}.bind(this), false);
-			this.#layerList.addEventListener("DOMMouseScroll" , function(event){this.#MouseWheelListenerFunc(event)}.bind(this), false);
-			this.#layerList.style.zIndex="20";
-			this.#layerListMaxHeightStyle = this.#layerList.style.height;
-			var lps = this.#svgMap.getRootLayersProps();
-			var visibleLayers=0;
-			var visibleLayersNameArray=[];
-			const visibleNum=5;  // 表示レイヤ名称数
-			for ( var i = lps.length -1 ; i >=0  ; i-- ){
-				if (lps[i].visible){
-					++visibleLayers;
-					if ( visibleLayers <= visibleNum ){ visibleLayersNameArray.push(lps[i].title); }
-					else if ( visibleLayers == visibleNum+1 ){ visibleLayersNameArray.push("..."); }
-				}
-			}
-			
-			llUItop = document.createElement("div");
-			
-			var llUIlabel = document.createElement("label");
-			llUIlabel.id="layerListmessage";
-			llUIlabel.setAttribute("for","layerListOpenButton");
-			llUIlabel.setAttribute("title", visibleLayersNameArray);
-		//	layerList.appendChild(llUIlabel);
-			llUItop.appendChild(llUIlabel);
-			
-			var llUIbutton = document.createElement("button");
-			llUIbutton.id="layerListOpenButton";
-		//	llUIbutton.type="button";
-			llUIbutton.innerHTML="<img style='pointer-events: none;' src='"+BuiltinIcons.DTpng+"'>";
-			llUIbutton.style.position="absolute";
-			llUIbutton.style.right="0px";
-				llUIbutton.addEventListener("click",function(event){this.#layerListOpenClose(event)}.bind(this));
-		//	layerList.appendChild(llUIbutton);
-			llUItop.appendChild(llUIbutton);
-			
-			var layersCustomizerPath = this.#layerList.getAttribute("data-customizer");
-			if ( layersCustomizerPath ){
-				var layersCustomizerIcon = document.createElement("img");
-				layersCustomizerIcon.src = BuiltinIcons.hamburger;
-				layersCustomizerIcon.style.position="absolute";
-				layersCustomizerIcon.style.right="35px";
-				layersCustomizerIcon.style.cursor="pointer";
-				llUItop.appendChild(layersCustomizerIcon);
-				layersCustomizerIcon.addEventListener("click",function(event){
-					this.#layersCustomizer = window.open(layersCustomizerPath,"layersCustomizer","toolbar=yes,menubar=yes,scrollbars=yes");
-				}.bind(this));
-			}
-			
-			this.#layerList.appendChild(llUItop);
-			
-			
-			
-			var llUIdiv = document.createElement("div");
-			this.#layerTableDiv = llUIdiv;
-			llUIdiv.id="layerTableDiv";
-			llUIdiv.style.width = "100%";
-			llUIdiv.style.height = "100%";
-			llUIdiv.style.overflowY = "scroll";
-			llUIdiv.style.display = "none";
-			
-			this.#layerList.appendChild(llUIdiv);
-			
-			var llUItable = document.createElement("table");
-			llUItable.id="layerTable";
-			llUItable.setAttribute("border" , "0");
-			llUItable.style.width="100%";
-			llUItable.style.tableLayout ="fixed";
-			llUItable.style.whiteSpace ="nowrap";
-			
-			
-			llUItable.appendChild(this.#getColgroup());
-			
-			llUIdiv.appendChild(llUItable);
-			
-			llUIlabel.innerHTML = this.#layerListmessageHead + visibleLayers + this.#layerListmessageFoot;
-		}
-		window.setTimeout(function(llUItop){this.#initLayerListStep2(llUItop)}.bind(this),30, llUItop);
-		
-		this.#initLayerSpecificUI();
-	}
-
-	#initLayerListStep2(llUItop){ // レイヤリストのレイアウト待ち後サイズを決める　もうちょっとスマートな方法ないのかな・・
-		if ( llUItop ){
-			this.#layerListFoldedHeight = llUItop.offsetHeight;
-			
-			if ( this.#layerList.offsetHeight < 60 ){
-				this.#layerListMaxHeightStyle = "90%";
-			}
-			
-			this.#layerListMaxHeight = this.#layerList.offsetHeight;
-			
-		//	console.log("LL dim:",layerListMaxHeightStyle,layerListFoldedHeight);
-			
-			this.#layerList.style.height = this.#layerListFoldedHeight + "px";
-		}
-		addEventListener("zoomPanMap",function(event){this.#unloadedLayersUIupdate(event)}.bind(this),false); // 2020/2/13
-		addEventListener("zoomPanMap",function(event){this.#zpm_checkLoadingFlag(event)}.bind(this),false); // 2021/6/21
-		addEventListener("screenRefreshed",function(event){this.#unloadedLayersUIupdate(event)}.bind(this),false); // ^
-		this.#checkLayerListAndRegistLayerUI(); // 2017.9.8 この関数の先にあるcheckControllerで#loadTiming=layerLoad|uiAppear(default) を起動時処理する
-	}
-
-
-	#getColgroup(){
-		var llUIcolgroup = document.createElement("colgroup");
-		
-		var llUIcol1 = document.createElement("col");
-		llUIcol1.setAttribute("spanr" , "1");
-		llUIcol1.style.width ="25px";
-		var llUIcol2 = document.createElement("col");
-		llUIcol2.setAttribute("spanr" , "1");
-		var llUIcol3 = document.createElement("col");
-		llUIcol3.setAttribute("spanr" , "1");
-		llUIcol3.style.width ="25px";
-		var llUIcol4 = document.createElement("col");
-		llUIcol4.setAttribute("spanr" , "1");
-		llUIcol4.style.width ="25px";
-		var llUIcol5 = document.createElement("col");
-		llUIcol5.setAttribute("spanr" , "1");
-		llUIcol5.style.width ="30px";
-		
-		llUIcolgroup.appendChild(llUIcol1);
-		llUIcolgroup.appendChild(llUIcol2);
-		llUIcolgroup.appendChild(llUIcol3);
-		llUIcolgroup.appendChild(llUIcol4);
-		llUIcolgroup.appendChild(llUIcol5);
-		
-		return ( llUIcolgroup );
-	}
 
 	#lsUIbdy;
 	#lsUIbtn;
@@ -800,6 +296,8 @@ class SvgMapLayerUI {
 			this.#layerSpecificUI.appendChild(this.#lsUIbtn);
 			this.#lsUIbtn.addEventListener("click",function(event){this.#layerSpecificUIhide(event)}.bind(this),false);
 		}
+		
+		this.#startLayerLoadingMonitor();
 	}
 
 	#preDefinedTargetUi={};
@@ -812,27 +310,6 @@ class SvgMapLayerUI {
 		// autoSizing: 自動リサイズを発動する
 		this.#preDefinedTargetUi = {element:targetElement, isInline:isInline , autoSizing:autoSizing};
 	}
-
-	#toggleGroupFold( e ){
-		var lid = this.#getLayerId(e);
-	//	console.log("call toggle Group Hidden",e.target.id,e.target.checked,lid);
-		if ( this.#layerGroupStatus[lid] ){
-			this.#layerGroupStatus[lid] = false;
-		} else {
-			this.#layerGroupStatus[lid] = true;
-		}
-		this.#updateLayerTable();
-	}
-
-	//window.addEventListener( 'load', function(){
-	//	console.log("call initLayerList");
-	//	initLayerList();
-	//}, false );
-
-	// TEST 2016.10.17
-	//window.addEventListener( 'zoomPanMap', function(){
-	//	console.log("CATCH ZOOM PAN MAP EVENT ON MAIN WINDOW");
-	//},false);
 
 
 	// layerIdに対する同レイヤ固有UIのiframe要素のID
@@ -873,23 +350,25 @@ class SvgMapLayerUI {
 	}
 
 
-	#showLayerSpecificUI(e){
+	#showLayerSpecificUI(layerId,controllerURL,hiddenOnLaunch,callBackFunction){ // 2024/2/5全部evebtに入れている汚い実装なので、整理した
 		var lsuiDoc = this.#layerSpecificUI.ownerDocument;
 	//	console.log("showLayerSpecificUI: catch event ",e,"    e.target.hiddenOnLaunch:",e.target.hiddenOnLaunch);
-		var layerId = this.#getLayerId(e);
+	//	var layerId = this.#getLayerId(e);
 	//	var lprops = svgMap.getRootLayersProps();
 	//	var controllerURL = lprops[layerId].svgImageProps.controller;
 	//	console.log(lprops[layerId],controllerURL,e.target.dataset.url);
-		var controllerURL = e.target.dataset.url;
-		
+	//	var controllerURL = e.target.dataset.url;
+	
+		/**
 		var loadButHide = false;
 		if ( e.target.loadButHide ){
 			loadButHide = true;
 		}
-		
+		**/
 	//	console.log(controllerURL);
 		
 		var reqSize = {height:-1,width:-1};
+		// console.log("showLayerSpecificUI:",controllerURL);
 		var lhash = this.#getHash(controllerURL);
 	//	console.log("lhash:",lhash);
 		if ( lhash ){
@@ -902,7 +381,7 @@ class SvgMapLayerUI {
 			
 		}
 		
-		if ( !e.target.hiddenOnLaunch){
+		if ( !hiddenOnLaunch){
 			if ( !this.#preDefinedTargetUi.element || this.#preDefinedTargetUi.isInline){
 				this.#layerSpecificUI.style.display = "inline"; // 全体を表示状態にする
 			} else {
@@ -915,8 +394,8 @@ class SvgMapLayerUI {
 		var visibleIframeId = this.#getVisibleLayerSpecificUIid();
 	//	console.log("visibleIframeId:",visibleIframeId);
 		
-		if ( !e.target.hiddenOnLaunch && visibleIframeId && targetIframeId != visibleIframeId){ // hiddenOnLaunchでない場合で、ターゲットとは別の表示中のLayerUIがあればそれを隠す
-			this.#dispatchCutomIframeEvent( SvgMapLayerUI.#hideFrame ,visibleIframeId);
+		if ( !hiddenOnLaunch && visibleIframeId && targetIframeId != visibleIframeId){ // hiddenOnLaunchでない場合で、ターゲットとは別の表示中のLayerUIがあればそれを隠す
+			this.#dispatchCutomIframeEvent( LayerSpecificWebAppHandler.#hideFrame ,visibleIframeId);
 			lsuiDoc.getElementById( visibleIframeId ).style.display="none";
 		}
 		
@@ -930,7 +409,7 @@ class SvgMapLayerUI {
 				trgIframe.style.display="block";
 				this.#testIframeSize( trgIframe, reqSize);
 			}
-			this.#dispatchCutomIframeEvent( SvgMapLayerUI.#appearFrame ,targetIframeId);
+			this.#dispatchCutomIframeEvent( LayerSpecificWebAppHandler.#appearFrame ,targetIframeId);
 		} else {
 	//		console.log("create new iframe");
 	//		if ( controllerURL.indexOf(".png")>0 || controllerURL.indexOf(".jpg")>0 || controllerURL.indexOf(".jpeg")>0 || controllerURL.indexOf(".gif")>0){ // 拡張子がビットイメージの場合はimg要素を設置する}
@@ -940,15 +419,15 @@ class SvgMapLayerUI {
 				img.id = targetIframeId;
 				//画像サイズを指定した場合div(layerSpecificUI)のサイズを変更して画像１枚を表示させる
 				var resLayerSpecificUI = lsuiDoc.getElementById("layerSpecificUI");
-				resLayerSpecificUI.addEventListener("wheel" , function(event){this.#MouseWheelListenerFunc(event)}.bind(this), false);
-				resLayerSpecificUI.addEventListener("mousewheel" , function(event){this.#MouseWheelListenerFunc(event)}.bind(this), false);
-				resLayerSpecificUI.addEventListener("DOMMouseScroll" , function(event){this.#MouseWheelListenerFunc(event)}.bind(this), false);
+				resLayerSpecificUI.addEventListener("wheel" , function(event){UtilFuncs.MouseWheelListenerFunc(event)}.bind(this), false);
+				resLayerSpecificUI.addEventListener("mousewheel" , function(event){UtilFuncs.MouseWheelListenerFunc(event)}.bind(this), false);
+				resLayerSpecificUI.addEventListener("DOMMouseScroll" , function(event){UtilFuncs.MouseWheelListenerFunc(event)}.bind(this), false);
 				this.#lsUIbdy.appendChild(img);
 	//				document.getElementById("layerSpecificUIbody").appendChild(img);
 				setTimeout(function(img, parentDiv, size){this.#imgResize(img, parentDiv, size)}.bind(this), 100, img, resLayerSpecificUI, reqSize); 
 				setTimeout(function(targetElem , isRetry ){this.#setLsUIbtnOffset(targetElem , isRetry )}.bind(this),100,img);
 			} else {
-				this.#initIframe(layerId, controllerURL, reqSize, e.target.hiddenOnLaunch, e.target.callBackFunction);
+				this.#initIframe(layerId, controllerURL, reqSize, hiddenOnLaunch, callBackFunction);
 			}
 		}
 	}
@@ -978,10 +457,6 @@ class SvgMapLayerUI {
 		img.style.display="block";
 	}
 
-	static #openFrame = "openFrame";
-	static #closeFrame = "closeFrame";
-	static #appearFrame = "appearFrame";
-	static #hideFrame = "hideFrame";
 
 	#dispatchCutomIframeEvent(evtName, targetFrameId){
 		// added 2016.12.21 オーサリングツール等でUIが閉じられたときにイベントを流す
@@ -1129,7 +604,7 @@ class SvgMapLayerUI {
 		// https://stackoverflow.com/questions/24603580/how-can-i-access-the-dom-elements-within-an-iframe/24603642#comment38157462_24603642
 		var iframeId = iframe.id;
 		console.log("initIframe load eventListen : controllerURL:", controllerURL,"  svgMapAuthoringTool:",this.#svgMapAuthoringTool);
-		this.#dispatchCutomIframeEvent(SvgMapLayerUI.#openFrame,iframeId);
+		this.#dispatchCutomIframeEvent(LayerSpecificWebAppHandler.#openFrame,iframeId);
 		if ( this.#layerSpecificUiMaxHeight == 0 ){
 			this.#layerSpecificUiMaxHeight = this.#layerSpecificUI.offsetHeight
 		}
@@ -1153,8 +628,8 @@ class SvgMapLayerUI {
 			iframe.contentWindow.svgMapPWA = svgMapPWA;
 		}
 		
-		iframe.contentWindow.svgMapLayerUI=this; 
-		iframe.contentWindow.putGlobalMessage = this.#putGlobalMessageForLayer(lid); // added 2019/12/05 今後、この種の"そのレイヤーに対するAPI"が増えると思うが、もう少しきれいにまとめたい。(TBD)
+		iframe.contentWindow.svgMapLayerUI=this.#svgMapLayerUI; 
+		iframe.contentWindow.putGlobalMessage = this.#globalMessageDisplay.putGlobalMessageForLayer(lid); // added 2019/12/05 今後、この種の"そのレイヤーに対するAPI"が増えると思うが、もう少しきれいにまとめたい。(TBD)
 		var sip = (this.#svgMap.getSvgImagesProps())[lid];
 		iframe.contentWindow.svgImageProps = sip;
 		sip.controllerWindow = iframe.contentWindow; // 2020/10/13 svgImagesPropにcontrollerWindowを追加
@@ -1314,7 +789,7 @@ class SvgMapLayerUI {
 				docId = layerID;
 				svgImageProps.script.location=svgDocStatus.location;
 				
-				// console.log("preRenderFunction　this?:",this, geoViewBox);
+				// console.log("svgScript preRenderFunction　this?:",this, geoViewBox);
 				if ( svgDocStatus && svgDocStatus.viewChanged=="scroll"){
 					if ( typeof(onscroll)=="function" && window.onscroll!=onscroll ){ 
 						onscroll.call(svgImageProps.script);
@@ -1371,7 +846,9 @@ class SvgMapLayerUI {
 			}
 		`);
 		controllerWindow.svgImageProps.script = (controllerWindow.svgScript());
-		controllerWindow.preRenderFunction = controllerWindow.svgImageProps.script.preRenderFunction;
+		if ( !controllerWindow.preRenderFunction  ){ // 2024/4/22  controllerWindow.preRenderFunctionが上書きされてしまうのを防止
+			controllerWindow.preRenderFunction = controllerWindow.svgImageProps.script.preRenderFunction;
+		}
 		controllerWindow.svgImageProps.script.onloadFunction(this.#getLayerStatus(controllerWindow.layerID));
 	}
 		
@@ -1477,7 +954,7 @@ class SvgMapLayerUI {
 		}
 		if ( totalLoading == 0 && this.#aboutToFireXHRCevent==false){
 			this.#aboutToFireXHRCevent = true;
-			setTimeout(function(){this.#fireXHRCevent()}.bind(this), SvgMapLayerUI.#totalLoadCompletedGuardTime);
+			setTimeout(function(){this.#fireXHRCevent()}.bind(this), LayerSpecificWebAppHandler.#totalLoadCompletedGuardTime);
 		} else {
 			// console.log("reject toFireXHRCevent");
 		}
@@ -1648,7 +1125,7 @@ class SvgMapLayerUI {
 		var lsuiDoc = this.#layerSpecificUI.ownerDocument;
 		var visibleIframeId = this.#getVisibleLayerSpecificUIid();
 		
-		this.#dispatchCutomIframeEvent(SvgMapLayerUI.#hideFrame,visibleIframeId);
+		this.#dispatchCutomIframeEvent(LayerSpecificWebAppHandler.#hideFrame,visibleIframeId);
 		lsuiDoc.getElementById(visibleIframeId).style.display = "none";
 		
 		if ( !this.#preDefinedTargetUi.element || this.#preDefinedTargetUi.isInline ){
@@ -1658,6 +1135,7 @@ class SvgMapLayerUI {
 	}
 
 	#syncLayerSpecificUiExistence( layerId, visivility ){
+		// レイヤーが非表示になったら、WebAppを終了させる
 		if ( !this.#layerSpecificUI){return}
 		var lsuiDoc = this.#layerSpecificUI.ownerDocument;
 		var visibleIframeId = this.#getVisibleLayerSpecificUIid();
@@ -1672,8 +1150,8 @@ class SvgMapLayerUI {
 			document.removeEventListener("screenRefreshed", this.#transferCustomEvent2iframe[layerId], false);
 			document.removeEventListener("zoomPanMapCompleted", this.#transferCustomEvent2iframe[layerId], false);
 			delete this.#transferCustomEvent2iframe[layerId];
-			this.#dispatchCutomIframeEvent(SvgMapLayerUI.#closeFrame,targetIframeId );
-			this.#clearGlobalMessage(layerId);
+			this.#dispatchCutomIframeEvent(LayerSpecificWebAppHandler.#closeFrame,targetIframeId );
+			this.#globalMessageDisplay.clearGlobalMessage(layerId);
 			setTimeout( function(){
 				console.log( "remove iframe:",targetIframe.id);
 				targetIframe.parentNode.removeChild(targetIframe);
@@ -1681,78 +1159,49 @@ class SvgMapLayerUI {
 		}
 	}
 
-	static #GlobalMessageprefix = "gMsg_";
-	static #maxGlobalMessages = 5;
-	static #globalMessageID="globalMessage";
-	// ローバルエリアにID="globalMesasge" span要素がある場合、そこに(調停付きで)レイヤー固有UIframeからメッセージを出せるフレームワーク 2019/12/02
-	#putGlobalMessage(message , layerId){
-		//console.log("caller:",putGlobalMessage.caller); // layerIdはいらないんだよね
-		console.log("this:",this); // layerIdはいらないんだよね
-		var gs = document.getElementById(SvgMapLayerUI.#globalMessageID)
-		if ( !gs ){
-			console.log('NO id="'+SvgMapLayerUI.#globalMessageID+'" element skip');
-			return(false);
-		}
-		var tbl = gs.getElementsByTagName("table")[0];
-		if ( !tbl ){
-			console.log("init globalMesasge area");
-			tbl = document.createElement("table");
-			tbl.style.border="0px";
-			tbl.style.padding="0px";
-			tbl.style.margin="0px";
-			gs.appendChild(tbl);
-		}
-		
-		var gmc = gs.children;
-		var msgCell = document.getElementById(SvgMapLayerUI.#GlobalMessageprefix+layerId);
-		if ( ! msgCell ){
-			if ( gmc.length >= SvgMapLayerUI.#maxGlobalMessages ){
-				console.log("can not append global message due to limit");
-					return(false);
-			} else {
-				msgCell = document.createElement("td");
-				var tr = document.createElement("tr");
-				tr.id=SvgMapLayerUI.#GlobalMessageprefix+layerId;
-				tr.appendChild(msgCell);
-				gs.appendChild(tr);
+
+	#hasUnloadedLayers = false;
+	#checkLayerListAndRegistLayerUI(){
+		// console.log("checkLayerListAndRegistLayerUI");
+		// レイヤーの読み込み完了まで　レイヤーリストのチェックを行い、レイヤ固有UIを設置する
+	//	if ( !count ){count=1}
+		var layerProps=this.#svgMap.getRootLayersProps();
+		this.#hasUnloadedLayers = false;
+		for ( var i = 0 ; i < layerProps.length ; i++ ){
+			if ( layerProps[i].visible ){
+	//			console.log("chekc for layerui existence :  svgImageProps:",layerProps[i].svgImageProps , "   hasDocument:",layerProps[i].hasDocument);
+				if ( layerProps[i].svgImageProps && layerProps[i].hasDocument ){ // svgImagePropsが設定されていたとしてもまだ読み込み完了していると保証できないと思うので、hasDocumentを併せて評価する 2017.9.8
+	//				var ctbtn = document.getElementById("bt_"+layerProps[i].id);
+	//				setTimeout(checkController,50,layerProps[i].svgImageProps, ctbtn); // 時々失敗するので50msec待って実行してみる・・ 2016.11.17　このTimeOutはもう不要と思う 2017.9.8
+					this.#checkController(layerProps[i].svgImageProps, layerProps[i].id); // 上記より直接呼出しに戻してみる 2017.9.8
+				} else {
+					this.#hasUnloadedLayers = true;
+				}
 			}
 		}
-		console.log(msgCell,message);
-		msgCell.innerText = message;
-		return ( true );
+	//	console.log( "hasUnloadedLayers:",hasUnloadedLayers,count);
+		// 2020/2/13このループは、unloadedLayersUIupdateを動かすことで不要にできたはず
+		// if ( hasUnloadedLayers && count < 5){ // 念のためリミッターをかけておく
+		//	setTimeout(checkLayerListAndRegistLayerUI,200,count+1);
+		// }
 	}
 
-	#putGlobalMessageForLayer(layerID){
-		return function(message){
-			this.#putGlobalMessage(message,layerID);
-		}.bind(this)
+	#unloadedLayersUIupdate(){ // 2020/2/13 ロードの遅延が大きいレイヤーのレイヤUIボタンが出現しないケースの対策
+		if ( this.#hasUnloadedLayers ){
+			this.#checkLayerListAndRegistLayerUI();
+		}
+	}
+	
+	#startLayerLoadingMonitor(){
+		addEventListener("zoomPanMap",function(event){this.#unloadedLayersUIupdate(event)}.bind(this),false); // 2020/2/13
+		addEventListener("zoomPanMap",function(event){this.#zpm_checkLoadingFlag(event)}.bind(this),false); // 2021/6/21
+		addEventListener("screenRefreshed",function(event){this.#unloadedLayersUIupdate(event)}.bind(this),false); // ^
+		this.#checkLayerListAndRegistLayerUI(); // 2017.9.8 この関数の先にあるcheckControllerで#loadTiming=layerLoad|uiAppear(default) を起動時処理する
 		
 	}
 
-	//layerUIが消滅したもののglobalMessageを消す
-	#clearGlobalMessage(layerId){
-		console.log("clearGlobalMessage:",layerId);
-	//	var svgLayers = svgMap.getSvgImagesProps()["root"]; // この機に、全チェックしたほうが良いのかなぁ・・
-		var gs = document.getElementById(SvgMapLayerUI.#globalMessageID);
-		console.log("globalMessage:",gs);
-		if ( !gs ){
-			console.log('NO id="globalMesasge" element skip');
-			return;
-		}
-		var gmc = document.getElementById(SvgMapLayerUI.#GlobalMessageprefix + layerId);
-		console.log("globalMessageCell:",gmc);
-		if ( gmc ){
-			console.log("Remove GlobalMessage for layer:",layerId);
-			gmc.parentNode.removeChild(gmc);
-		}
-	}
-
-
-	// 公開するAPI
-	launchController(...params){ return (this.#launchController(...params))};
-	layerSpecificUIhide(...params){ return (this.#layerSpecificUIhide(...params))};
-	setLayerListmessage(...params){ return (this.#setLayerListmessage(...params))};
-	assignLayerSpecificUiElement(...params){ return (this.#assignLayerSpecificUiElement(...params))};
+	
+	/**
 	customEvents(){
 		return{
 			"zoomPanMap":true,
@@ -1764,11 +1213,23 @@ class SvgMapLayerUI {
 			hideFrame:true
 		}
 	};
-	getLayersCustomizer=function(){
-		var ans = this.#layersCustomizer;
-//		console.log("getLayersCustomizer:",ans);
-		return ans;
-	}.bind(this);
+	**/
+	
+	// 公開するAPI
+	assignLayerSpecificUiElement(...params){ return (this.#assignLayerSpecificUiElement(...params))}; // これはSVGMapElementで使われているがLayerUIが露出しなくなった&AppHandlerがそもそも存在しなかったため、APIにアクセスできず、互換性がなくなっている：ISSUE
+	initLayerSpecificUI(...params){ return (this.#initLayerSpecificUI(...params))};
+	showLayerSpecificUI(...params){ return (this.#showLayerSpecificUI(...params))}; // ISSUE : layerIDだけで起動できるスキームも欲しい（controllerURLが現状必須）
+	updateLayerSpecificWebAppHandler(){
+		this.#syncLayerSpecificUi(); // 非表示のレイヤーについて、レイヤーwebAppを終了させる
+		this.#checkLayerListAndRegistLayerUI(); // レイヤーの読み込み完了まで　レイヤーリストのチェックを行い、レイヤ固有UIを設置する
+	}
+	
+//	checkLayerListAndRegistLayerUI(...params){ return (this.#checkLayerListAndRegistLayerUI(...params))};
+//	startLayerLoadingMonitor(...params){ return (this.#startLayerLoadingMonitor(...params))};
+//	syncLayerSpecificUi(...params){ return (this.#syncLayerSpecificUi(...params))};
+//	launchController(...params){ return (this.#launchController(...params))};
+//	layerSpecificUIhide(...params){ return (this.#layerSpecificUIhide(...params))};
+
 }
 
-export { SvgMapLayerUI }
+export { LayerSpecificWebAppHandler }

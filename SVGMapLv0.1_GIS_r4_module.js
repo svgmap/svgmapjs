@@ -49,6 +49,7 @@
 // 2022/10/21 ラスターGIS: filterをサポート
 // 2023/05/11 getBufferedPolygon
 // 2023/11/06 buildIntersection / VectorGIS の高度化 (options.uniteSource1/2,areaCompare)
+// 2023/11/20 ベクタ図形をラスタ化した後にラスタGISをかけるパターンに対応 (imageIID=="layerCanvasImage" 苦しいパッチでサイドエフェクトあり得るかもなので、あとで直すかも?)
 //
 // ISSUES:
 //
@@ -322,7 +323,7 @@ class SvgMapGIS {
 	
 	// 非同期での包含判定のための前処理　包含判定に必要な全組み合わせを構築する (指定したレイヤのPOI全部 × 指定したレイヤのポリゴン全部 の組み合わせをArrayに投入)
 	// 重くなることがあるので、非同期処理版を作る・・・
-	#getIncludedPointsS2a( geom , superParam ){
+	#getIncludedPointsS2a = function( geom , superParam ){
 		console.log("getIncludedPointsS2a called : ",geom);
 //		var cdi = getChildDocsId(superParam.pointsDocTreeID, superParam.polygonsDocTreeID)
 		var pointsDocTreeIDs = this.#getChildDocsId(superParam.pointsDocTreeID);
@@ -354,7 +355,7 @@ class SvgMapGIS {
 		
 		// console.log("call getIncludedPointsS3 :" , compArray);
 		this.#getIncludedPointsS3( geom, superParam , compArray); // 組み合わせが構築出来たら実際の包含判定に進む(非同期)
-	}
+	}.bind(this);
 	
 	// 非同期処理での包含判定演算の実体
 	// すべての組み合わせに対して実施
@@ -806,7 +807,7 @@ class SvgMapGIS {
 		return gjs;
 	}
 	
-	#buildIntersectionS2a( geom, params ){
+	#buildIntersectionS2a = function( geom, params ){
 		// 現在この処理は使っていない(2023/10確認)
 		// 2020/1/9 jstsの性能に頼って、全geomをcollectionにしたうえで放り込んで一気に処理してみる
 		// やはり大エリアではリソースを使い切ってしまうし、進捗表示もできないので厳しいかも・・
@@ -881,7 +882,7 @@ class SvgMapGIS {
 			this.#drawGeoJson(isg, params.targetId, params.strokeColor, params.strokeWidth, params.fillColor,"p0","poi",null,params.resultGroup);
 			this.#svgMap.refreshScreen();
 		}
-	}
+	}.bind(this);
 	
 	#buildGeoJsonFeatureCollectionFromGeometryArray( geometryArray ){ // not used
 		var fc = {};
@@ -1715,8 +1716,13 @@ class SvgMapGIS {
 //			console.log("Hit imageCache");
 			this.#returnImageRanderedCanvas(this.#imageCache[imageURL_int],callbackFunc, callbackFuncParams, imageStyle)
 		} else {
-			var documentImage = document.getElementById(imageIID);
-			var imgSrcURL = documentImage.getAttribute("src");
+			var documentImage, imgSrcURL;
+			if ( imageIID=="layerCanvasImage"){ // 苦しいパッチ・・ 2023/11/20 (ベクタ図形をラスタ化した後にラスタGISをかけるパターンに対応)
+				imgSrcURL="http";
+			} else {
+				documentImage = document.getElementById(imageIID);
+				imgSrcURL = documentImage.getAttribute("src");
+			}
 			if ( imgSrcURL.indexOf("http")!=0 || this.#getImageURL(imgSrcURL)==imgSrcURL){
 				//console.log("use image element's image :", documentImage); 
 				this.#returnImageRanderedCanvas(documentImage,callbackFunc, callbackFuncParams, imageStyle);
@@ -3262,10 +3268,10 @@ class SvgMapGIS {
 		return ( ans );
 	}
 	
-	#testCapture( geom ){
+	#testCapture=function( geom ){
 		console.log("called testCapture");
 		console.log("captured Geometry is:" , geom);
-	}
+	}.bind(this);
 	
 	#testCapGISgeom(){
 //		console.log("testCapGISgeom:",testCapture);

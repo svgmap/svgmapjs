@@ -26,7 +26,7 @@ class PathHitTester{
 	hittedElements;
 	hittedElementsBbox;
 	hittedElementsUsedParent;
-	pointPrevent;
+	//pointPrevent; 廃止
 	x;
 	y;
 	
