@@ -273,7 +273,7 @@ class MatrixUtil {
 			return ( {transform:mulFunc} ); // inverseがないのは不十分だと思われる 2020/8/18
 		}
 		return {
-			a: m2.a * m1.a + m2.b * m1.b ,
+			a: m2.a * m1.a + m2.c * m1.b ,
 			b: m2.b * m1.a + m2.d * m1.b ,
 			c: m2.a * m1.c + m2.c * m1.d ,
 			d: m2.b * m1.c + m2.d * m1.d ,
