@@ -3,25 +3,12 @@ import { UtilFuncs } from './UtilFuncs.js';
 class SvgStyle{
 	styleCatalog = new Array("stroke" , "stroke-width" , "stroke-linejoin" , "stroke-linecap" , "fill" , "fill-rule" , "fill-opacity" , "opacity" , "vector-effect" , "display" , "font-size" , "stroke-dasharray" , "marker-end" , "visibility" ,"image-rendering"); 
 	
-	/**
-	 * 
-	 * @param {function} getNonScalingOffset 
-	 */
 	constructor(getNonScalingOffset){
 		this.getNonScalingOffset = getNonScalingOffset;
 	}
 	
 	getNonScalingOffset;
 	
-	/**
-	 * 親のスタイルを継承したスタイルを生成する関数
-	 * 
-	 * @param {Node} svgNode 
-	 * @param {Array} defaultStyle 
-	 * @param {boolean} hasHyperLink 
-	 * @param {function} styleCacheMap 
-	 * @returns {Array}
-	 */
 	getStyle( svgNode , defaultStyle , hasHyperLink , styleCacheMap ){
 		// 親のスタイルを継承して該当要素のスタイルを生成する
 		// hasUpdateはその要素自身にスタイルattrが付いていたときに設定される
@@ -79,12 +66,6 @@ class SvgStyle{
 		return computedStyle;
 	}
 	
-	/**
-	 * 
-	 * @param {*} svgNode 
-	 * @param {*} hasHyperLink 
-	 * @returns 
-	 */
 	getNodeStyle(svgNode, hasHyperLink){
 		// getStyleの親スタイル継承部を分離した処理
 		var hasUpdate = false;
@@ -128,11 +109,7 @@ class SvgStyle{
 		}
 		return style;
 	}
-	/**
-	 * 
-	 * @param {Node} svgElement 
-	 * @returns 
-	 */
+	
 	getStyleAttribute( svgElement ){
 		var styles=null;
 		if ( svgElement.getAttribute("style")){
@@ -157,13 +134,6 @@ class SvgStyle{
 		return ( styles );
 	}
 
-	/**
-	 * 
-	 * @param {*} styleName 
-	 * @param {*} svgElement 
-	 * @param {*} styleAtt 
-	 * @returns 
-	 */
 	getStyleOf( styleName , svgElement , styleAtt ){
 		var style;
 		if (  svgElement.getAttribute(styleName) ){ 
@@ -174,12 +144,6 @@ class SvgStyle{
 		return ( style );
 	}
 
-	/**
-	 * 
-	 * @param {Array} style   - canvas向けスタイル
-	 * @param {Array} context - ???
-	 * @returns 
-	 */
 	static setCanvasStyle(style , context){
 		// var styleCatalog = new Array("stroke" , "stroke-width" , "stroke-linejoin" , "stroke-linecap" , "fill" , "fill-rule" , "fill-opacity" , "opacity" , "vector-effect");
 		// http://www.html5.jp/canvas/ref/method/beginPath.html

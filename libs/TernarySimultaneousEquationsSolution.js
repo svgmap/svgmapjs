@@ -7,12 +7,6 @@ class TernarySimultaneousEquationsSolution{
 		// *o:変換後の座標の3組
 		// output:
 		// matrix{.a,.b,.c,.d,.e,.f}
-
-		// | a c e |   | x1i |   | x1o |
-		// | b d f | * | y1i | = | y1o |
-		// | 0 0 1 |   |  1  |   |  1  |
-		// こちらを分解すると a*x1i + c*y1i + 1e = x1o, b*x1i + d*y1i + 1e = y1o
-		// 合計６本生成され、a,c,eとb,d,fそれぞれ３現連立方程式として計算できる
 		var xs = TernarySimultaneousEquationsSolution.getTernarySimultaneousEquationsSolution(x1i, y1i, 1, x2i, y2i, 1, x3i, y3i, 1, x1o, x2o, x3o);
 		var ys = TernarySimultaneousEquationsSolution.getTernarySimultaneousEquationsSolution(x1i, y1i, 1, x2i, y2i, 1, x3i, y3i, 1, y1o, y2o, y3o);
 		if ( xs && ys ){
@@ -38,7 +32,7 @@ class TernarySimultaneousEquationsSolution{
 		// a11, a12, a13, a21, a22, a23, a31, a32, a33 : 方程式の係数
 		var det3 = a11*a22*a33 + a12*a23*a31 + a13*a21*a32 - a11*a23*a32 - a12*a21*a33 - a13*a22*a31;
 		if ( det3==0 ){
-			return null; // TODO: nullをリターンするのではなく、例外を発生させるのがよいと思われますがいかがですか？
+			return null;
 		}
 		var x1 = (b1*a22*a33 + a12*a23*b3 + a13*b2*a32 - b1*a23*a32 - a12*b2*a33 - a13*a22*b3)/det3;
 		var x2 = (a11*b2*a33 + b1*a23*a31 + a13*a21*b3 - a11*a23*b3 - b1*a21*a33 - a13*b2*a31)/det3;

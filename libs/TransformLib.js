@@ -82,13 +82,7 @@ class MatrixUtil {
 			return ( null );
 		}
 	}
-	/**
-	 * 行列の積を求める関数 = m2 * m1
-	 * 
-	 * @param {GenericMatrix} m1
-	 * @param {GenericMatrix} m2
-	 * 
-	 */
+	
 	matMul( m1 , m2 ){ // getConversionMatrixViaGCSとほとんど同じでは？
 		// m1: 最初の変換マトリクス
 		// m2: 二番目の変換マトリクス
@@ -113,7 +107,7 @@ class MatrixUtil {
 			return ( {transform:mulFunc} ); // inverseがないのは不十分だと思われる 2020/8/18
 		}
 		return {
-			a: m2.a * m1.a + m2.c * m1.b ,
+			a: m2.a * m1.a + m2.b * m1.b ,
 			b: m2.b * m1.a + m2.d * m1.b ,
 			c: m2.a * m1.c + m2.c * m1.d ,
 			d: m2.b * m1.c + m2.d * m1.d ,
@@ -121,13 +115,7 @@ class MatrixUtil {
 			f: m2.b * m1.e + m2.d * m1.f + m2.f
 		}
 	}
-	/**
-	 * @param {Number} x - 何か不明
-	 * @param {Number} y - 何か不明
-	 * @param {GenericMatrix} mat -???
-	 * @param {any} calSize : any
-	 * nonScaling : any
-	 */
+	
 	transform( x , y , mat , calcSize , nonScaling){
 		if ( calcSize == true ){
 			if ( mat.transform ){
@@ -183,15 +171,6 @@ class MatrixUtil {
 		}
 	}
 	
-	/***
-	 * SVG座標から緯度経度への変換
-	 * 
-	 * @param {Number} svgX 
-	 * @param {Number} svgY 
-	 * @param {GenericMatrix} crs 
-	 * @param {GenericMatrix} inv 
-	 */
-
 	SVG2Geo( svgX , svgY , crs , inv ){
 		var iCrs;
 		if ( inv ){
@@ -210,15 +189,6 @@ class MatrixUtil {
 		}
 	}
 	
-
-	/***
-	 * 緯度経度からSVG座標への変換
-	 * 
-	 * @param {Number} lat - 緯度
-	 * @param {Number} lng - 軽度
-	 * @param {GenericMatrix} crs - 座標参照系(Coordinate Reference System:CRS)
-	 * 
-	 */
 	Geo2SVG( lat , lng , crs ){
 		return ( this.transform(lng, lat, crs ) );
 	}
@@ -279,6 +249,39 @@ class MatrixUtil {
 		
 	}
 	
+	matMul( m1 , m2 ){ // getConversionMatrixViaGCSとほとんど同じでは？
+		// m1: 最初の変換マトリクス
+		// m2: 二番目の変換マトリクス
+		// x',y' = m2(m1(x,y))
+		
+		// 2020/3/17 マトリクスでなくtransform(関数)がある場合、それらの積の関数を返却する
+		if ( m1.transform || m2.transform){
+			var mulFunc = function(inp){
+				var int1,ans;
+				if ( m1.transform ){
+					int1 = m1.transform(inp);
+				} else {
+					int1 = this.transform(inp.x, inp.y, m1);
+				}
+				if ( m2.transform ){
+					ans = m2.transform(int1);
+				} else {
+					ans = this.transform(int1.x, int1.y, m2);
+				}
+				return ( ans );
+			}.bind(this)
+			return ( {transform:mulFunc} ); // inverseがないのは不十分だと思われる 2020/8/18
+		}
+		return {
+			a: m2.a * m1.a + m2.b * m1.b ,
+			b: m2.b * m1.a + m2.d * m1.b ,
+			c: m2.a * m1.c + m2.c * m1.d ,
+			d: m2.b * m1.c + m2.d * m1.d ,
+			e: m2.a * m1.e + m2.c * m1.f + m2.e ,
+			f: m2.b * m1.e + m2.d * m1.f + m2.f
+		}
+	}
+	
 	transformRect( rect ,  c2r ){ // 2020/10/22 getTransformedBox()を使うようにした
 		var x , y , width , height;
 		var mm;
@@ -325,14 +328,6 @@ class MatrixUtil {
 
 }
 
-/**
- * CSSで使用されるMatrix()：2次元同時変換行列と同等の汎用行列クラス
- * https://developer.mozilla.org/ja/docs/Web/CSS/transform-function/matrix
- * 
- * GenericMatrix = | a, c, e|
- *                 | b, d, f|
- *                 | 0, 0, 1|
- */
 class GenericMatrix{
 	setNonLinearCRS(transform, inverse, scale){
 		this.transform = transform;
@@ -371,8 +366,8 @@ class Mercator{
 		var pixelX = (( lng + 180.0 ) / 360.0 ) * size;
 		var pixelY = (0.5 - Math.log((1 + sinLat) / (1.0 - sinLat)) / (4 * Math.PI)) * size;
 		return {
-			x : Math.round(pixelX*1e6)/1e6 , 
-			y : Math.round(pixelY*1e6)/1e6
+			x : pixelX ,
+			y : pixelY
 		}
 	}
 
@@ -383,8 +378,8 @@ class Mercator{
 		var lat = 90 - 360 * Math.atan(Math.exp(-y * 2 * Math.PI)) / Math.PI;
 		var lng = 360 * x;
 		return{
-			lat : Math.trunc(lat*1e6)/1e6 ,
-			lng : Math.trunc(lng*1e6)/1e6
+			lat : lat ,
+			lng : lng
 		}
 	}
 	

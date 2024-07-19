@@ -2,9 +2,6 @@
 // Programmed by Satoru Takagi
 // 
 // 2022/08/18～
-//
-// 2023/11/21 GISgeometriesCaptureOptions.captureAlsoAsBitImage : ベクタデータのラスタイメージも追加で取得するオプション(実装中)
-
 import { MatrixUtil } from './TransformLib.js';
 import { SvgMapElementType } from './SvgMapElementType.js';
 
@@ -27,7 +24,7 @@ class GeometryCapture{
 		TreatRectAsPolygonFlag : false,
 		SkipVectorRendering: false,  // 2021.9.16 描画しなくてもベクタはgeomが取得できるので高速化を図れる canvasレンダリングだけでなく、POIのimg生成もやめるようにしたい
 		// dummy2DContext : this.dummy2DContextBuilder(), // 関数で直接公開するようにした
-		captureAlsoAsBitImage:false, // 2023/11/21 レイヤ単位でベクタをビットイメージとして(も)キャプチャする(SkipVectorRenderingが優先)
+		
 	}
 	
 	#GISgeometries;
@@ -129,11 +126,6 @@ class GeometryCapture{
 			}
 		}
 		this.GISgeometriesCaptureFlag = false;
-		
-		if ( this.GISgeometriesCaptureOptions.captureAlsoAsBitImage){ // 2023/11/21 ベクタデータのラスタイメージも追加で取得するオプション(実装中)
-			this.#addLayerImages(this.#GISgeometries);
-		}
-		
 		cbFunc( this.#GISgeometries , prop1 , prop2 , prop3 , prop4 , prop5 , prop6 , prop7 );
 	}
 	
@@ -174,101 +166,18 @@ class GeometryCapture{
 		return ret;
 	}
 	
-	#addLayerImages(GISgeometries){
-		// clickableで実行すると、ベクタ画像は、画面中心が勝手にハイライトするかも。これはまずい。(TBD)
-		var layerCanvases =  this.getLayerCanvases(GISgeometries);
-		var rootSip = this.#svgMapObj.getSvgImagesProps()["root"];
-		var gvb = svgMap.getGeoViewBox();
-		console.log("layerCanvases:",layerCanvases, " root SvgImagesProps:", rootSip);
-		for ( var layerId in layerCanvases){
-			var imgUri = layerCanvases[layerId].toDataURL('image/png');
-			console.log("imgUri:",layerId, " url:",imgUri);
-			var layerImageGeom=this.#getLayerImageGeom(imgUri,gvb,rootSip.CRS);
-			GISgeometries[layerId]= GISgeometries[layerId].concat(layerImageGeom);
-		}
-	}
-	
-	#getLayerImageGeom(imgUri,gvb,CRS){
-		var hasNonlinearTransformation=false;
-		if ( CRS.transform ){
-			// 緯度経度と画像との関係がノンリニアの場合には、非線形が無視できる程度に画像を分割する処理を導入するべき(TBD) 2023/11/21
-			hasNonlinearTransformation=true;
-			// splitImage();
-		}
-		var dummyElm = document.createElement("span");
-		dummyElm.setAttribute("iid","layerCanvasImage");
-		var covGeom = {
-			type:"Coverage",
-			coordinates:[{lat:gvb.y,lng:gvb.x},{lat:gvb.y+gvb.height,lng:gvb.x+gvb.width}],
-			href:imgUri,
-			layerCanvasImage:true,
-			src:dummyElm,
-		};
-		
-		var ans =[covGeom];
-		return ans;
-	}
-	
-	splitImage= async function(sourceImageURL){
-		// 非線形の画像については、n x nに分割して非線形の歪みを無視できるようにする
-		// n x n 分割については、画像の非線形変換でも同種の考えを取り入れて高速化したいが・・
-		var n = 4;
-		var img = await this.getImage(sourceImageURL);
-		var subWidth = Math.ceil(img.naturalWidth /  n);
-		var subHeight = Math.ceil(img.naturalHeight /  n);
-		
-		var canvas = document.createElement("canvas");
-		canvas.width=subWidth;
-		canvas.height=subHeight;
-		var ctx = canvas.getContext('2d');
-		var ret = [];
-		for (var ty = 0  ; ty <n ; ++ty){
-			var row = [];
-			for (var tx = 0  ; tx <n ; ++tx){
-				ctx.clearRect(0,0,subWidth,subHeight);
-				ctx.drawImage(img, tx * subWidth , ty * subHeight, subWidth, subHeight, 0, 0, subWidth, subHeight);
-				row.push(canvas.toDataURL());
-			}
-			ret.push(row);
-		}
-		return ret;
-	}
-	
-	getImage(srcUrl){
-		return new Promise(function(okCb){
-			var img = new Image();
-			img.src = srcUrl;
-			img.onload = function(){
-				okCb(img);
-			}
-		});
-	}
-	
-	getLayerCanvases(GISgeometries){
-		var ans = {};
-		for ( var docId in GISgeometries){
-			var canvas = document.getElementById(docId + "_canvas" );
-			if ( canvas ){
-				ans[docId]=canvas;
-			}
-		}
-		return ans;
-	}
-	
 }
 
 
 class SVGMapGISgeometry{
 	
+	usedParent;
 	type;
 	
 	svgXY;
 	
 	src;
-	
-	// 以下はある場合とない場合がある・・
-//	usedParent;
-//	transform;
+	transform;
 	
 	// 生成不要のケースがあるので、ファクトリメソッドを作る
 	// https://stackoverflow.com/questions/8618722/how-to-return-null-from-a-constructor-called-with-new-in-javascript

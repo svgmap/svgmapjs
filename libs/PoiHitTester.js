@@ -6,15 +6,8 @@ class PoiHitTester{
 		this.visiblePOIs=new Array();
 	}
 	
-	 // 現在画面上に表示されているPOI(imgアイコン)のリスト(idのハッシュ 内容はx,y,width,height)
-	visiblePOIs;
+	visiblePOIs; // 現在画面上に表示されているPOI(imgアイコン)のリスト(idのハッシュ 内容はx,y,width,height)
 	
-	/**
-	 * 
-	 * @param {*} x 
-	 * @param {*} y 
-	 * @returns 
-	 */
 	getPoiObjectsAtPoint( x, y ){
 		var hittedPOIs = new Array();
 		for ( var i in this.visiblePOIs ){

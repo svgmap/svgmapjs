@@ -7,27 +7,15 @@ class ShowPoiProperty{
 	#getLayerName;
 	#matUtil;
 	
-	/**
-	 * 
-	 * 
-	 * @param {svgMapObject} svgMapObject 
-	 * @param {String} getLayerName 
-	 * @param {MatrixUtil} matUtil 
-	 */
 	constructor(svgMapObject, getLayerName, matUtil){
 		this.#svgMapObject = svgMapObject;
 		this.#svgImagesProps = this.#svgMapObject.getSvgImagesProps();
 		this.#getLayerName = getLayerName;
 		this.#matUtil = matUtil;
 	}
-
-	/**
-	 * 指定した2Dベクタ要素のプロパティ表示画面をキックするためのプリプロセッサ
-	 * 
-	 * @param {*} targetElement 
-	 * @param {*} targetBbox 
-	 * @param {*} usedParent 
-	 */
+	
+	// 指定した2Dベクタ要素のプロパティ表示画面をキックするためのプリプロセッサ
+	// getObjectAtPoint()に元々あった機能を切り分け
 	vectorDataWrapperForShowPoiProperty(targetElement , targetBbox , usedParent ){
 		var vMeta = this.getVectorMetadata( targetElement,usedParent,targetBbox);
 		var meta = this.getMetadataObject( vMeta.metadata , vMeta.metaSchema , vMeta.title );
@@ -56,13 +44,6 @@ class ShowPoiProperty{
 		targetElement.removeAttribute("lng");
 	}
 	
-	/**
-	 * 
-	 * @param {*} element 
-	 * @param {*} parent 
-	 * @param {*} bbox 
-	 * @returns 
-	 */
 	getVectorMetadata( element , parent , bbox ){
 		console.log("called getVectorMetadata: ",element , parent , bbox);
 		var geolocMin = this.#svgMapObject.screen2Geo(bbox.x , bbox.y + bbox.height );
@@ -99,14 +80,6 @@ class ShowPoiProperty{
 	
 	// svgMapのcsv型のメタデータをオブジェクトに変換　もしもスキーマがない場合は配列だけが返却
 	// titleはデフォルトのものを設定可能とした
-	/**
-	 * svgMapのcsv型のメタデータをオブジェクトに変換　もしもスキーマがない場合は配列だけを返却
-	 * 
-	 * @param {*} dataCsv 
-	 * @param {*} schemaCsv 
-	 * @param {*} title 
-	 * @returns 
-	 */
 	getMetadataObject( dataCsv , schemaCsv , title ){
 		var data = this.parseEscapedCsvLine(dataCsv);
 		var obj;
@@ -142,11 +115,7 @@ class ShowPoiProperty{
 		};
 	}
 	
-	/**
-	 * ビットイメージPOI要素のためのshowPoiPropertyWrapper呼び出し用プリプロセッサ
-	 * 
-	 * @param {*} target 
-	 */
+	// ビットイメージPOI要素のためのshowPoiPropertyWrapper呼び出し用プリプロセッサ
 	#showUseProperty( target ){
 		var crs = this.#svgImagesProps[UtilFuncs.getDocumentId(target)].CRS;
 		var iprops = UtilFuncs.getImageProps(target,SvgMapElementType.POI);
@@ -184,11 +153,6 @@ class ShowPoiProperty{
 
 	#specificShowPoiPropFunctions = {};
 
-	/**
-	 * POI or vector2Dのクリッカブルオブジェクトをクリックしたときに起動する関数
-	 * 
-	 * @param {Element} target - 該当する"SVGコンテンツ"の要素
-	 */
 	showPoiPropertyWrapper(target){
 		var targetIsXMLElement = false;
 		if (target instanceof Element){
@@ -223,12 +187,7 @@ class ShowPoiProperty{
 
 	// setShowPoiProperty: 特定のレイヤー・svg文書(いずれもIDで指定)もしくは、全体に対して別のprop.表示関数を指定できる。
 	// 指定した関数は、帰り値がfalseだった場合、デフォルトprop.表示関数を再度呼び出す
-	/**
-	 * 特定のレイヤー・svg文書(いずれもIDで指定)もしくは、全体に対して別のprop.表示関数を指定
-	 * 
-	 * @param {function} func 
-	 * @param {*} docId 
-	 */
+		
 	setShowPoiProperty( func , docId ){
 		if ( !func ){ // 消去する
 			if ( docId ){
@@ -241,8 +200,7 @@ class ShowPoiProperty{
 			if ( docId ){ // 特定のレイヤーもしくはドキュメントID向け
 				this.#specificShowPoiPropFunctions[docId] = func;
 			} else {
-				//Check:自クラスの上書きは禁止されているようでエラーとなる
-				//this.#defaultShowPoiProperty = func;
+				this.#defaultShowPoiProperty = func;
 			}
 			
 		}
@@ -324,15 +282,6 @@ class ShowPoiProperty{
 		return ( ans );
 	}
 
-	/**
-	 * 
-	 * 
-	 * @param {*} htm 
-	 * @param {*} maxW 
-	 * @param {*} maxH 
-	 * @returns 
-	 */
-
 	showModal( htm , maxW, maxH ){
 		var modalDiv;
 		if ( document.getElementById("modalDiv") ){
@@ -394,17 +343,8 @@ class ShowPoiProperty{
 		return(infoDiv);
 	}
 	
-	/**
-	 * ' や " でエスケープされたcsvの1ラインをパースして配列化する。(高級split(","))
-	 * 
-	 * TODO：UtilFuncに移したい（もしくはクラスメソッドすべき？）
-	 * 
-	 * @param {String} csv 
-	 * @returns {Array}
-	 */
-
 	parseEscapedCsvLine( csv ){
-		
+		// ' や " でエスケープされたcsvの1ラインをパースして配列に格納する。(高級split(","))
 		var metaData = csv.split(",");
 		for ( var j = 0 ; j < metaData.length ; j++ ){
 			metaData[j]=UtilFuncs.trim(metaData[j]);
