@@ -1,0 +1,29 @@
+{
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  },
+  "name": "svgmaplv0.2",
+  "description": "Modular SVGMap.js alpha",
+  "version": "0.0.1",
+  "main": "SVGMapLv0.1.js",
+  "scripts": {
+    "test": "NODE_OPTIONS=--experimental-vm-modules npx jest",
+    "report": "NODE_OPTIONS=--experimental-vm-modules npx jest --coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/svgmap/svgMapLv0.2.git"
+  },
+  "author": "",
+  "license": "SEE LICENSE IN LICENSE",
+  "bugs": {
+    "url": "https://github.com/svgmap/svgMapLv0.2/issues"
+  },
+  "homepage": "https://github.com/svgmap/svgMapLv0.2#readme",
+  "type": "module",
+  "jest": {
+    "verbose": true,
+    "testEnvironment": "jsdom"
+  }
+}
