@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<!-- http://svg2.mbsrv.net/devinfo/devkddi/lvl0.1/airPort_r4b.html#svgView(viewBox(global,135,35,0.02,0.02)) -->
+<title>SVGMapLevel0.1 Demo No.0</title>
+<meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1.0,maximum-scale=1.0" />
+<meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<body bgcolor="#ffffff" style="overflow:hidden;" >
+ <div id="mapcanvas" data-src="ContainerDemo0.svg"></div>
+ <div id="gui">
+  <img id="zoomupButton" style="left: 5px; top: 5px; position: absolute;" src="./img/zoomup.png" onclick="svgMap.zoomup()" width="20" height="20" />
+  <img id="zoomdownButton" style="left: 5px; top: 25px; position: absolute;" src="./img/zoomdown.png" onclick="svgMap.zoomdown()" width="20" height="20" />
+  <img id="gpsButton" style="left: 5px; top: 45px; position: absolute;" src="./img/gps.png" onclick="svgMap.gps()" width="20" height="20" />
+  
+  <span style="right: 23px; top: 2px; position: absolute;font-size:14px;color:blue"><a href="https://svgmap.org/" target="_blabk">SVGMap</a>Level0.1 technical preview</span>
+  <img id="copyPermaLink" style="right: 3px; top: 3px; position: absolute;width:15px;height:15px;cursor:pointer;" onclick="svgMap.getBasicPermanentLink(true)" src="./img/permaLink.png" title="パーマリンクをクリックボードにコピーする">
+  
+  <img id="centerSight" style="opacity:0.5" src="./img/Xcursor.png" width="15" height="15"/>
+  <table style="right: 3px; top: 20px; position: absolute;font-size:12px;color:brown">
+  <tr><td>Lat,Lng:</td><td id="centerPos"></td></tr>
+  </table>
+  
+  <font id="noticeText" size="-2" color="black" style="left: 3px; bottom: 3px; position: absolute;background-color:rgba(0,200,200,0.5)">Notice: This page is provided solely for technical preview of <a href="https://svgmap.org/" target="_blabk">SVGMap</a> technology. The originator of this page assumes no responsibility for any damages resulting from the use of the information on each layer displayed.</font>
+
+
+  <div id="layerList" style="left :30px; top: 10px; width:300px;height:90%; position: absolute; ">
+  </div>
+
+  <div id="layerSpecificUI" style="right :10px; top: 40px; width:400px;height:400px; position: absolute; background-color: white;opacity:0.8;display:none;">
+  </div>
+ </div>
+</body>
+</html>

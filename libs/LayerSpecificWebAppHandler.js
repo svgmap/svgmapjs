@@ -789,7 +789,7 @@ class LayerSpecificWebAppHandler {
 				docId = layerID;
 				svgImageProps.script.location=svgDocStatus.location;
 				
-				// console.log("preRenderFunction　this?:",this, geoViewBox);
+				// console.log("svgScript preRenderFunction　this?:",this, geoViewBox);
 				if ( svgDocStatus && svgDocStatus.viewChanged=="scroll"){
 					if ( typeof(onscroll)=="function" && window.onscroll!=onscroll ){ 
 						onscroll.call(svgImageProps.script);
@@ -846,7 +846,9 @@ class LayerSpecificWebAppHandler {
 			}
 		`);
 		controllerWindow.svgImageProps.script = (controllerWindow.svgScript());
-		controllerWindow.preRenderFunction = controllerWindow.svgImageProps.script.preRenderFunction;
+		if ( !controllerWindow.preRenderFunction  ){ // 2024/4/22  controllerWindow.preRenderFunctionが上書きされてしまうのを防止
+			controllerWindow.preRenderFunction = controllerWindow.svgImageProps.script.preRenderFunction;
+		}
 		controllerWindow.svgImageProps.script.onloadFunction(this.#getLayerStatus(controllerWindow.layerID));
 	}
 		
