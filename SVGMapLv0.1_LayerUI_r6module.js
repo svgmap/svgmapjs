@@ -107,7 +107,7 @@ class SvgMapLayerUI {
 			}.bind(this)
 		);
 		this.#layerSpecificWebAppHandler = layerSpecificWebAppHandlerObj;
-		console.log("construct layerUI:");
+		// console.log("construct layerUI:");
 	}
 
 	#updateLayerTable() {
@@ -165,7 +165,7 @@ class SvgMapLayerUI {
 	}
 
 	#setLayerTable(tb, layerProps) {
-		//	console.log("call setLayerTable:",tb);
+		// console.log("call setLayerTable:",tb);
 		var groups = new Object(); // ハッシュ名のグループの最後のtr項目を収めている
 		var lps;
 		if (!lps) {
@@ -173,7 +173,7 @@ class SvgMapLayerUI {
 		} else {
 			lps = layerProps;
 		}
-		//	console.log(lps);
+		// console.log(lps);
 		var visibleLayers = 0;
 		var visibleLayersNameArray = [];
 		const visibleNum = 5;  // 表示レイヤ名称数
@@ -233,13 +233,13 @@ class SvgMapLayerUI {
 		if (tableHeight == 0) { // patch 2020/10/28 (レイヤリスト閉じているときにレイヤ追加されたりしてupdateLayerTableすると2クリックしないと開かない微妙な不具合)
 			return;
 		}
-		//	console.log(tableHeight, layerListMaxHeight , layerListFoldedHeight , layerListMaxHeightStyle );
+		// console.log(tableHeight, layerListMaxHeight , layerListFoldedHeight , layerListMaxHeightStyle );
 		if (tableHeight < this.#layerListMaxHeight - this.#layerListFoldedHeight - 2) {
 			this.#layerList.style.height = (tableHeight + this.#layerListFoldedHeight + 2) + "px";
-			console.log("reorder:", this.#layerList.style.height);
+			// console.log("reorder:", this.#layerList.style.height);
 		} else {
 			this.#layerList.style.height = this.#layerListMaxHeightStyle;
-			//		layerListMaxHeight = layerList.offsetHeight;
+			// 	layerListMaxHeight = layerList.offsetHeight;
 		}
 	}
 
@@ -247,7 +247,7 @@ class SvgMapLayerUI {
 		var gcLabel = document.getElementById("gc_" + groupName);
 		var gcTxtNode = gcLabel.childNodes.item(0);
 		var gCount = Number(gcTxtNode.nodeValue) + 1;
-		//	console.log(groupName,gcTxtNode,gcTxtNode.nodeValue,gCount);
+		// console.log(groupName,gcTxtNode,gcTxtNode.nodeValue,gCount);
 		gcTxtNode.nodeValue = gCount;
 	}
 
@@ -294,11 +294,11 @@ class SvgMapLayerUI {
 		var td = document.createElement("td");
 		var btn = document.createElement("button");
 		btn.innerHTML = "<img style='pointer-events: none;' src='" + BuiltinIcons.RTpng + "'>";
-		//	btn.type="button";
+		// btn.type="button";
 		btn.className = "layerUiButton";
 		btn.id = btid;
-		//	btn.value=">";
-		//	btn.setAttribute("onClick","svgMapLayerUI.showLayerSpecificUI(event)");
+		// btn.value=">";
+		// btn.setAttribute("onClick","svgMapLayerUI.showLayerSpecificUI(event)");
 		btn.addEventListener("click", function (event) {
 			var layerId = this.#getLayerId(event);
 			var lsUiUrl = event.target.dataset.url;
@@ -321,7 +321,7 @@ class SvgMapLayerUI {
 	}
 
 	#setLayerSpecificWebAppLaunchUiEnable(layerId, controllerURL) {
-		console.log("setLayerSpecificWebAppLaunchUiEnable:", layerId);
+		// console.log("setLayerSpecificWebAppLaunchUiEnable:", layerId);
 		var ctbtn = document.getElementById("bt_" + layerId);
 		if (ctbtn) { // グループが閉じられている場合などにはボタンがないので
 			ctbtn.style.visibility = "visible";
@@ -359,7 +359,7 @@ class SvgMapLayerUI {
 		// グループの所属メンバー数
 		var groupCountTD = document.createElement("td");
 		groupCountTD.className = "groupLabel";
-		//	groupCountTD.style.overflow="hidden";
+		// groupCountTD.style.overflow="hidden";
 		groupCountTD.align = "right";
 
 		var groupCountlabel = document.createElement("label");
@@ -388,7 +388,7 @@ class SvgMapLayerUI {
 
 			batchCheckBoxTd.appendChild(batchCheckBox);
 
-			//		groupTD.appendChild(batchCheckBox);
+			// 	groupTD.appendChild(batchCheckBox);
 			if (lp.visible) {
 				batchCheckBox.checked = "true";
 			}
@@ -405,7 +405,7 @@ class SvgMapLayerUI {
 		var foldTd = document.createElement("td");
 		var foldButton = document.createElement("button");
 		foldButton.id = gbid;
-		//	foldButton.type="button";
+		// foldButton.type="button";
 		foldButton.addEventListener("click", function (event) { this.#toggleGroupFold(event) }.bind(this), false);
 		if (!gfolded) {
 			foldButton.innerHTML = "<img style='pointer-events: none;' src='" + BuiltinIcons.UTpng + "'>";
@@ -426,15 +426,15 @@ class SvgMapLayerUI {
 	}
 
 	#getLayerId(layerEvent) {
-		console.log(layerEvent);
+		// console.log(layerEvent);
 		var lid = (layerEvent.target.id).substring(3);
 		return (lid);
 	}
 
 	#toggleLayer(e) {
 		var lid = this.#getLayerId(e);
-		console.log("this:", this);
-		//	console.log("call toggle Layer",e.target.id,e.target.checked,lid);
+		// console.log("this:", this);
+		// console.log("call toggle Layer",e.target.id,e.target.checked,lid);
 		this.#svgMap.setRootLayersProps(lid, e.target.checked, false);
 
 		// 後でアイテム消さないように効率化したい・・ (refreshLayerTable..)
@@ -443,11 +443,11 @@ class SvgMapLayerUI {
 
 	#toggleBatch(e) {
 		var lid = this.#getLayerId(e);
-		//	console.log("call toggle Batch",e.target.id,e.target.checked,lid);
+		// console.log("call toggle Batch",e.target.id,e.target.checked,lid);
 		var batchLayers = this.#svgMap.getSwLayers("batch");
-		//	console.log("this ID might be a batch gruop. :"+ lid,batchLayers);
+		// console.log("this ID might be a batch gruop. :"+ lid,batchLayers);
 
-		//	svgMap.setRootLayersProps(lid, e.target.checked , false );
+		// svgMap.setRootLayersProps(lid, e.target.checked , false );
 
 		// ひとつでもhiddenのレイヤーがあれば全部visibleにする
 		var bVisibility = "hidden";
@@ -475,7 +475,7 @@ class SvgMapLayerUI {
 			}
 			**/
 		}
-		//	console.log("CALLED initLayerList");
+		// console.log("CALLED initLayerList");
 		this.#layerGroupStatus = new Object();
 		this.#layerList = document.getElementById("layerList");
 
@@ -617,7 +617,7 @@ class SvgMapLayerUI {
 
 	#toggleGroupFold(e) {
 		var lid = this.#getLayerId(e);
-		//	console.log("call toggle Group Hidden",e.target.id,e.target.checked,lid);
+		// console.log("call toggle Group Hidden",e.target.id,e.target.checked,lid);
 		if (this.#layerGroupStatus[lid]) {
 			this.#layerGroupStatus[lid] = false;
 		} else {
@@ -631,7 +631,7 @@ class SvgMapLayerUI {
 	setLayerSpecificWebAppLaunchUiEnable(...params) { return (this.#setLayerSpecificWebAppLaunchUiEnable(...params)) }; //このメソッドの公開はたいていの場合必須
 	getLayersCustomizer = function () { // このメソッドの公開は必須
 		var ans = this.#layersCustomizer;
-		//		console.log("getLayersCustomizer:",ans);
+		// console.log("getLayersCustomizer:",ans);
 		return ans;
 	}.bind(this);
 
