@@ -155,7 +155,7 @@ class ShowPoiProperty{
 
 	showPoiPropertyWrapper(target){
 		var targetIsXMLElement = false;
-		if (target instanceof Element){
+		if (target.nodeType === Node.ELEMENT_NODE){
 			targetIsXMLElement = true;
 			var docId = UtilFuncs.getDocumentId(target);
 			var layerId = this.#svgImagesProps[docId].rootLayer;
