@@ -336,9 +336,6 @@ class SvgMap {
 		this.#mapViewerProps=new MapViewerProps()
 		var that = this;
 		console.log("init");
-		UtilFuncs.addEvent(window,"load",function(){
-			that.#initLoad();
-		}.bind(this));
 		UtilFuncs.addEvent(window,"hashchange",function(){
 			// that.#resumeManager.resumeFirstTime = true; // 2024/5/2 ハッシュの変化でresumeの挙動を変えるのはおかしいと思われるのでコメントアウト
 			that.#refreshScreen();
@@ -374,6 +371,14 @@ class SvgMap {
 		this.#linkedDocOp = new LinkedDocOp(this); 
 		this.#svgStyle = new SvgStyle(UtilFuncs.getNonScalingOffset);
 		
+
+		if (document.readyState === "complete") {
+			that.#initLoad();
+		} else {
+			UtilFuncs.addEvent(window,"load",function(){
+				that.#initLoad();
+			}.bind(this));
+		}
 	}
 
 	#initLoad(){
