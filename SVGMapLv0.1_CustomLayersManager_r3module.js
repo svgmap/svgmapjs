@@ -482,14 +482,14 @@ class  SvgMapCustomLayersManager{
 	#addLayer(groupedTitle, prop, rootContainer){
 		// propのaddのvalが""もしくはtrueならばドキュメント末尾(すなわち一番上)に追加する
 		var layer = rootContainer.createElement("animation");
-		title=this.#parseGroupedTitle(groupedTitle).title;
+		var title=this.#parseGroupedTitle(groupedTitle).title;
 		layer.setAttribute("title",title);
 		// これいい加減すぎ・・ まずい気がする・・・ 2021/3/11
 		layer.setAttribute("x",-30000);
 		layer.setAttribute("y",-30000);
 		layer.setAttribute("width",60000);
 		layer.setAttribute("height",60000);
-		for ( key in prop ){
+		for ( var key in prop ){
 			if ( key == "add" ){
 				continue;
 			}
