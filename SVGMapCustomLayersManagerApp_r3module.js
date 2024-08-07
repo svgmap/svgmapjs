@@ -143,7 +143,9 @@ class SvgMapCustomLayersManagerApp{
 
 	#buildLayerTable(){
 		this.#removeChildren(layerTable);
-		layerTable.insertAdjacentHTML('afterbegin', "<tr><td></td><td>Title</td><td>xlink:href</td><td>Visibility</td><td>Opacity</td><td>Group</td><td><input type='button' id='topLayerAdd' value='add Layer' onclick='insertLayer(event)'></input></td></tr>");
+		layerTable.insertAdjacentHTML('afterbegin', "<tr><td></td><td>Title</td><td>xlink:href</td><td>Visibility</td><td>Opacity</td><td>Group</td><td><input type='button' id='topLayerAdd' value='add Layer'></input></td></tr>");
+		
+		document.getElementById("topLayerAdd").addEventListener("click",this.#insertLayer);
 		
 		var lps = this.#lpEdit.layersProperty;
 		for ( var i = lps.length-1 ; i >= 0 ; i-- ){
@@ -345,15 +347,15 @@ class SvgMapCustomLayersManagerApp{
 		return(inp);
 	}
 
-	#removeLayer(event){
+	#removeLayer=function(event){
 		console.log("called removeLayer:",event.target.id);
 		var numb = Number((event.target.id).split("_")[1]);
 		this.#lpEdit.layersProperty[numb].toBeRemoved = true;
 		this.#generateStructFromUI();
 		this.#buildLayerTable();
-	}
+	}.bind(this)
 
-	#insertLayer(event){
+	#insertLayer=function(event){
 		console.log("called insertLayer:",event.target.id);
 		var bid = event.target.id;
 		var numb;
@@ -388,8 +390,8 @@ class SvgMapCustomLayersManagerApp{
 		this.#lpEdit.layersProperty.splice(numb,0,newLayerProp)
 		console.log(this.#lpEdit.layersProperty);
 		
-		buildLayerTable();
-	}
+		this.#buildLayerTable();
+	}.bind(this);
 
 	#removeChildren(element){
 		while (element.firstChild) element.removeChild(element.firstChild);
