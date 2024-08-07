@@ -21,6 +21,7 @@ class ResumeManager{
 	#svgImages;
 	
 	#svgMapCustomLayersManager;
+	#initialCustomLayers=null;
 	#parseSVGfunc;
 
 	// setCookie(KVSへの設定 NS競合回避機能付き), getCookies（全データ読み出し）
@@ -59,7 +60,70 @@ class ResumeManager{
 			}
 		}
 	}
-
+	
+	setInitialCustomLayers(initialCustomLayersObj, rootSVGpath){
+		// InitialCustomLayersの検証と設定をする。 2024/08/06
+		// initialCustomLayersObjは、Custom Layers Managerが想定する、customLayersSettingsの中の連想配列要素のひとつとする
+		function checkSetting(obj){
+			if ( !obj.data || !obj.metadata){return false}
+			var dat = obj.data;
+			for ( var key in dat){
+				var elm = dat[key]
+				if ( typeof elm !="object"){return false}
+				if ( !elm.href ){return false}
+			}
+			// ここで、rootContainerHref(metadataに入れる)とsettingRevisionの照合をすべき(TBD)
+			console.log("setInitialCustomLayers Check OK!");
+			return true;
+		}
+		console.log(initialCustomLayersObj);
+		if ( !initialCustomLayersObj || typeof initialCustomLayersObj !="object"){
+			console.warn("setInitialCustomLayers: initialCustomLayersObj is not object exit.");
+			return
+		}
+		if ( initialCustomLayersObj.customLayersSettings){
+			console.warn("setInitialCustomLayers: initialCustomLayersObj is cookie CustomLayersObj, use default setting");
+			// クッキー(ローカルストレージ)の内容がそのまま保存されている・・・
+			if ( !initialCustomLayersObj.currentSettingKey){
+				if ( initialCustomLayersObj.currentSettingKeys?.customLayer){
+					initialCustomLayersObj.currentSettingKey=initialCustomLayersObj.currentSettingKeys.customLayer;
+				} else {
+					// 適当に選んでしまう・・・
+					var ks = Object.keys(initialCustomLayersObj.customLayersSettings);
+					if (ks.length>0){
+						initialCustomLayersObj.currentSettingKey=ks[0];
+					}
+				}
+			}
+			this.#initialCustomLayers=initialCustomLayersObj;
+		} else if (checkSetting(initialCustomLayersObj)){
+//			console.log(rootSVGpath);
+			var rootURL = new URL(rootSVGpath, window.location.href);
+			this.#initialCustomLayers={
+				currentSettingKey:"startup",
+				customLayersSettings:{
+					"startup":initialCustomLayersObj,
+				},
+				"settingRevision": "r2", // TBD ちゃんとチェックしたほうが良いと思う
+				"rootContainerHref": rootURL.pathname, // TBD
+				"host": rootURL.host, // TBD
+			};
+			if (initialCustomLayersObj.metadata){
+				if(initialCustomLayersObj.metadata.viewBox){
+					this.#initialCustomLayers.viewBox = initialCustomLayersObj.metadata.viewBox;
+				}
+				if(initialCustomLayersObj.metadata.settingRevision){
+					this.#initialCustomLayers.settingRevision=initialCustomLayersObj.metadata.settingRevision;
+				}
+				if(initialCustomLayersObj.metadata.rootContainerHref){
+					this.#initialCustomLayers.rootContainerHref=initialCustomLayersObj.metadata.rootContainerHref;
+				}
+			}
+			this.#initialCustomLayers.customLayersSettings.startup.metadata.key="startup";
+		}
+	}
+	
+	
 	// レジューム用localStorageから、レジュームを実行する。 2021/2/3 rev17の改修の中心
 	// 起動直後のルートコンテナ読み込み時(一回しか起きない想定)実行される
 	resumeFirstTime = true;
@@ -76,26 +140,41 @@ class ResumeManager{
 		if ( this.resumeFirstTime ){
 			var cook = this.#getCookies();
 			//console.log("ResumeManager: cooks:",cook);
-			if ( lh && ( lh.visibleLayer || lh.hiddenLayer ) || cook.resume || cook.customLayers ){
+			if ( lh && ( lh.visibleLayer || lh.hiddenLayer ) || cook.resume || cook.customLayers ||  this.#initialCustomLayers ){
 				// 外部リソースを読み込まない(そのhtmlデータ構造も作らない)rootのparseを行い、root svgだけの文書構造をまずは構築する。レイヤーのOnOffAPIの正常動作のため(iidの設定など・・) 2016/12/08 debug
 				this.#parseSVGfunc( documentElement , symbols); 
 			}
 			
 			var lp = this.#svgMapObject.getRootLayersProps();
+			var initialCustomViewBox;
 			this.#initialRootLayersProps = lp;
 			// 2021/2/4 レイヤーのカスタムOFF＆追加＆変更を設定できるsvgMapCustomLayersManagerの情報を導入する
 			// cook.customLayers の中のJSONデータからレイヤーの削除、追加などを実施する
-			if ( cook.customLayers && this.#svgMapCustomLayersManager ){
+			if ( this.#initialCustomLayers && this.#svgMapCustomLayersManager){ // 2024/08/06 initialCustomLayersの処理を行う
+				try{
+					console.log("applyCustomLayers using initialCustomLayers information : ", this.#initialCustomLayers);
+					this.#svgMapCustomLayersManager.applyCustomLayers(this.#initialCustomLayers);
+					this.#parseSVGfunc( documentElement , symbols); // iidを設定する
+					lp = this.#svgMapObject.getRootLayersProps();
+					if ( this.#initialCustomLayers.viewBox ){
+						initialCustomViewBox =  this.#initialCustomLayers.viewBox;
+					}
+				} catch ( e ){
+					console.error("svgMapCustomLayersManager.applyCustomLayers by initialCustomLayers step error:",e);
+				}
+			} else if ( cook.customLayers && this.#svgMapCustomLayersManager ){
 				try{
 					var customLayers = JSON.parse(cook.customLayers);
 					this.#svgMapCustomLayersManager.applyCustomLayers(customLayers);
 					this.#parseSVGfunc( documentElement , symbols); // 2021/3/8 iidを設定する(上と同じ)
 					lp = this.#svgMapObject.getRootLayersProps();
 				} catch ( e ){
-					console.error("svgMapCustomLayersManager.applyCustomLayers step error:",e);
+					console.error("svgMapCustomLayersManager.applyCustomLayers step by cookie error:",e);
 				}
 			}
-			if ( cook.customGeoViewboxes ){ // 2021/4/2 add customViewbox function
+			if ( initialCustomViewBox){
+				this.#svgMapObject.setGeoViewPort(initialCustomViewBox.y,initialCustomViewBox.x,initialCustomViewBox.height,initialCustomViewBox.width , true); // set geoviewport without refresh
+			} else if ( cook.customGeoViewboxes ){ // 2021/4/2 add customViewbox function
 				var customGeoViewboxes = JSON.parse(cook.customGeoViewboxes);
 				console.log("customGeoViewboxes:",customGeoViewboxes);
 				if ( customGeoViewboxes.currentSettingKey ){

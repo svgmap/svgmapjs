@@ -39,7 +39,7 @@
 // =================================================================================================
 // =================================================================================================
 
-import { SvgMapCustomLayersManagerClient } from './SvgMapCustomLayersManagerClient.js';
+import { SvgMapCustomLayersManagerClient } from './SVGMapCustomLayersManagerClient.js';
 
 
 class SvgMapCustomLayersManagerApp{
@@ -75,6 +75,10 @@ class SvgMapCustomLayersManagerApp{
 	
 	
 	// private methods
+	
+	get svgMapCustomLayersManagerClient(){
+		return this.#svgMapCustomLayersManagerClient;
+	}
 	
 	#setStartupPanelEvent(){
 		document.getElementById("defaultVbRadio").addEventListener("click",this.#selectStartupSetting.bind(this));
@@ -913,6 +917,13 @@ class SvgMapCustomLayersManagerApp{
 		var vbSet = await this.#svgMapCustomLayersManagerClient.loadCustomGeoViewboxes();
 		layerSet.host=location.host;
 		layerSet.customGeoViewboxSettings=vbSet.settings;
+		layerSet.currentSettingKeys={};
+		if ( layerSet.currentSettingKey ){
+			layerSet.currentSettingKeys.customLayer= layerSet.currentSettingKey;
+		}
+		if ( vbSet.currentSettingKey ){
+			layerSet.currentSettingKeys.customGeoViewbox=vbSet.currentSettingKey;
+		}
 		delete layerSet.currentSettingKey;
 		
 		// https://qiita.com/Toyoharu-Nishikawa/items/dfb187cf6eb4ba743995 だがまぁ今回はサイズが小さい想定なので
