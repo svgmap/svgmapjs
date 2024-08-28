@@ -231,6 +231,8 @@ class  SvgMapCustomLayersManager{
 		var customLayersSet = customLayersObject.customLayersSettings[currentSettingKey].data;
 		console.log("applyCustomLayers:customLayersSet:",customLayersSet);
 		
+		this.#removeIid(customLayersSet); // iidがあるといろいろ処理が破綻するので削除します。bugFix 2024/08/28
+		
 		var lp;
 		
 		if ( typeof(baseLayersPropertySet)=="object") {
@@ -1466,6 +1468,16 @@ class  SvgMapCustomLayersManager{
 		return ( true );
 		//buildSettingList(true);
 		//buildVbTable();
+	}
+	
+	#removeIid(customLayersSet){
+		for ( var layerTitle in customLayersSet ){
+			var lp = customLayersSet[layerTitle];
+			if ( lp.iid ){
+				delete  lp.iid;
+				//console.log("delete iid for customLayersSet of "+layerTitle);
+			}
+		}
 	}
 	
 	
