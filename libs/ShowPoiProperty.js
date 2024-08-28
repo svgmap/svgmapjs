@@ -194,19 +194,28 @@ class ShowPoiProperty{
 	//			this.#specificShowPoiPropFunctions[docId] = null;
 				delete this.#specificShowPoiPropFunctions[docId];
 			} else {
-				// defaultShowPoiPropertyはクリアできない
+				this.#defaultShowPoiPropertyCustom = null;
 			}
 		} else {
 			if ( docId ){ // 特定のレイヤーもしくはドキュメントID向け
 				this.#specificShowPoiPropFunctions[docId] = func;
 			} else {
-				this.#defaultShowPoiProperty = func;
+				this.#defaultShowPoiPropertyCustom = func;
 			}
 			
 		}
 	}
-
+	
+	#defaultShowPoiPropertyCustom;
+	
 	#defaultShowPoiProperty(target){
+		if ( this.#defaultShowPoiPropertyCustom){
+			this.#defaultShowPoiPropertyCustom(target);
+		} else {
+			this.#defaultShowPoiPropertyEmbed(target);
+		}
+	}
+	#defaultShowPoiPropertyEmbed(target){
 		// 何も設定されていない場合のデフォルトパネル
 
 	//	var metaSchema = target.parentNode.getAttribute("property").split(",");
