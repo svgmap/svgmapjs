@@ -283,7 +283,7 @@ class  SvgMapCustomLayersManager{
 						// console.log(plt,targetLayerId);
 						
 						if ( duplicatedLayerTitles[layerTitle] ){
-							console.warn("edit duplicatedLayer:",layerTitle,lp[i].href, getElementByAttr( rootContainer , targetLayerId , "iid" ).getAttribute("xlink:href"));
+							console.warn("edit duplicatedLayer:",layerTitle,lp[i].href, this.#getElementByAttr( rootContainer , targetLayerId , "iid" ).getAttribute("xlink:href"));
 						}
 						this.#editLayer(targetLayerId,customLayersSet[layerTitle], rootContainer);
 					}
@@ -552,7 +552,7 @@ class  SvgMapCustomLayersManager{
 			} else if ( key == "opacity" ){
 				layersProperty[idx].opacity= targetLayerProp.opacity;
 			} else if ( key == "class"){
-				layersProperty[idx].detail = getClassDetail(targetLayerProp.class, {});
+				layersProperty[idx].detail = this.#getClassDetail(targetLayerProp.class, {});
 			}
 			
 			if ( key != "href"){
