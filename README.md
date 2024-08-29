@@ -11,7 +11,7 @@ Development has started since 2022/05 as SVGMapLv0.1_r18module.js. A practical r
 ```
 <script type="text/javascript" src="https://unpkg.com/jsts@1.6.1/dist/jsts.min.js"></script>
 <script type="module">
-  import { svgMap } from 'https://cdn.jsdelivr.net/gh/svgmap/svgMapLv0.2@latest/SVGMapLv0.1_r18module.js';
+  import { svgMap } from 'https://cdn.jsdelivr.net/gh/svgmap/svgmapjs@latest/SVGMapLv0.1_r18module.js';
   window.svgMap=svgMap
 </script>
 ```
