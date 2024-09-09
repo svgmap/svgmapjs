@@ -1,9 +1,20 @@
+SVGMap is a web mapping framework based on SVG. It has decentralized mapping capabilities that conventional mapping frameworks do not have, as well as an advanced tiling mechanism that goes beyond ordinary vector tiles, making it possible to implement large-scale WebGIS.
+
+The standardization activities are being undertaken at W3C.
+
+* [HomePage](https://svgmap.org/)
+
+* [API Docs](https://www.svgmap.org/wiki/index.php?title=%E8%A7%A3%E8%AA%AC%E6%9B%B8)
+
+* [demo](https://svgmap.org/devinfo/devkddi/lvl0.1/demos/demo0.html)
+* [demo(github pages)](https://svgmap.github.io/svgMapDemo/) [(source)](https://github.com/svgmap/svgMapDemo)
+
 # svgMapLv0.2
 Modular SVGMap.js
 
-This repository will contain the modularized SVGMap.js, which is intended to replace SVGMapLv0.1 in the future.
+This repository contains SVGMapLv0.2, a modularized SVGMap.js, which replaces SVGMapLv0.1.
 
-Development has started since 2022/05 as SVGMapLv0.1_r18module.js. A practical release has not been reached so far.
+Development has started in May 2022 as SVGMapLv0.1_r18module.js, and this version became mainstream in August 2024.
 
 
 ## to use module
@@ -35,3 +46,7 @@ Development has started since 2022/05 as SVGMapLv0.1_r18module.js. A practical r
 #### excute unittest
 
 ```npm test```
+
+#### code format (TBD)
+```prettier --use-tabs``` 
+
