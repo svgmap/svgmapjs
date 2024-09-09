@@ -9,10 +9,9 @@ The standardization activities are being undertaken at W3C.
 * [demo](https://svgmap.org/devinfo/devkddi/lvl0.1/demos/demo0.html)
 * [demo(github pages)](https://svgmap.github.io/svgMapDemo/) [(source)](https://github.com/svgmap/svgMapDemo)
 
-# svgMapLv0.2
-Modular SVGMap.js
+# Modular SVGMap.js
 
-This repository contains SVGMapLv0.2, a modularized SVGMap.js, which replaces SVGMapLv0.1.
+This repository contains a modularized SVGMap.js, which replaces SVGMapLv0.1.
 
 Development has started in May 2022 as SVGMapLv0.1_r18module.js, and this version became mainstream in August 2024.
 
