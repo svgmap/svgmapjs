@@ -19,11 +19,11 @@ Development has started in May 2022 as SVGMapLv0.1_r18module.js, and this versio
 ## to use module
 
 ```
-<script type="text/javascript" src="https://unpkg.com/jsts@1.6.1/dist/jsts.min.js"></script>
+<nowiki><script type="text/javascript" src="https://unpkg.com/jsts@1.6.1/dist/jsts.min.js"></script>
 <script type="module">
   import { svgMap } from 'https://cdn.jsdelivr.net/gh/svgmap/svgmapjs@latest/SVGMapLv0.1_r18module.js';
   window.svgMap=svgMap
-</script>
+</script></nowiki>
 ```
 
 [detailed information](https://www.svgmap.org/wiki/index.php?title=%E8%A7%A3%E8%AA%AC%E6%9B%B8#rev18_.28ECMA_Script_Module.E7.89.88.29.E3.81.AE.E4.BE.8B)
