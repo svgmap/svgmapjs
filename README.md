@@ -1,5 +1,5 @@
 # svgMapLv0.2
-Modular SVGMap.js alpha
+Modular SVGMap.js
 
 This repository will contain the modularized SVGMap.js, which is intended to replace SVGMapLv0.1 in the future.
 
