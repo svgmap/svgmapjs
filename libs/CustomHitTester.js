@@ -50,7 +50,7 @@ class CustomHitTester{
 							ans.element = this.#svgImages[layerId].documentElement; // 同上
 							ans.title = hi;
 							ans.metadata = hi;
-						} else if ( hi instanceof Element ){
+						} else if ( hi.nodeType === Node.ELEMENT_NODE ){
 							ans.element = hi;
 							ans.title = hi.getAttribute("xlink:title");
 							ans.metadata = hi.getAttribute("content");

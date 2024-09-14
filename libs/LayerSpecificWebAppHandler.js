@@ -57,6 +57,7 @@
 // 2022/05/31 : ESM, Class化
 // 2023/07/25 : Firefoxの最新版では、力業のiFrameReady()がDOMContentLoadedタイミングをつかんだ処理ができないケースが多い、そこでloadイベント処理のリトライを行うルーチンを入れた（この実装までにかなりの試行錯誤があった）
 // 2023/08/24 : ↑の問題がChromeでも起きる環境があることが判明。iframeのhtmlのキャッシュを無効化することで対応。そろそろ仕様変更などの本質的な対策が求められる
+// 2024/07/23 : To fix issue : https://github.com/svgmap/svgmapjs/issues/5　webAppレイヤーのプログラミング作法の変更あり
 
 import { SvgMapGIS } from '../SVGMapLv0.1_GIS_r4_module.js';
 import { UtilFuncs } from '../libs/UtilFuncs.js';
@@ -89,6 +90,8 @@ class LayerSpecificWebAppHandler {
 	#getLayerStatus;
 	
 	#globalMessageDisplay;
+	
+	#iframeOnLoadProcessQueue = {};
 
 	constructor(svgMapObj, svgMapAuthoringToolObj, getLayerStatusFunc){
 		this.#svgMap=svgMapObj;
@@ -103,10 +106,12 @@ class LayerSpecificWebAppHandler {
 			}.bind(this)
 		);
 		**/
+		this.#iframeOnLoadProcessQueue={};
 		this.#svgMapGIStool=new SvgMapGIS(svgMapObj, window.jsts);
 		this.#getLayerStatus = getLayerStatusFunc.bind(this.#svgMap);
 		this.#globalMessageDisplay = new GlobalMessageDisplay();
 		console.log("construct layerUI: svgMapGIStool:",this.#svgMapGIStool," svgMapAuthoringTool:", this.#svgMapAuthoringTool);
+		window.initSvgMapWebAppLayer = this.initSvgMapWebAppLayer; // 2024/07/23
 	}
 	
 	#syncLayerSpecificUi(){
@@ -501,6 +506,23 @@ class LayerSpecificWebAppHandler {
 		return ans;
 	}
 
+	initSvgMapWebAppLayer = function(targetIframeWindow){ // webAppレイヤーの初期化を明示的に行うライブラリ(svgMapLayerLib.js)が呼び出す関数
+		// console.log("Called iframeOnLoadProcessExp: targetIframeWindow: ", targetIframeWindow, "  this.#iframeOnLoadProcessQueue:",Object.keys(this.#iframeOnLoadProcessQueue));
+		var iframeParam;
+		for ( var lid in this.#iframeOnLoadProcessQueue){
+			var ifp = this.#iframeOnLoadProcessQueue[lid];
+			if ( ifp.iframe.contentWindow === targetIframeWindow ){
+				iframeParam = ifp;
+				break;
+			}
+		}
+		if ( !iframeParam){return} // iFrameReadyで実行されてればパス
+		console.log("Do initSvgMapWebAppLayer: layerID: ", lid);
+		this.#iframeOnLoadProcess(iframeParam.iframe, iframeParam.lid, iframeParam.reqSize, iframeParam.controllerURL, iframeParam.cbf);
+		delete  this.#iframeOnLoadProcessQueue[iframeParam.lid];
+	}.bind(this);
+	
+	
 	#initIframe(lid, controllerURL, reqSize, hiddenOnLaunch, cbf){
 		// controllerURLの仕様:checkController参照 
 		console.log("initIframe:",controllerURL, "  hiddenOnLaunch?:",hiddenOnLaunch);
@@ -522,8 +544,11 @@ class LayerSpecificWebAppHandler {
 			iframeOnLoadProcess(iframe, lid, reqSize, controllerURL, cbf);
 		}, { once: true });
 		**/
+		this.#iframeOnLoadProcessQueue[lid]={iframe, lid, reqSize, controllerURL, cbf};
 		this.#iFrameReady(iframe, function(){ // 2021/6/17 layerUIのonload()でsetTimeout要の課題をついに対策できたか
+			if ( !this.#iframeOnLoadProcessQueue[lid]){console.log("skip"); return} // initSvgMapWebAppLayerで実行されていればパス
 			this.#iframeOnLoadProcess(iframe, lid, reqSize, controllerURL, cbf);
+			delete  this.#iframeOnLoadProcessQueue[lid];
 		}.bind(this), false);
 		
 		var bySrcdoc = false;
@@ -593,6 +618,7 @@ class LayerSpecificWebAppHandler {
 	#getEmptyHtmlSrc(addSrc){
 		return ("<!doctype html><html><body>"+addSrc+"</body></html>");
 	}
+	
 
 	#iframeOnLoadProcess(iframe, lid, reqSize, controllerURL, cbf){
 		// srcdocだと、xxmsぐらい待たないと、contentWindowへの設定がwindowに保持されないので、初期化されるまでリトライすることに。
@@ -1218,6 +1244,7 @@ class LayerSpecificWebAppHandler {
 	// 公開するAPI
 	assignLayerSpecificUiElement(...params){ return (this.#assignLayerSpecificUiElement(...params))}; // これはSVGMapElementで使われているがLayerUIが露出しなくなった&AppHandlerがそもそも存在しなかったため、APIにアクセスできず、互換性がなくなっている：ISSUE
 	initLayerSpecificUI(...params){ return (this.#initLayerSpecificUI(...params))};
+	// initSvgMapWebAppLayer
 	showLayerSpecificUI(...params){ return (this.#showLayerSpecificUI(...params))}; // ISSUE : layerIDだけで起動できるスキームも欲しい（controllerURLが現状必須）
 	updateLayerSpecificWebAppHandler(){
 		this.#syncLayerSpecificUi(); // 非表示のレイヤーについて、レイヤーwebAppを終了させる
