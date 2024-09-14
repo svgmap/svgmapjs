@@ -198,6 +198,7 @@
 // 2023/11/27 : svgImageProps.isClickableをbooelanではなくobjectに。ハイライトのカスタマイズを可能に
 // 2023/12/28 : SVGMap*Class*.jsはクラス定義を、SVGMap*module.jsは、SvgMapインスタンスの生成を行うコード(ほぼ空)に分離。
 // 2024/02/06 : LayerSpecificWebAppHandlerのLayerUIからの分離に対応。
+// 2024/08/06 : コンテナ差分ファイル指定機能：(#customLayers=customLayer0.json
 //
 // Issues:
 // 2022/03/17 getVectorObjectsAtPointの作法が良くない
@@ -381,8 +382,8 @@ class SvgMap {
 		}
 	}
 
-	#initLoad(){
-	// load時に"一回だけ"呼ばれる
+	async #initLoad(){
+	// load時に"一回だけ"呼ばれる 2024/8/6 async化
 		
 		if (this.#mapViewerProps.hasUaProps()){
 			console.log( "Already initialized. Exit...");
@@ -428,10 +429,10 @@ class SvgMap {
 		this.#essentialUIs.setPointerEvents();
 		this.#essentialUIs.setCenterUI(); // 画面中心の緯緯度を表示するUIのセットアップ
 		this.#essentialUIs.initNavigationUIs(this.#mapViewerProps.uaProps.isSP);
+		this.#resumeManager.setInitialCustomLayers( await this.#essentialUIs.prepareInitialCustomLayers() ,rootSVGpath); // 2024/8/6 カスタムレイヤー設定読み込み
 		
 		this.#loadSVG(rootSVGpath , "root" , this.#mapViewerProps.mapCanvas );
 	}
-
 	
 	#setLayerDivProps( id, parentElem, parentSvgDocId ){ // parseSVGから切り出した関数 2017.9.29
 		if ( parentSvgDocId ){

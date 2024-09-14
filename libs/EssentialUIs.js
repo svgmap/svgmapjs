@@ -9,6 +9,11 @@ class EssentialUIs{
 	#getRootSvg2Canvas;
 	
 	#mapViewerProps;
+	
+	#customLayersPath=null; // 2024/8/5
+	initialCustomLayers = null;
+	
+	rootSVGpath = null; // 一応保存しておきます(2024/8/5)
 	// 以下はもっと洗練すべきメンバ
 	//#mapCanvasSize;
 	//#mapCanvas;
@@ -72,8 +77,43 @@ class EssentialUIs{
 			console.warn("NO id:mapcanvas data-src for root svg container exit..");
 			return null;
 		}
+		
+		// 2024/8/5 add data-custom-layers-root
+		if ( mapCanvas.dataset.customLayersRoot ){
+			var customLayersRootPath = mapCanvas.dataset.customLayersRoot;
+			var lhash = location.href.substring(location.href.indexOf("#"));
+			var lh = UtilFuncs.getUrlHash( lhash );
+			if ( lh  && customLayersRootPath ){
+				var clp;
+				if ( lh.customLayers){
+					clp =  lh.customLayers;
+				} else if( lh.customlayers ){
+					clp =  lh.customlayers;
+				}
+				if ( clp ){
+					this.#customLayersPath = (new URL( clp, new URL(customLayersRootPath,location) )).href;
+				}
+			} else if (customLayersRootPath && customLayersRootPath.endsWith(".json")){ // hash customLayersがなくて、customLayersRootプロパティだけあり、.jsonとなっている場合
+				this.#customLayersPath = new URL(customLayersRootPath,location).href;
+			}
+			console.log("Found customLayersRoot Property:", customLayersRootPath,"  customLayersPath:",this.#customLayersPath);
+		}
+		
 		return rootSVGpath;
 	}
+	
+	prepareInitialCustomLayers = async function(){ // 2024/08/05 customLayers設定ファイルの読み込み
+		if ( this.#customLayersPath ){
+			try{
+				this.initialCustomLayers = await ( await fetch(this.#customLayersPath)).json();
+				console.log("customLayersPath:",this.#customLayersPath, " initialCustomLayers:",this.initialCustomLayers);
+			} catch(e){
+				console.warn("can't load customLayers json",e);
+			}
+		}
+		return ( this.initialCustomLayers );
+	}
+
 	
 	setLayerListSize(){
 		var llElem = document.getElementById("layerList");

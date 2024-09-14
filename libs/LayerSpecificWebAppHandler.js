@@ -513,12 +513,13 @@ class LayerSpecificWebAppHandler {
 			var ifp = this.#iframeOnLoadProcessQueue[lid];
 			if ( ifp.iframe.contentWindow === targetIframeWindow ){
 				iframeParam = ifp;
+				break;
 			}
 		}
 		if ( !iframeParam){return} // iFrameReadyで実行されてればパス
 		console.log("Do initSvgMapWebAppLayer: layerID: ", lid);
 		this.#iframeOnLoadProcess(iframeParam.iframe, iframeParam.lid, iframeParam.reqSize, iframeParam.controllerURL, iframeParam.cbf);
-		delete  this.#iframeOnLoadProcessQueue[lid];
+		delete  this.#iframeOnLoadProcessQueue[iframeParam.lid];
 	}.bind(this);
 	
 	

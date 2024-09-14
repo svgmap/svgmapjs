@@ -1,9 +1,19 @@
-# svgMapLv0.2
-Modular SVGMap.js alpha
+SVGMap is a web mapping framework based on SVG. It has decentralized mapping capabilities that conventional mapping frameworks do not have, as well as an advanced tiling mechanism that goes beyond ordinary vector tiles, making it possible to implement large-scale WebGIS.
 
-This repository will contain the modularized SVGMap.js, which is intended to replace SVGMapLv0.1 in the future.
+The standardization activities are being undertaken at W3C.
 
-Development has started since 2022/05 as SVGMapLv0.1_r18module.js. A practical release has not been reached so far.
+* [HomePage](https://svgmap.org/)
+
+* [API Docs](https://www.svgmap.org/wiki/index.php?title=%E8%A7%A3%E8%AA%AC%E6%9B%B8)
+
+* [demo](https://svgmap.org/devinfo/devkddi/lvl0.1/demos/demo0.html)
+* [demo(github pages)](https://svgmap.github.io/svgMapDemo/) [(source)](https://github.com/svgmap/svgMapDemo)
+
+# Modular SVGMap.js
+
+This repository contains a modularized SVGMap.js, which replaces SVGMapLv0.1.
+
+Development has started in May 2022 as SVGMapLv0.1_r18module.js, and this version became mainstream in August 2024.
 
 
 ## to use module
@@ -11,9 +21,9 @@ Development has started since 2022/05 as SVGMapLv0.1_r18module.js. A practical r
 ```
 <script type="text/javascript" src="https://unpkg.com/jsts@1.6.1/dist/jsts.min.js"></script>
 <script type="module">
-  import { svgMap } from 'https://cdn.jsdelivr.net/gh/svgmap/svgMapLv0.2@latest/SVGMapLv0.1_r18module.js';
+  import { svgMap } from 'https://cdn.jsdelivr.net/gh/svgmap/svgmapjs@latest/SVGMapLv0.1_r18module.js';
   window.svgMap=svgMap
-</script>
+</script></nowiki>
 ```
 
 [detailed information](https://www.svgmap.org/wiki/index.php?title=%E8%A7%A3%E8%AA%AC%E6%9B%B8#rev18_.28ECMA_Script_Module.E7.89.88.29.E3.81.AE.E4.BE.8B)
@@ -35,3 +45,7 @@ Development has started since 2022/05 as SVGMapLv0.1_r18module.js. A practical r
 #### excute unittest
 
 ```npm test```
+
+#### code format (TBD)
+```prettier --use-tabs``` 
+
