@@ -1,4 +1,4 @@
-SVGMap is a web mapping framework based on SVG. It has decentralized mapping capabilities that conventional mapping frameworks do not have, as well as an advanced tiling mechanism that goes beyond ordinary vector tiles, making it possible to implement large-scale WebGIS.
+SVGMap is a web mapping framework based on SVG. It has loosely coupled and decentralized web mapping capabilities that conventional mapping frameworks do not have, as well as an advanced tiling mechanism that goes beyond ordinary vector tiles, making it possible to implement large-scale WebGIS.
 
 The standardization activities are being undertaken at W3C.
 
