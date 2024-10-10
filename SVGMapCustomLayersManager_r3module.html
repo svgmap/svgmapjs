@@ -76,16 +76,6 @@ input[name="tab_item"] {
 }
 </style>
 
-<!--
-<script type="module" >
-import { SvgMapCustomLayersManagerClient } from './SvgMapCustomLayersManagerClient.js';
-
-var svgMapCustomLayersManagerClient = new SvgMapCustomLayersManagerClient();
-window.svgMapCustomLayersManagerClient = svgMapCustomLayersManagerClient;
-
-</script>
--->
-
 <!-- 上記ライブラリを用いてレイヤー管理アプリを作るコード 将来的に上記ライブラリと統合するかも？-->
 <script type="module" src="./SVGMapCustomLayersManagerApp_r3module.js"></script> 
 
@@ -109,14 +99,14 @@ window.svgMapCustomLayersManagerClient = svgMapCustomLayersManagerClient;
   <div class="tab_content" id="startup_content">
     <div class="tab_content_description">
     <ul>
-      <li><input id="defaultVbRadio" type="radio" name="startupSelect" value="0" onclicX="selectStartupSetting(event)">
+      <li><input id="defaultVbRadio" type="radio" name="startupSelect" value="0">
         Use the default Viewbox
-      <li><input id="keepVbRadio" type="radio" name="startupSelect" value="1" onclicX="selectStartupSetting(event)">
+      <li><input id="keepVbRadio" type="radio" name="startupSelect" value="1">
         Keep Previous Viewbox and Layers Visibilities
-      <li><input id="customVbRadio" type="radio" name="startupSelect" value="2" onclicX="selectStartupSetting(event)">
+      <li><input id="customVbRadio" type="radio" name="startupSelect" value="2">
         Use Custom Viewbox
       <ul>
-        <li><input id="addVbButton" type="button" value="Add current viewbox" onclicX="addCurrentMapViewBox()"></input>
+        <li><input id="addVbButton" type="button" value="Add current viewbox"></input>
         <table style="font-size:12px" border="1" id="viewboxTable">
         </table>
       </ul>
@@ -128,25 +118,25 @@ window.svgMapCustomLayersManagerClient = svgMapCustomLayersManagerClient;
     <div class="tab_content_description">
 		<!--
 		Make Table, 
-		<input type="button" value="from Initial Map View" onclicX="reset()"></input>
+		<input type="button" value="from Initial Map View"></input>
 
-		<input type="button" value="from Current Map View" onclicX="buildFromCurrentMap()"></input>
+		<input type="button" value="from Current Map View"></input>
 		-->
 
 		Selected Setting: 
 		<select id="settingList"></select>
 
-		<input id="renameButton" type="button" value="Rename this Setting" onclicX="renameSetting()"></input>
-		<input id="deleteButton" type="button" value="Delete this Setting" onclicX="deleteSetting()" style="background-color:orange"></input>
+		<input id="renameButton" type="button" value="Rename this Setting"></input>
+		<input id="deleteButton" type="button" value="Delete this Setting" style="background-color:orange"></input>
 
 
 		<hr>
-		<input id="saveButton" type="button" value="Save and Reflect as New Setting" onclicX="buildCustomLayersSettingFromUI()"></input>
+		<input id="saveButton" type="button" value="Save and Reflect as New Setting"></input>
 
 		<table style="font-size:10px" border="1" id="layerTable">
 		</table>
 		<!--
-		<input style="background-color:red" type="button" value="Delete All Custom Layers Settings" onclicX="deleteAllSetting(event)"></input>-->
+		<input style="background-color:red" type="button" value="Delete All Custom Layers Settings"></input>-->
     </div>
   </div>
 
@@ -156,7 +146,7 @@ window.svgMapCustomLayersManagerClient = svgMapCustomLayersManagerClient;
     <table>
     	<tr ><td rowspan="2">Setting File</td>
     		<td>Backup settings</td>
-			<td><input id="downloadButton" type="button" value="Save File" onclicX="saveSetting()">
+			<td><input id="downloadButton" type="button" value="Save File">
 			<a id="downloadAnchor" href="" download="customSetting.json" style="display:none" >hiddenDL</a></td>
 		</tr>
 		<tr>
@@ -168,8 +158,12 @@ window.svgMapCustomLayersManagerClient = svgMapCustomLayersManagerClient;
 			<td colspan="2" ><input id="saveContainerSvg" type="button" value="Save Current View as container.svg"></td>
 		</tr>
 		<tr>
+			<td>UPLOAD</td>
+			<td colspan="2" ><input id="uploadCurrentCustomLayers" type="button" value="Upload Current Custom Layers Set to Server" style="background-color:#ff7070"> <input type="checkbox" id="withViewBox"></input><label for="withViewBox">with current viewbox</label><br><a href="customLayersIndex.html" target="_blank">customLayerMapIndexPage</a></td>
+		</tr>
+		<tr>
 			<td colspan="1" >RESET</td>
-			<td colspan="2" ><input id="removeAllButton" type="button" value="Clear ALL Custom Settings" onclicX="removeAllSettings()" style="background-color:#ff7070"></td>
+			<td colspan="2" ><input id="removeAllButton" type="button" value="Clear ALL Custom Settings" style="background-color:#ff7070"></td>
 		</tr>
 	</table>
     </div>
