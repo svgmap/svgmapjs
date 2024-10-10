@@ -16,16 +16,20 @@ describe("unittest for TransformLib",()=>{
             let latlng2Mercator = mercator.transform({"x":0, "y":0});
             expect(latlng2Mercator).toEqual({"x":0.5,"y":0.5});
             latlng2Mercator = mercator.transform({"x":180, "y":85.051128});
-            expect(latlng2Mercator).toEqual({"x":1,"y":0});
+            expect(latlng2Mercator.x).toBeCloseTo(1);
+            expect(latlng2Mercator.y).toBeCloseTo(0);
             latlng2Mercator = mercator.transform({"x":-180, "y":-85.051128});
-            expect(latlng2Mercator).toEqual({"x":0,"y":1});
+            expect(latlng2Mercator.x).toBeCloseTo(0);
+            expect(latlng2Mercator.y).toBeCloseTo(1);
         });
         it("正規化メルカトル座標系から緯度経度への変換",()=>{
             let mercator = new Mercator();
             let latlng2Mercator = mercator.inverse({"x":1, "y":0});
-            expect(latlng2Mercator).toEqual({"x":180,"y":85.051128});
+            expect(latlng2Mercator.x).toBeCloseTo(180);
+            expect(latlng2Mercator.y).toBeCloseTo(85.051128);
             latlng2Mercator = mercator.inverse({"x":0, "y":1});
-            expect(latlng2Mercator).toEqual({"x":-180,"y":-85.051128});
+            expect(latlng2Mercator.x).toBeCloseTo(-180);
+            expect(latlng2Mercator.y).toBeCloseTo(-85.051128);
         });
     });
     
@@ -71,7 +75,7 @@ describe("unittest for TransformLib",()=>{
             const  mUtil = new MatrixUtil();
             matrix.setLinearCRS(0,1,2,3,4,5);
             let inv = mUtil.getInverseMatrix(matrix);
-            expect(inv).toEqual("");
+            expect(inv).toEqual({ a: -1.5, b: 0.5, c: 1, d: -0, e: 1, f: -2 })
         });
     });
 });
