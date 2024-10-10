@@ -397,7 +397,10 @@ class ResumeManager{
 		// contaier.svgにもともとあったもののみを対象とする基本的なもの
 		// customLayerManagerによってレイヤの意追加や順番が変わったりしたものは、customLayerManagerの機構を別途設ける
 		// さらにレイヤ固有UIの設定状況もこの機能の対象外、別途機構を設ける
-		console.log("getBasicPermanentLink:",copyLinkTextToClipboard);
+		//
+		// 2024/10/04 各レイヤーのフラグメントID(ハッシュ)を加味したリンクを構築
+		
+		//console.log("getBasicPermanentLink:",copyLinkTextToClipboard);
 		var resumeObj = this.#getResumeObj();
 		var hiddenDif=[];
 		var visibleDif=[];
@@ -406,11 +409,19 @@ class ResumeManager{
 			var origLayerProp = initialLayersProperties[layerName];
 			var currentLayerProp =  resumeObj.layersProperties[layerName];
 			if ( currentLayerProp ){
-				if ( origLayerProp.visible != currentLayerProp.visible ){
-					if ( origLayerProp.visible == true ){
+				var origHash = UtilFuncs.getSvgLocation(origLayerProp.href).hash;
+				var currentHash = UtilFuncs.getSvgLocation(currentLayerProp.href).hash;
+				if ( origHash != currentHash && currentLayerProp.visible ){
+						visibleDif.push(layerName+currentHash);
+				} else if ( origLayerProp.visible != currentLayerProp.visible ){
+					if ( origLayerProp.visible == true ){ // 非表示
 						hiddenDif.push(layerName);
-					} else {
-						visibleDif.push(layerName);
+					} else { // 表示
+						if ( origHash != currentHash ){
+							visibleDif.push(layerName+currentHash);
+						} else {
+							visibleDif.push(layerName);
+						}
 					}
 				}
 			}
@@ -431,16 +442,21 @@ class ResumeManager{
 		var plHash = vbHash + visHash + hidHash;
 		permaLink.hash = plHash;
 		if ( copyLinkTextToClipboard == true){
-			navigator.clipboard.writeText(permaLink.href);
+			try{
+				navigator.clipboard.writeText(permaLink.href);
+			} catch ( e ){
+				console.warn("Cant access clipboard, may be http page");
+				this.#svgMapObject.showModal(`<textarea style="font-size:11px;width:390px;height:130px;">Link URL : \n${permaLink.href}</textarea>`,400,150);
+			}
 		}
 		return ( permaLink );
 	}
 	
 	resumeToggle(evt){
 		if ( evt.target.checked ){
-			svgMap.setResume(true);
+			this.#svgMapObject.setResume(true);
 		} else {
-			svgMap.setResume(false);
+			this.#svgMapObject.setResume(false);
 		}
 		
 	}

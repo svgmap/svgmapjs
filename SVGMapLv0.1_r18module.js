@@ -38,5 +38,7 @@
 import { SvgMap } from './SVGMapLv0.1_Class_r18module.js';
 	
 var svgMap = new SvgMap();
-	
+
+//window.svgMap = svgMap;
+
 export { svgMap };
