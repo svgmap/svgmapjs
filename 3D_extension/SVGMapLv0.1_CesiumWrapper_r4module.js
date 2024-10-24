@@ -398,7 +398,8 @@ class SvgMapCesiumWrapper{
 			this.#svg2cesiumBtn2style = "left :0px; top:0px; position: relative";
 			this.#btnDivStyle = "left:2px;top:" + iconTop + "; position:absolute;display:none;z-index:1000;background-color : #AAEEDD";
 		} else {
-			this.#btnDivStyle = "right:2px;top:145px; position:absolute;width:140px;";
+			return; // this.#icon3dがない場合は、3D機能を発動できないようにする。　2024/08/29 
+//			this.#btnDivStyle = "right:2px;top:145px; position:absolute;width:140px;";
 		}
 		
 		if ( !this.#svg2cesiumBtn1style ){

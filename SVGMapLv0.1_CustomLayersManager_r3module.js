@@ -231,6 +231,8 @@ class  SvgMapCustomLayersManager{
 		var customLayersSet = customLayersObject.customLayersSettings[currentSettingKey].data;
 		console.log("applyCustomLayers:customLayersSet:",customLayersSet);
 		
+		this.#removeIid(customLayersSet); // iidがあるといろいろ処理が破綻するので削除します。bugFix 2024/08/28
+		
 		var lp;
 		
 		if ( typeof(baseLayersPropertySet)=="object") {
@@ -281,7 +283,7 @@ class  SvgMapCustomLayersManager{
 						// console.log(plt,targetLayerId);
 						
 						if ( duplicatedLayerTitles[layerTitle] ){
-							console.warn("edit duplicatedLayer:",layerTitle,lp[i].href, getElementByAttr( rootContainer , targetLayerId , "iid" ).getAttribute("xlink:href"));
+							console.warn("edit duplicatedLayer:",layerTitle,lp[i].href, this.#getElementByAttr( rootContainer , targetLayerId , "iid" ).getAttribute("xlink:href"));
 						}
 						this.#editLayer(targetLayerId,customLayersSet[layerTitle], rootContainer);
 					}
@@ -482,14 +484,14 @@ class  SvgMapCustomLayersManager{
 	#addLayer(groupedTitle, prop, rootContainer){
 		// propのaddのvalが""もしくはtrueならばドキュメント末尾(すなわち一番上)に追加する
 		var layer = rootContainer.createElement("animation");
-		title=this.#parseGroupedTitle(groupedTitle).title;
+		var title=this.#parseGroupedTitle(groupedTitle).title;
 		layer.setAttribute("title",title);
 		// これいい加減すぎ・・ まずい気がする・・・ 2021/3/11
 		layer.setAttribute("x",-30000);
 		layer.setAttribute("y",-30000);
 		layer.setAttribute("width",60000);
 		layer.setAttribute("height",60000);
-		for ( key in prop ){
+		for ( var key in prop ){
 			if ( key == "add" ){
 				continue;
 			}
@@ -550,7 +552,7 @@ class  SvgMapCustomLayersManager{
 			} else if ( key == "opacity" ){
 				layersProperty[idx].opacity= targetLayerProp.opacity;
 			} else if ( key == "class"){
-				layersProperty[idx].detail = getClassDetail(targetLayerProp.class, {});
+				layersProperty[idx].detail = this.#getClassDetail(targetLayerProp.class, {});
 			}
 			
 			if ( key != "href"){
@@ -1466,6 +1468,16 @@ class  SvgMapCustomLayersManager{
 		return ( true );
 		//buildSettingList(true);
 		//buildVbTable();
+	}
+	
+	#removeIid(customLayersSet){
+		for ( var layerTitle in customLayersSet ){
+			var lp = customLayersSet[layerTitle];
+			if ( lp.iid ){
+				delete  lp.iid;
+				//console.log("delete iid for customLayersSet of "+layerTitle);
+			}
+		}
 	}
 	
 	
