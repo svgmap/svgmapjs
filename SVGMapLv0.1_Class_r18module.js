@@ -1743,8 +1743,28 @@ class SvgMap {
 
 
 // 公開メソッド
+	/**
+	 * 
+	 * @param  {number} lat
+	 * @param  {number} lng
+	 * @param  {Object} crs 
+	 * @returns {Object} { x: number, y: number } 形式のオブジェクト
+	 */
 	Geo2SVG(...params){ return (this.#matUtil.Geo2SVG(...params))};
+	/**
+	 * 
+	 * @param  {SVGElement} poi
+	 * @returns {undefined}
+	 */
 	POIviewSelection(...params){ return (this.#mapTicker.POIviewSelection(...params)) };
+	/**
+	 * 
+	 * @param  {number} svgX
+	 * @param  {number} svgY
+	 * @param  {Object} crs
+	 * @param  {Object} inv
+	 * @returns {Object} { lng: number, lat: number } 形式のオブジェクト または null
+	 */
 	SVG2Geo(...params){ return (this.#matUtil.SVG2Geo(...params)) };
 	addEvent( ){ return (UtilFuncs.addEvent) };
 	/**
