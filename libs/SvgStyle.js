@@ -3,11 +3,8 @@ import { UtilFuncs } from './UtilFuncs.js';
 class SvgStyle{
 	styleCatalog = new Array("stroke" , "stroke-width" , "stroke-linejoin" , "stroke-linecap" , "fill" , "fill-rule" , "fill-opacity" , "opacity" , "vector-effect" , "display" , "font-size" , "stroke-dasharray" , "marker-end" , "visibility" ,"image-rendering"); 
 	
-	constructor(getNonScalingOffset){
-		this.getNonScalingOffset = getNonScalingOffset;
+	constructor(){
 	}
-	
-	getNonScalingOffset;
 	
 	getStyle( svgNode , defaultStyle , hasHyperLink , styleCacheMap ){
 		// 親のスタイルを継承して該当要素のスタイルを生成する
@@ -102,10 +99,13 @@ class SvgStyle{
 				style.target = hyperLinkTarget;
 			}
 		}
-
-		if (svgNode.getAttribute("transform")) {
+		
+		const svgNodeTransfom = svgNode.getAttribute("transform");
+		if (svgNodeTransfom) {
 			// <g>の svgt1.2ベースのnon-scaling機能のオフセット値を"スタイル"として設定する・・ 2014.5.12
-			style.nonScalingOffset = this.getNonScalingOffset(svgNode);
+			if ( svgNodeTransfom.indexOf("ref")>=0){
+				style.nonScalingOffset = UtilFuncs.parseNonScalingOffset(svgNodeTransfom); // 2024/11/21 getNonScalingOffset使用を止めた
+			}
 		}
 		return style;
 	}

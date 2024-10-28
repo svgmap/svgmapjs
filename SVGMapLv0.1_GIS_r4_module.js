@@ -3515,7 +3515,16 @@ class SvgMapGIS {
 		}
 	}
 	
-	
+	getImagePixelData(svgMapCoverageGeometry, callBack, callBackParam){
+		// returns  pixData , pixWidth , pixHeight , callBackParam
+		return this.#getImagePixData(
+			svgMapCoverageGeometry.href,
+			callBack,
+			callBackParam,
+			svgMapCoverageGeometry.src.getAttribute("iid"),
+			svgMapCoverageGeometry.src.getAttribute("style")
+		);
+	};
 	buildDifference(...params){ return (this.#buildDifference(...params))};
 	buildIntersection(...params){ return (this.#buildIntersection(...params))};
 	captureGeometries(...params){ return (this.#captureGeometries(...params))};
