@@ -455,10 +455,15 @@ class UtilFuncs {
 		return ( matrix );
 	}
 	
-	static getNonScalingOffset( svgPoiNode ){ // getPoiPosから改称 2018.3.2
+	static getNonScalingOffset( svgPoiNode ){ // getPoiPosから改称 2018.3.2 
 		// vectorEffect,transform(ref ノンスケールのための基点座標取得
+		// parseTransformMatrixと同様のparseNonScalingOffsetのラッパーに変更 2024/10/22
+		return this.parseNonScalingOffset(svgPoiNode.getAttribute("transform"));
+	}
+	
+	static parseNonScalingOffset(transformAttr){
 		try {
-			var pos = svgPoiNode.getAttribute("transform").replace("ref(svg,","").replace(")","").split(",");
+			var pos = transformAttr.replace("ref(svg,","").replace(")","").split(",");
 			var x = Number ( pos[0] );
 			var y = Number ( pos[1] );
 			if ( !isNaN(x) && !isNaN(y) ){
@@ -482,7 +487,7 @@ class UtilFuncs {
 			}
 		}
 	}
-
+	
 	static getDocumentId( svgelement ){
 		return ( svgelement.ownerDocument.documentElement.getAttribute("about") );
 	}

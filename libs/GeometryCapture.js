@@ -92,7 +92,7 @@ class GeometryCapture{
 						} else { // 非対角成分transform
 							geom.coordinates.push({x:geom.svgXY[0][0], y:geom.svgXY[0][1]});
 							geom.coordinates.push({x:geom.svgXY[1][0], y:geom.svgXY[1][1]});
-							geoTf = this.#matUtil.matMul(geom.transform,invCrs);
+							var geoTf = this.#matUtil.matMul(geom.transform,invCrs);
 							geom.transform = geoTf;
 						}
 						
