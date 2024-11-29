@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<kml xmlns="http://earth.google.com/kml/2.0"> <Document>
+
+<Folder>
+ <Placemark>
+  <name>場所B</name>
+  <description>どこかの場所です！</description>
+ <Point>
+   <coordinates>135.2,35.4,0. </coordinates>
+ </Point></Placemark>
+ 
+ <Placemark>
+  <name>場所B</name>
+  <description>どこかの場所です！</description>
+ <Point>
+   <coordinates>135.0,35.0,0. </coordinates>
+ </Point></Placemark>
+</Folder>
+
+</Document> </kml>
