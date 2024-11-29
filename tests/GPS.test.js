@@ -71,8 +71,6 @@ describe("unittest for GPS",()=>{
                         successCallback({
                             coords: {
                                 accuracy: 1,
-                                altitude: null,
-                                altitudeAccuracy: null,
                                 heading: null,
                                 latitude: 30,
                                 longitude: 130,
@@ -86,8 +84,7 @@ describe("unittest for GPS",()=>{
 
             gps = new GPS(mock_svgMapObj);
             window.svgMap = {gpsCallback:gps.gpsSuccess};
-
-            let ifElement = document.getElementById("safari4iframe");
+            let ifElement = document.getElementsByTagName("iframe")[0];
             if(ifElement){
                 navigatorSpy4iFrame = jest.spyOn(ifElement.contentWindow, 'navigator', 'get');
                 navigatorSpy4iFrame.mockImplementation(() => ({
@@ -99,8 +96,6 @@ describe("unittest for GPS",()=>{
                         successCallback({
                             coords: {
                                 accuracy: 1,
-                                altitude: null,
-                                altitudeAccuracy: null,
                                 heading: null,
                                 latitude: 50,
                                 longitude: 150,

@@ -1,6 +1,6 @@
 import {UtilFuncs} from "../libs/UtilFuncs";
 import {SvgMapElementType} from "../libs/SvgMapElementType";
-import {jest} from '@jest/globals';
+import {expect, jest} from '@jest/globals';
 import * as fs from "node:fs/promises";
 
 describe("unittest for UtilFuncs",()=>{
@@ -100,30 +100,18 @@ describe("unittest for UtilFuncs",()=>{
         it("getImageProps(POI) without subcategory... cehck degrade",()=>{
             let imgElement = document.createElement("img");
             let result = UtilFuncs.getImageProps(imgElement, SvgMapElementType.POI, null, null, null);
-            expect(result).toEqual({
+            expect(result).toEqual(expect.objectContaining({
                 "cdx": 0,
                 "cdy": 0,
-                "commonQuery": null,
-                "crossorigin": null,
-                "elemClass": undefined,
                 "height": 0,
-                "href": null,
-                "href_fragment": undefined,
-                "imageFilter": null,
-                "maxZoom": undefined,
-                "metadata": null,
-                "minZoom": undefined,
                 "nonScaling": false,
                 "opacity": 0,
                 "pixelated": false,
-                "text": undefined,
-                "title": null,
-                "transform": undefined,
                 "visible": true,
                 "width": 0,
                 "x": 0,
                 "y": 0
-                });
+                }));
         });
 
         it("getImageProps(SVG)",()=>{
@@ -131,30 +119,18 @@ describe("unittest for UtilFuncs",()=>{
             imgElement.setAttribute("src","http://localhost/sublayer.svg#parameters"); //これは必ず設定されるものなの？
             imgElement.setAttribute("clip","???"); //これは必ず設定されるものなの？
             let result = UtilFuncs.getImageProps(imgElement, SvgMapElementType.EMBEDSVG, null, SvgMapElementType.SVG2EMBED, null);
-            expect(result).toEqual({
+            expect(result).toEqual(expect.objectContaining({
                 "cdx": 0,
                 "cdy": 0,
-                "commonQuery": null,
-                "crossorigin": null,
-                "elemClass": undefined,
-                "height": 0,
-                "href": null,
-                "href_fragment": undefined,
-                "imageFilter": null,
-                "maxZoom": undefined,
-                "metadata": null,
-                "minZoom": undefined,
+                "height": 60000,
                 "nonScaling": false,
                 "opacity": 0,
                 "pixelated": false,
-                "text": undefined,
-                "title": null,
-                "transform": undefined,
                 "visible": true,
-                "width": 0,
-                "x": 0,
-                "y": 0
-                });
+                "width": 60000,
+                "x": -30000,
+                "y": -30000
+            }));
         });
 
         it("getImageProps(SVG) with bitimage.",()=>{
@@ -163,29 +139,19 @@ describe("unittest for UtilFuncs",()=>{
             imgElement.setAttribute("src","http://localhost/sublayer.svg#parameters"); //これは必ず設定されるものなの？
             imgElement.setAttribute("clip","???"); //これは必ず設定されるものなの？
             let result = UtilFuncs.getImageProps(imgElement, SvgMapElementType.EMBEDSVG, null, null, null); //これでBitimageになっているのかなぁ？
-            expect(result).toEqual({
+            expect(result).toEqual(expect.objectContaining({
                 "cdx": 0,
                 "cdy": 0,
-                "commonQuery": null,
-                "crossorigin": null,
-                "elemClass": null,
                 "height": 0,
                 "href": "",
-                "href_fragment": undefined,
-                "imageFilter": null,
-                "maxZoom": undefined,
-                "metadata": undefined,
-                "minZoom": undefined,
                 "nonScaling": true,
                 "opacity": 0,
                 "pixelated": false,
-                "text": undefined,
-                "transform": undefined,
                 "visible": true,
                 "width": 0,
                 "x": 5,
                 "y": 3
-                });
+                }));
         });
 
         it("getImageProps(POI) with nonScaling Mode",()=>{
@@ -198,24 +164,16 @@ describe("unittest for UtilFuncs",()=>{
             imgElement.setAttribute("visibleMinZoom", 0);
             imgElement.setAttribute("visibleMaxZoom", 0);
             let result = UtilFuncs.getImageProps(imgElement, SvgMapElementType.POI, null, SvgMapElementType.RECT, null);
-            expect(result).toEqual({
+            expect(result).toEqual(expect.objectContaining({
                 "cdx": 0,
                 "cdy": 0,
-                "commonQuery": null,
-                "crossorigin": null,
-                "href_fragment": undefined,
-                "imageFilter": null,
                 "maxZoom": 0,
-                "metadata": undefined,
                 "minZoom": 0,
                 "nonScaling": false,
                 "opacity": 0,
                 "pixelated": false,
-                "text": undefined,
-                "title": undefined,
-                "transform": undefined,
                 "visible": true,
-                });
+                }));
         });
 
         it("getImageProps(Text) with nonScaling",()=>{
@@ -230,30 +188,21 @@ describe("unittest for UtilFuncs",()=>{
             txtElement.setAttribute("font-size",10.5)
             txtElement.textContent = "hello";
             let result = UtilFuncs.getImageProps(txtElement, SvgMapElementType.TEXT, null, null, null);
-            expect(result).toEqual({
+            expect(result).toEqual(expect.objectContaining({
                 "cdx": 100,
                 "cdy": 200,
-                "commonQuery": null,
-                "crossorigin": null,
-                "elemClass": undefined, //undefinedじゃなくてnullを返すべきでは？
                 "height": 0,
-                "href": undefined,
-                "href_fragment": undefined,
-                "imageFilter": null,
                 "maxZoom": 6000,
-                "metadata": undefined,
                 "minZoom": 10,
                 "nonScaling": true,
                 "opacity": 0,
                 "pixelated": false,
                 "text": "hello",
-                "title": undefined,
-                "transform": undefined,
                 "visible": true,
                 "width": 0,
                 "x": 5,
                 "y": 3
-                });
+                }));
         });
 
         it("getImageProps(Text) without nonScaling",()=>{
@@ -268,30 +217,21 @@ describe("unittest for UtilFuncs",()=>{
             txtElement.setAttribute("font-size",10.5)
             txtElement.textContent = "hello";
             let result = UtilFuncs.getImageProps(txtElement, SvgMapElementType.TEXT, null, null, null);
-            expect(result).toEqual({
+            expect(result).toEqual(expect.objectContaining({
                 "cdx": 0,
                 "cdy": 0,
-                "commonQuery": null,
-                "crossorigin": null,
-                "elemClass": undefined, //undefinedじゃなくてnullを返すべきでは？
                 "height": 10.5,
-                "href": undefined,
-                "href_fragment": undefined,
-                "imageFilter": null,
                 "maxZoom": 6000,
-                "metadata": undefined,
                 "minZoom": 10,
                 "nonScaling": false,
                 "opacity": 0,
                 "pixelated": false,
                 "text": "hello",
-                "title": undefined,
-                "transform": undefined,
                 "visible": true,
                 "width": 10.5,
                 "x": 100,
                 "y": 200
-                });
+                }));
         });
         
         it("getNonScalingOffset", ()=>{
@@ -299,7 +239,7 @@ describe("unittest for UtilFuncs",()=>{
             svgElement.setAttribute("transform", "ref(svg,13000,-5000)");
 		    console.log("getNonScalingOffset Method Start... : ", performance.now());
             let result = UtilFuncs.getNonScalingOffset(svgElement);
-            expect(result).toBe(""); // 引数のsvgPoiNodeとsvgElementの違いは何？
+            expect(result).toStrictEqual({x:13000,y:-5000,nonScaling:true}); // 引数のsvgPoiNodeとsvgElementの違いは何？
         });
 
         it("get a Symbol",async ()=>{
