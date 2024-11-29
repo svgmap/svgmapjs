@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+    <name>LineString Sample</name>
+    <description>This is a sample KML file with a LineString.</description>
+    <Placemark>
+        <name>Path between Tokyo and Osaka</name>
+        <description>A line connecting Tokyo and Osaka.</description>
+        <LineString>
+            <tessellate>1</tessellate>
+            <coordinates>
+                139.6917,35.6895,0 <!-- 東京 -->
+                135.5023,34.6937,0 <!-- 大阪 -->
+            </coordinates>
+        </LineString>
+    </Placemark>
+</Document>
+</kml>
