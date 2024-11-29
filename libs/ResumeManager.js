@@ -436,15 +436,23 @@ class ResumeManager{
 		return ( permaLink );
 	}
 	
+	/**
+	 * 
+	 * @param {Object} evt クリックイベント(HTML Document)
+	 */
 	resumeToggle(evt){
 		if ( evt.target.checked ){
-			svgMap.setResume(true);
+			this.#svgMapObject.setResume(true);
 		} else {
-			svgMap.setResume(false);
+			this.#svgMapObject.setResume(false);
 		}
 		
 	}
 	
+	/**
+	 * 
+	 * @param {Boolean} stat Resume機能の有効化フラグ 
+	 */
 	setResume( stat ){
 //		console.log("setResume:",stat,"   ck:", Object.keys(svgImagesProps).length,svgImagesProps);
 		this.#resume = stat;
@@ -453,6 +461,10 @@ class ResumeManager{
 		}
 	};
 	
+	/**
+	 * 
+	 * @returns {Boolean} Resume機能の有効化フラグ
+	 */
 	getResume(){
 		return ( this.#resume );
 	}

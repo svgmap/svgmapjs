@@ -21,13 +21,23 @@ class LinkedDocOp{
 	// 第二引数：その文書プロパティ群
 	// 第三引数以降：任意引数(max5個)
 	// issue 任意引数の数を可変長にしたいね(現在は最大５個にしてる)（要勉強）
+	/**
+	 * 
+	 * @function 子文書に対して、同じ処理(func)を再帰実行する関数 
+	 * 
+	 * @param {Function} func 
+	 * @param {String} docHash svgDocId?
+	 * @param {Object} param1 
+	 * @param {Object} param2 
+	 * @param {Object} param3 
+	 * @param {Object} param4 
+	 * @param {Object} param5 
+	 */
 	linkedDocOp( func , docHash , param1, param2 , param3 , param4 , param5 ){
 		var targetDoc = this.#svgImages[ docHash ];
 		var targetDocProps = this.#svgImagesProps[ docHash ];
-		
 		if ( targetDoc ){
 			func(targetDoc , targetDocProps , param1, param2 , param3 , param4 , param5 );
-			
 			// child Docs再帰処理
 			var childDocs = targetDocProps.childImages;
 			for ( var i in childDocs ){

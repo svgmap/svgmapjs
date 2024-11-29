@@ -23,6 +23,10 @@ class MapViewerProps{
 		}
 		return ( ans );
 	}
+	/**
+	 * 
+	 * @returns {Boolean} Canvasが存在するかの確認
+	 */
 	hasMapCanvasSize(){
 		if ( this.mapCanvasSize.width ){
 			return ( true );

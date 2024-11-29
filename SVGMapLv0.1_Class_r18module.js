@@ -402,7 +402,7 @@ class SvgMap {
 	//	console.log("AppName:",navigator.appName,"  UAname:",navigator.userAgent);
 	//	if ( navigator.appName == 'Microsoft Internet Explorer' && window.createPopup )
 		this.#mapViewerProps.uaProps = new UAtester();
-		
+	
 		//this.#mapViewerProps.mapCanvas.title = ""; // titleにあると表示されてしまうので消す
 	//	console.log(mapCanvas);
 		this.#mapViewerProps.setMapCanvasSize( UtilFuncs.getCanvasSize() );
@@ -448,6 +448,13 @@ class SvgMap {
 
 	// loadSVG(this)[XHR] -(非同期)-> handleResult[buildDOM] -> dynamicLoad[updateMap] -> parseSVG[parseXML & set/chgImage2Canvas] -> (if Necessary) ( (if Unloaded child) loadSVG(child)-(非同期)->... || (if already loaded child) parseSVG(child)... )
 	// なお、起動時はloadSVGからだが、伸縮,スクロール,レイヤON/OFFなどでの読み込み表示処理の起点はdynamicLoadから(rootの文書は起動時に読み込み済みで変わらないため)
+	/**
+	 * 
+	 * @param {String} path 
+	 * @param {String} id 
+	 * @param {Document} parentElem 
+	 * @param {*} parentSvgDocId -- 不明
+	 */
 	#loadSVG( path , id , parentElem , parentSvgDocId) {
 	//	console.log("called loadSVG  id:",id, " path:",path);
 		if ( !this.#svgImages[id] ){ 
@@ -500,6 +507,15 @@ class SvgMap {
 	}
 
 
+	/**
+	 * @function ERR404時や、timeout時に行う処理
+	 * 
+	 * @param {String} docId 
+	 * @param {String} docPath 
+	 * @param {Response} httpRes 
+	 * @param {Boolean} isTimeout 
+	 * @returns {undefined}
+	 */
 	#handleErrorResult( docId , docPath, httpRes, isTimeout){
 		// ERR404時や、timeout時に行う処理(2020/2/13 timeout処理を追加)
 		delete this.#resourceLoadingObserver.loadingImgs[docId]; // debug 2013.8.22
@@ -516,6 +532,17 @@ class SvgMap {
 		return;
 	}
 	
+	/**
+	 * @function 
+	 * @name handleResult
+	 * 
+	 * @param {String} docId 
+	 * @param {String} docPath 
+	 * @param {Document} parentElem 
+	 * @param {Response} httpRes
+	 * @param {String} parentSvgDocId 
+	 * @returns {undefined}
+	 */
 	#handleResult( docId , docPath , parentElem , httpRes , parentSvgDocId ){
 	//	console.log("httpRes:id,res:",docId,httpRes);
 		if (( httpRes.readyState == 4 ) ){
@@ -605,6 +632,11 @@ class SvgMap {
 	
 	#existNodes = new Object();; // 存在するノードのidをハッシュキーとしたテーブル
 
+	/**
+	 * 
+	 * @param {Number} docId       
+	 * @param {Object} parentElem   多分XMLDocumentだと思っています
+	 */
 	#dynamicLoad( docId , parentElem ){ // アップデートループのルート：ほとんど機能がなくなっている感じがする・・
 		if (! docId && ! parentElem ){
 			docId ="root";
@@ -1511,6 +1543,12 @@ class SvgMap {
 		}
 	}
 
+	/**
+	 * @description 指定したSVG文書のviewBoxを取得
+	 * 
+	 * @param {XMLDocument} svgDoc  svg文書
+	 * @returns {Object} ViewBox(x,y,width,height)sを含むオブジェクトを返す
+	 */
 	#getViewBox( svgDoc ){
 		var va = svgDoc.documentElement.getAttribute("viewBox");
 		if ( va ){
@@ -1558,6 +1596,14 @@ class SvgMap {
 	//		return ( ( Math.abs(s2c.a) + Math.abs(s2c.d) ) / ( 2.0 * commonDevicePixelRatio ) );
 	}
 
+	/**
+	 * 
+	 * @param {Number} dpr 
+	 * @param {String} layerId
+	 * 
+	 * 
+	 * TODO: デフォルト引数としてdpr=1, layerId="root"を設定するのがベター？
+	 */
 	#setDevicePixelRatio( dpr , layerId ){
 		// 2020/5/13 layerId毎に指定するlayerDevicePixelRatio設定＆クリア機能を追加
 		if( layerId ){
@@ -1576,6 +1622,11 @@ class SvgMap {
 		}
 	}
 
+	/**
+	 * 
+	 * @param {String} docId 
+	 * @returns {Object|Number} 縦横の比率
+	 */
 	#getDevicePixelRatio(docId){
 		if ( !docId ){
 			return {
@@ -1668,6 +1719,13 @@ class SvgMap {
 
 
 	#retryingRefreshScreen = false;
+	/**
+	 * @param {Boolean} noRetry
+	 * @param {} parentCaller 未使用？
+	 * @param {Boolean} isRetryCall
+	 * @param {Boolean} withinContext
+	 * @returns {}
+	 */
 	#refreshScreen=function(noRetry, parentCaller, isRetryCall, withinContext) {
 		// MutationObserverとの不整合を回避するため、refreshScreenはマイクロタスクに積む
 		// https://zenn.dev/canalun/articles/js_async_and_company_summary
@@ -1681,6 +1739,13 @@ class SvgMap {
 		}
 	}.bind(this);
 	
+	/**
+	 * スクロール・パンを伴わずに画面の表示を更新(内部のSVGMapDOMとシンクロ)する処理
+	 * @param {Boolean} noRetry
+	 * @param {} parentCaller 未使用？
+	 * @param {Boolean} isRetryCall リトライ用のフラグっぽい
+	 * @returns {undefined} 
+	 */
 	#refreshScreenSync=function(noRetry, parentCaller, isRetryCall){
 		// スクロール・パンを伴わずに画面の表示を更新(内部のSVGMapDOMとシンクロ)する処理
 		// SVGMapコンテンツ全体のDOMトラバースが起きるため基本的に重い処理
@@ -1726,7 +1791,13 @@ class SvgMap {
 	#setLayerUI;
 	#updateLayerListUIint;
 
-
+	/**
+	 * @function
+	 * @name #reLoadLayer
+	 * @description 指定したレイヤー(ルートコンテナのレイヤー)をリロードする
+	 * 
+	 * @param {String} layerID_Numb_Title 
+	 */
 	#reLoadLayer(layerID_Numb_Title){
 		// 指定したレイヤー(ルートコンテナのレイヤー)をリロードする 2017.10.3
 		// この関数は必ずリロードが起こることは保証できない。
@@ -1824,8 +1895,25 @@ class SvgMap {
 	getSvgTarget(...params){ return (this.#getSvgTarget(...params)) };
 	getSwLayers(...params){ return (this.#layerManager.getSwLayers(...params)) };
 	getSymbols(...params){ return (UtilFuncs.getSymbols(...params)) };
+
+	/**
+	 * 
+	 * @param  {undefined} params // 引数なし
+	 * @returns {undefined} //返り値なし
+	 */
 	getTickerMetadata(...params){ return (this.#mapTicker.getTickerMetadata(...params)) };
+	
+	/**
+	 * @description ViewBoxを変換する関数
+	 * @param {Object} inBox 変換前のViewBox 
+	 * @param {GenericMatrix} matrix 変換行列
+	 * @returns {Object|null} 変換後のViewBox（座標と縦横のサイズ）
+	 */
 	getTransformedBox(...params){ return (this.#matUtil.getTransformedBox(...params)) };
+	/**
+	 * @description UserAgentの情報を取得する関数
+	 * @returns {Object} {isIE: Boolean, isSP: Boolean, uaProp:Object} 
+	 */
 	getUaProp(){
 		return {
 			isIE: this.#mapViewerProps.uaProps.isIE,
@@ -1833,17 +1921,112 @@ class SvgMap {
 			uaProp: this.#mapViewerProps.uaProps
 		}
 	};
+
+	/**
+	 * 
+	 * @param  {Number} params // 画面上のpx
+	 * @returns {Number}       // 水平距離(km)
+	 */
 	getVerticalScreenScale(...params){ return (this.#essentialUIs.getVerticalScreenScale(...params)) };
+	
+	/**
+	 * 
+	 * @param  {XMLDocument} params 
+	 * @returns {Object} ViewBox(x,y,width,height)sを含むオブジェクトを返す
+	 */
 	getViewBox(...params){ return (this.#getViewBox(...params)) };
+	
+	/**
+	 * 
+	 * @param  {undefine} params //引数なし
+	 * @returns {undefined} // 戻り値なし
+	 */
 	gps(...params){ return (this.#gps.gps(...params)) };
+
+	/**
+	 * @function
+	 * @name gpsCallback
+	 * @description 位置情報取得に成功した後のコールバック関数をセットする関数
+	 * @param  {Function} params 
+	 * @returns {undefined}
+	 */
 	gpsCallback(...params){ return (this.#gps.gpsSuccess(...params)) };
+
+	/**
+	 * @function 
+	 * 
+	 * @param {String} docId 
+	 * @param {String} docPath 
+	 * @param {Document} parentElem 
+	 * @param {Response} httpRes
+	 * @param {String} parentSvgDocId 
+	 * @returns {undefined}
+	 */
 	handleResult(...params){ return (this.#handleResult(...params)) };
+	
+	/**
+	 * @description 通常レイヤーごとにViewBoxを指定できますが、rootSVGのviewBoxを参照するフラグ
+	 * 
+	 */
 	ignoreMapAspect(){ this.#essentialUIs.ignoreMapAspect = true; };
+
+	/**
+	 * 初期化関数であり、load時に"一回だけ"呼ばれる
+	 * 
+	 * @param  {undefined} params  // 引数ない
+	 * @returns {undefined}        // 戻り値もない
+	 */
 	initLoad(...params){ return (this.#initLoad(...params)) };
+	
+	/**
+	 * 
+	 * @param {Object} rect1 x,y,width,height,nonScalingをキーに持つオブジェクト
+	 * @param {Object} rect2 x,y,width,height,nonScalingをキーに持つオブジェクト
+	 * @description nonScalingオプションがTrueの場合はwidth,heightを0として扱います
+	 * @returns {Boolean}
+	 */
 	isIntersect(...params){ return (UtilFuncs.isIntersect(...params)) };
+	
+	/**
+	 * @function 子文書に対して、同じ処理(func)を再帰実行する関数 
+	 * 
+	 * @param {Function} func 
+	 * @param {String} docHash svgDocId?
+	 * @param {Object} param1 
+	 * @param {Object} param2 
+	 * @param {Object} param3 
+	 * @param {Object} param4 
+	 * @param {Object} param5 
+	 */
 	linkedDocOp(...params){ return (this.#linkedDocOp.linkedDocOp(...params)) };
+
+	/**
+	 * 
+	 * @param {String} path 
+	 * @param {String} id 
+	 * @param {Document} parentElem 
+	 * @param {*} parentSvgDocId -- 不明
+	 * @returns {undefined}
+	 */
 	loadSVG(...params){ return (this.#loadSVG(...params)) };
+
+	
+	/**
+	 * @function 2つの行列の積を計算する関数
+	 * 
+	 * @param {GenericMatrix} m1 
+	 * @param {GenericMatrix} m2 
+	 * @returns {Object} // GenericMatrixで返すの方がよいのでは？
+	 */
 	matMul(...params){ return (this.#matUtil.matMul(...params)) };
+	
+	/**
+	 * @function 小数点以下の桁数をそろえる
+	 * 
+	 * @param {Number} number 
+	 * @param {Number} digits デフォルト7桁
+	 * @returns {Number}
+	 */
 	numberFormat(...params){ return (UtilFuncs.numberFormat(...params)) };
 	/**
 	override : function ( mname , mval ){
@@ -1852,8 +2035,29 @@ class SvgMap {
 //		console.log("override " + mname + " : " , this[mname] , showPoiProperty , this.showPoiProperty , this);
 	},
 	**/
+
+	/**
+	 * 
+	 * @param  {String} csv 
+	 * @returns {Array}
+	 */
 	parseEscapedCsvLine(...params){ return (this.#mapTicker.showPoiProperty.parseEscapedCsvLine(...params)) };
+
+	/**
+	 * @param {Boolean} noRetry
+	 * @param {} parentCaller 未使用？
+	 * @param {Boolean} isRetryCall
+	 * @param {Boolean} withinContext
+	 * @returns {undefined}
+	 */
 	refreshScreen(...params){ return (this.#refreshScreen(...params))};
+
+	/**
+	 * 
+	 * @param {Function} layerUIinitFunc 
+	 * @param {Function} layerUIupdateFunc 
+	 * 
+	 */
 	registLayerUiSetter( layerUIinitFunc, layerUIupdateFunc ){
 		console.log("registLayerUiSetter:",layerUIinitFunc, layerUIupdateFunc);
 		this.#setLayerUI = layerUIinitFunc;
@@ -1866,18 +2070,108 @@ class SvgMap {
 		}.bind(this);
 		**/
 	};
+
+	/**
+	 * @function
+	 * @description 指定したレイヤー(ルートコンテナのレイヤー)をリロードする
+	 * 
+	 * @param {String} layerID_Numb_Title 
+	 * @returns {undefined}
+	 */
 	reLoadLayer(...params){ return (this.#reLoadLayer(...params))};
+
+	/**
+	 * 
+	 * @param  {Object} params DOM Event 
+	 * @returns {undefined}
+	 */
 	resumeToggle(...params){ return (this.#resumeManager.resumeToggle(...params))};
+
+	/**
+	 * 
+	 * @param {Number} screenX 
+	 * @param {Number} screenY 
+	 * @returns {Object|null} lat/lngのキーを含むhashを戻す
+	 */
 	screen2Geo(...params){ return (this.#essentialUIs.screen2Geo(...params))};
+
+	/**
+	 * 
+	 * @param {String|Document} messageHTML 
+	 * @param {Array} buttonMessages // どういう中身かまでわかっていない
+	 * @param {Function} callback 
+	 * @param {Object} callbackParam 
+	 * @returns {undefined}
+	 */
 	setCustomModal(...params){ return (this.#customModal.setCustomModal(...params))};
+
+	/**
+	 * 
+	 * @param {Number} dpr 
+	 * @param {String} layerId
+	 * @returns {undefined}
+	 */
 	setDevicePixelRatio(...params){ return (this.#setDevicePixelRatio(...params))};
+
+	/**
+	 * 
+	 * @param  {Null|String} params 
+	 * @returns {Object|Number} 
+	 */
 	getDevicePixelRatio(...params){ return (this.#getDevicePixelRatio(...params))};
+
+	/**
+	 * @param {Number} lat 必須
+	 * @param {Number} lng 必須
+	 * @param {Number} radius [lat-side-deg]オプション(今の縮尺のまま移動) ( setGeoViewPort(lat,lng,h,w) という関数もあります )
+
+	 * @returns {undefined}
+	 */
 	setGeoCenter(...params){ return (this.#essentialUIs.setGeoCenter(...params))};
+
+	/**
+	 * 
+	 * @param {Number} lat 
+	 * @param {Number} lng 
+	 * @param {Number} latSpan //緯度方向の範囲？単位はdegree？
+	 * @param {Number} lngSpan //軽度方向の範囲？単位はdegree？
+	 * @param {Boolean} norefresh //画面更新を実施するかのフラグ
+	 * @returns {Boolean}
+	 */
 	setGeoViewPort(...params){ return (this.#essentialUIs.setGeoViewPort(...params))};
+
+	/**
+	 * 
+	 * @param {String} layerID_Numb_Title 
+	 * @param {*} visible //型が不明(Boolean or String)
+	 * @returns {undefined} //戻り値なし
+	 */
 	setLayerVisibility(...params){ return (this.#layerManager.setLayerVisibility(...params))};
+	
+	/**
+	 * 
+	 * @param {Object} mc 多分Objectだけど、MapViewerPropsの中で操作されてない
+	 */
 	setMapCanvas( mc ){ this.#mapViewerProps.mapCanvas = mc };
+
+	/**
+	 * 
+	 * @param  {Object} mc MapCanvas向けのstyle設定
+	 * @returns {undefined}　
+	 */
 	setMapCanvasCSS(...params){ return (this.#essentialUIs.setMapCanvasCSS(...params))};
+
+	/**
+	 * 
+	 * @param {Object} mcs x,y,width,height属性を含むMapCanvasSize
+	 */
 	setMapCanvasSize( mcs ){ this.#mapViewerProps.setMapCanvasSize( mcs ) };
+
+	/**
+	 * 
+	 * @param {String} layerId docIDとの違いが分からず。こっちがiX:Xは数字なのかもしれない
+	 * @param {Function} pcf レンダリングする前に実行したい関数をセットする（一般ユーザのユースケースが分からず）  
+	 */
 	setPreRenderController( layerId, pcf ){ // SVGMapLv0.1_PWAで使用
 		if ( typeof(pcf)=="function"){
 			if ( layerId ){
@@ -1893,29 +2187,130 @@ class SvgMap {
 			}
 		}
 	};
+	/**
+	 * 
+	 * @param {Function} documentURLviaProxyFunction 
+	 * @param {Function} imageURLviaProxyFunction 
+	 * @param {Boolean} imageCrossOriginAnonymous 
+	 * @param {Function} imageURLviaProxyFunctionForNonlinearTransformation 
+	 * @param {Boolean} imageCrossOriginAnonymousForNonlinearTransformation 
+	 * @returns {undefined}
+	 */
 	setProxyURLFactory(...params){ return (this.#proxyManager.setProxyURLFactory(...params))};
 	setResume( stat ){
 		this.#resumeManager.setResume( stat );
 	};
+
+	/**
+	 * 
+	 * @param {String} layerID_Numb_Title 
+	 * @param {*} visible //Booleanなのかvisible/hiddenというStringが入るのかわからない
+	 * @param {Boolean} editing
+	 * @param {String} hashOption //queryStringとしてURLに付与されるようです。
+	 * @param {Boolean} removeLayer //子要素を削除するオプション
+	 * @returns {undefined}
+	 */
 	setRootLayersProps(...params){ return (this.#layerManager.setRootLayersProps(...params))};
+
+	/**
+	 * 
+	 * @param {Object} rvb  ViewBox:画面中心座標と縦横の範囲と推測
+	 */
 	setRootViewBox(rvb){this.#mapViewerProps.setRootViewBox( rvb );};
+
+	/**
+	 * 特定のレイヤー・svg文書(いずれもIDで指定)もしくは、全体に対して別のプロパティ表示関数を指定する。
+	 * @param  {Function} func 
+	 * @param  {String} docId svg文書ID i*:*は数字
+	 * @returns {undefined}
+	 */
 	setShowPoiProperty(...params){ return (this.#mapTicker.showPoiProperty.setShowPoiProperty(...params))};
+
+	/**
+	 * ズームイン／アウト後のタイル読み込み開始タイマー
+	 * @param  {String} zoomInterval // msec
+	 * @returns 
+	 */
 	setSmoothZoomInterval(...params){ return (this.#zoomPanManager.setSmoothZoomInterval(...params))};
+
+	/**
+	 * 
+	 * @param  {String} zoomTransitionTime ズームイン／アウト時の遷移時間(たぶん msec)
+	 * @returns {undefined}
+	 */
 	setSmoothZoomTransitionTime(...params){ return (this.#zoomPanManager.setSmoothZoomTransitionTime(...params))};
+
+	/**
+	 * 
+	 * @param {Boolean} val //Canvasの描画？を高速化するフラグ？らしい
+	 */
 	setSummarizeCanvas(val){ this.#summarizeCanvas = val };
+
+	/**
+	 * 
+	 * @param  {Function} func
+	 * @returns {undefined}
+	 */
 	setUpdateCenterPos(...params){ return (this.#essentialUIs.setUpdateCenterPos(...params))};
+
+	/**
+	 * 
+	 * @param {Number} ratio ズーム倍率
+	 */
 	setZoomRatio( ratio ){ this.#zoomPanManager.setZoomRatio( ratio) };
+	
+	/**
+	 * 
+	 * @param {String} htm UIなどを含むHTMLをStringにて受け渡します
+	 * @param {Number} maxW 
+	 * @param {Number} maxH 
+	 * @returns {Document} UIのDocumentObjectが返却
+	 */
 	showModal(...params){ return (this.#mapTicker.showPoiProperty.showModal(...params))};
+
+	/**
+	 * @param  {String} hyperLink URL
+	 * @returns {undefined}
+	 */
 	showPage(...params){ return (this.#mapTicker.showPage(...params))};
+
+	/**
+	 * @param  {Object} target DOMのような気がする
+	 * @returns {undefined}
+	 */
 	showUseProperty(...params){ return (this.#mapTicker.showUseProperty(...params))};
+
+	/**
+	 * @param {Number} x 座標
+	 * @param {Number} y 座標
+	 * @param {Object} mat 2x2の変換行列
+	 * @param {Boolean} calcSize （用途不明） 
+	 * @param {Object} nonScaling 2x1の行列（用途不明） 
+	 * @returns 
+	 */
 	transform(...params){ return (this.#matUtil.transform(...params))};
+	/**
+	 * 
+	 * @param  {undefined} params 引数なし
+	 * @returns {undefined}
+	 */
 	updateLayerListUI=function(){
 		console.log("updateLayerListUI called  this:",this);
 		if ( typeof this.#updateLayerListUIint == "function" ){
 			this.#updateLayerListUIint();
 		}
 	}.bind(this);
+	/**
+	 * 
+	 * @param  {undefined} params 引数なし
+	 * @returns {undefined}
+	 */
 	zoomdown(...params){ return (this.#zoomPanManager.zoomdown(...params))};
+	/**
+	 * 
+	 * @param  {undefined} params 引数なし
+	 * @returns {undefined}
+	 */
 	zoomup(...params){ return (this.#zoomPanManager.zoomup(...params))};
 }
 
