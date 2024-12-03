@@ -391,12 +391,25 @@ class SvgMapCesiumWrapper{
 			if ( !this.#icon3d.title ){
 				this.#icon3d.title="View 3D Map";
 			}
-			var iconTop = this.#icon3d.style.top;
+			
+			var posStyle="top:200px";
+			if (  this.#icon3d.style.top ){
+				posStyle = `top:${this.#icon3d.style.top}`;
+			} else if ( this.#icon3d.style.bottom){
+				posStyle = `bottom:${this.#icon3d.style.bottom}`;
+			}
+			if (  this.#icon3d.style.left ){
+				posStyle += `;left:${this.#icon3d.style.left}`;
+			} else if ( this.#icon3d.style.right){
+				posStyle += `;right:${this.#icon3d.style.right}`;
+			} else{
+				posStyle += `;left:2px`;
+			}
 	//		icon3d.setAttribute("onclick","show3dViewBtns()");
 			this.#icon3d.addEventListener("click",this.#show3dViewBtns);
 			this.#svg2cesiumBtn1style = "left :0px; top:0px; position: relative";
 			this.#svg2cesiumBtn2style = "left :0px; top:0px; position: relative";
-			this.#btnDivStyle = "left:2px;top:" + iconTop + "; position:absolute;display:none;z-index:1000;background-color : #AAEEDD";
+			this.#btnDivStyle = posStyle + "; position:absolute;display:none;z-index:1000;background-color : #AAEEDD";
 		} else {
 			return; // this.#icon3dがない場合は、3D機能を発動できないようにする。　2024/08/29 
 //			this.#btnDivStyle = "right:2px;top:145px; position:absolute;width:140px;";

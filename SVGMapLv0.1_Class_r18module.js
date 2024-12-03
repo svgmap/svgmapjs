@@ -277,6 +277,8 @@ import { EssentialUIs } from './libs/EssentialUIs.js';
 import { MapViewerProps } from './libs/MapViewerProps.js';
 import { ResourceLoadingObserver } from './libs/ResourceLoadingObserver.js';
 
+import { SvgImageProps } from './libs/SvgImageProps.js';
+
 
 
 class SvgMap {
@@ -459,7 +461,7 @@ class SvgMap {
 	//	console.log("called loadSVG  id:",id, " path:",path);
 		if ( !this.#svgImages[id] ){ 
 	//		console.log("call loadSVG  create svgImagesProps id:",id);
-			this.#svgImagesProps[id] = new function(){}; //  2014.5.27
+			this.#svgImagesProps[id] = new SvgImageProps(); //  2014.5.27 ⇒ 2024.10.1 SvgImageProps classをようやく造ることにした・・
 			
 			// 2014.5.27 canvas統合用に、rootLayerPropに、"root"のレイヤーのidを子孫のレイヤーに追加
 			// 2017.9.29 nocache処理のため、こちらに移動
@@ -1139,11 +1141,7 @@ class SvgMap {
 							this.#imgRenderer.setImgElement(imgElem , xd.p0 , yd.p0 , 0 , yd.span , "" , elmTransform , ip.cdx , ip.cdy , true , ip.nonScaling , null , ip.pixelated , ip.imageFilter, imageId , ip.opacity , null, {docId:docId,svgNode:svgNode} );
 
 						} else { // animation|iframe要素の場合(svgTile/Layer)
-							var childSVGPath = UtilFuncs.getImageURL(ip.href , docDir );
-							if ( this.#svgImagesProps[imageId] && this.#svgImagesProps[imageId].Path && this.#svgImagesProps[imageId].Path != childSVGPath ){
-								console.log("change SVG's path. this has issues....");
-								this.#svgImagesProps[imageId].Path = childSVGPath; // added 2017.9.5 : ハッシュが更新されることがあり、それを更新する必要があると思われる・・・　ISSUE:　ただ完全にURLが刷新されるケース(hrefがsetattributeされる)もあり、今のルーチンはそれを検出し再ロードできないのではないか？
-							}
+							this.#hashAlignment(ip,docDir, imageId,svgNode);
 							this.#parseSVGwhenLoadCompleted(this.#svgImages , imageId , imgElem , 0 );
 							// documentElemの生成(読み込み)が完了してないとエラーになる。生成を待つ必要があるため
 						}
@@ -1159,6 +1157,7 @@ class SvgMap {
 						// 消す
 						this.#resourceLoadingObserver.requestRemoveTransition( imgElem , parentElem ); //遅延消去処理 2013.6
 						if ( childCategory == SvgMapElementType.EMBEDSVG ){ // animation|iframe要素の場合
+							this.#hashAlignment(ip,docDir, imageId,svgNode); // 2024/10/18 hashの処理は消去する直前にも行うと直前の設定を確実に保存できて良いのではと思う
 							this.#removeChildDocs( imageId );
 						}
 					}
@@ -1268,6 +1267,28 @@ class SvgMap {
 		}
 		return ( beforeElem );
 	}
+	
+	#hashAlignment(ip,docDir, imageId,svgNode){ // 2024/10/18 関数化
+		var childSVGPath = UtilFuncs.getImageURL(ip.href , docDir );
+		if ( this.#svgImagesProps[imageId] && this.#svgImagesProps[imageId].Path && this.#svgImagesProps[imageId].Path != childSVGPath ){
+			const pch = UtilFuncs.urlChanged(this.#svgImagesProps[imageId].Path , childSVGPath);
+			const appHash = this.#svgImagesProps[imageId].clearHashChangedFlag();
+			console.log("change SVG's path:",pch,appHash);
+			if ( pch.hash && appHash){ // WebAppレイヤーがハッシュを変更した場合はそれを優先する
+				if ( appHash===true){ // ハッシュが消えた場合
+					svgNode.setAttribute("xlink:href",UtilFuncs.getPathWithoutHash(ip.href));
+				} else {
+					svgNode.setAttribute("xlink:href",UtilFuncs.getPathWithoutHash(ip.href)+appHash);
+				}
+			} else { // そうでない場合(コンテナ側のxlink:hrefを変えた場合はそれを優先する
+				this.#svgImagesProps[imageId].Path = childSVGPath;
+			}
+			
+//			console.log("change SVG's path. this has issues....");
+//			this.#svgImagesProps[imageId].Path = childSVGPath; // added 2017.9.5 : ハッシュが更新されることがあり、それを更新する必要があると思われる・・・　ISSUE:　ただ完全にURLが刷新されるケース(hrefがsetattributeされる)もあり、今のルーチンはそれを検出し再ロードできないのではないか？　⇒　2024.10.02 これで解消できた？
+		}
+	}
+
 	
 	// svgの読み込みが完了したらparseSVGするしょり
 	// documentElemの生成(読み込み)が完了してないとエラーになる。生成を待つ必要があるため 2013.8.21
@@ -1814,8 +1835,28 @@ class SvgMap {
 
 
 // 公開メソッド
+	/**
+	 * 
+	 * @param  {number} lat
+	 * @param  {number} lng
+	 * @param  {Object} crs 
+	 * @returns {Object} { x: number, y: number } 形式のオブジェクト
+	 */
 	Geo2SVG(...params){ return (this.#matUtil.Geo2SVG(...params))};
+	/**
+	 * 
+	 * @param  {SVGElement} poi
+	 * @returns {undefined}
+	 */
 	POIviewSelection(...params){ return (this.#mapTicker.POIviewSelection(...params)) };
+	/**
+	 * 
+	 * @param  {number} svgX
+	 * @param  {number} svgY
+	 * @param  {Object} crs
+	 * @param  {Object} inv
+	 * @returns {Object} { lng: number, lat: number } 形式のオブジェクト または null
+	 */
 	SVG2Geo(...params){ return (this.#matUtil.SVG2Geo(...params)) };
 	addEvent( ){ return (UtilFuncs.addEvent) };
 	/**

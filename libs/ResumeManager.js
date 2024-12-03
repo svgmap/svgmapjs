@@ -371,20 +371,37 @@ class ResumeManager{
 		return resumeObj;
 	}
 	
+	#resolveLatestHref(lp){
+		// refreshScreen()前の段階では、svgImageProps.hashの値がルートコンテナsvgのanim.のxlink:hrefに反映されていない為パーマリンクが正当でない問題
+		// この処理はrefreshScreen()すれば解決するものだが、負荷を鑑みてハードコードしてみる 2024/10/18
+		// var rootURL = (new URL(this.#svgImagesProps["root"].Path,location.href));
+		var sipHash = lp.svgImageProps?.hash;
+		var href = lp.href;
+		if ( sipHash){
+			var lphi = href.indexOf("#");
+			if ( lphi<0){
+				href = href + sipHash;
+			} else {
+				href = href.substring(0,lphi)+sipHash;
+			}
+		}
+		return href;
+	}
+	
 	#getBasicLayersPropsObject(rootLayersProps){
 		// クッキーの個数よりもレイヤーがとても多い場合があるので簡略化
 		var layersProps={};
 		for ( var i = 0 ; i < rootLayersProps.length ; i++ ){
 			var lp = rootLayersProps[i];
+			var href = this.#resolveLatestHref(lp); // 2024/10/18 debug
 			var key = lp.title; // WARN titleが同じものがあるとここで上書きされることになります！！！ 2021/2/3
 			var lpProps = {
 				visible:lp.visible,
 				editing:lp.editing,
 				groupName:lp.groupName,
 				groupFeature:lp.groupFeature,
-				href:lp.href,
+				href,
 				title:lp.title,
-				href:lp.href
 			}
 			layersProps[key]=lpProps;
 			
@@ -397,20 +414,32 @@ class ResumeManager{
 		// contaier.svgにもともとあったもののみを対象とする基本的なもの
 		// customLayerManagerによってレイヤの意追加や順番が変わったりしたものは、customLayerManagerの機構を別途設ける
 		// さらにレイヤ固有UIの設定状況もこの機能の対象外、別途機構を設ける
-		console.log("getBasicPermanentLink:",copyLinkTextToClipboard);
+		//
+		// 2024/10/04 各レイヤーのフラグメントID(ハッシュ)を加味したリンクを構築
+		
+		//console.log("getBasicPermanentLink:",copyLinkTextToClipboard);
 		var resumeObj = this.#getResumeObj();
 		var hiddenDif=[];
 		var visibleDif=[];
 		var initialLayersProperties = this.#getBasicLayersPropsObject(this.#initialRootLayersProps);
+		//console.log(resumeObj,initialLayersProperties,svgMap.getSvgImagesProps());
 		for ( var layerName in initialLayersProperties){
 			var origLayerProp = initialLayersProperties[layerName];
 			var currentLayerProp =  resumeObj.layersProperties[layerName];
 			if ( currentLayerProp ){
-				if ( origLayerProp.visible != currentLayerProp.visible ){
-					if ( origLayerProp.visible == true ){
+				var origHash = UtilFuncs.getSvgLocation(origLayerProp.href).hash;
+				var currentHash = UtilFuncs.getSvgLocation(currentLayerProp.href).hash;
+				if ( origHash != currentHash && currentLayerProp.visible ){
+						visibleDif.push(layerName+currentHash);
+				} else if ( origLayerProp.visible != currentLayerProp.visible ){
+					if ( origLayerProp.visible == true ){ // 非表示
 						hiddenDif.push(layerName);
-					} else {
-						visibleDif.push(layerName);
+					} else { // 表示
+						if ( origHash != currentHash ){
+							visibleDif.push(layerName+currentHash);
+						} else {
+							visibleDif.push(layerName);
+						}
 					}
 				}
 			}
@@ -431,7 +460,12 @@ class ResumeManager{
 		var plHash = vbHash + visHash + hidHash;
 		permaLink.hash = plHash;
 		if ( copyLinkTextToClipboard == true){
-			navigator.clipboard.writeText(permaLink.href);
+			try{
+				navigator.clipboard.writeText(permaLink.href);
+			} catch ( e ){
+				console.warn("Cant access clipboard, may be http page");
+				this.#svgMapObject.showModal(`<textarea style="font-size:11px;width:390px;height:130px;">Link URL : \n${permaLink.href}</textarea>`,400,150);
+			}
 		}
 		return ( permaLink );
 	}

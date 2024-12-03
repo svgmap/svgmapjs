@@ -63,17 +63,20 @@ class UtilFuncs {
 		return this.querySelector('[id="' + qid + '"]'); // このthisは、呼び出すオブジェクトによってそれに割り付けられる形で良い（のでbind不要）
 	}
 
-	// 同じ関数がSVGMapLv0.1_LayerUI2_r2.jsにもある・・(getHash)
+	// 同じ関数がSVGMapLv0.1_LayerUI2_r2.jsにもある・・(getHash) : fixed 2024/10/04
 	static getUrlHash(url) {
 		if (url.indexOf("#") >= 0) {
 			var lhash = url.substring(url.indexOf("#") + 1);
+			/** bug fixed 2024/10/04
 			if (lhash.indexOf("?") > 0) {
 				lhash = lhash.substring(0, lhash.indexOf("?"));
 			}
+			**/
 			lhash = lhash.split("&");
 			for (var i = 0; i < lhash.length; i++) {
 				if (lhash[i].indexOf("=") > 0) {
-					lhash[i] = lhash[i].split("="); //"
+					// lhash[i] = lhash[i].split("="); //"
+					lhash[i]=[lhash[i].substring(0,lhash[i].indexOf("=")),lhash[i].substring(lhash[i].indexOf("=")+1)];
 				} else if (lhash[i].indexOf("(") > 0) {
 					// )
 					var lhName = lhash[i].substring(0, lhash[i].indexOf("(")); // )
@@ -131,6 +134,7 @@ class UtilFuncs {
 	}
 
 	static getImageURL(href, docDir) {
+		// この関数、URL object　であらかた代替できるのでは？
 		var imageURL;
 		if (
 			href.lastIndexOf("http://", 0) == 0 ||
@@ -151,22 +155,23 @@ class UtilFuncs {
 
 	static getSvgLocation(hrefS) {
 		// svgImagesのhrefからlocation相当変数を得る　作らなくても在る気もするのだが・・（newUR(..)Lオブジェクトでちゃんとしたのが作れるよ）　hrefSは、document.locationからのパスでないとダメ
+		// この関数　仕様がおかしい 2024/10/02　まだlocation, protocol,pathname　あたりはおかしいと思う
+		// がこれ以上はハレーション置きそうなので一旦この段階で修正終える　（path相対パスダメですよね。protocolとかも適当すぎですよね)
 		var hash = "",
 			search = "",
-			path = "";
-		var hashPos = hrefS.length;
-		var searchPos = hashPos;
-		if (hrefS.lastIndexOf("#") > 0) {
-			hashPos = hrefS.lastIndexOf("#");
-			hash = hrefS.substring(hrefS.lastIndexOf("#"));
+			path = hrefS;
+		if (path.indexOf("#") > 0) {
+			const hashPos = path.indexOf("#");
+			hash = path.substring(hashPos);
+			path = path.substring(0,hashPos);
 		}
 
-		if (hrefS.indexOf("?") > 0) {
-			searchPos = hrefS.indexOf("?");
-			search = hrefS.substring(searchPos, hashPos);
+		if (path.indexOf("?") > 0) {
+			const searchPos = path.indexOf("?");
+			search = path.substring(searchPos);
+			path = path.substring(0,searchPos);
 		}
 
-		path = hrefS.substring(0, searchPos);
 
 		return {
 			protocol: location.protocol,
@@ -471,8 +476,13 @@ class UtilFuncs {
 	 */
 	static getNonScalingOffset( svgPoiNode ){ // getPoiPosから改称 2018.3.2
 		// vectorEffect,transform(ref ノンスケールのための基点座標取得
+		// parseTransformMatrixと同様のparseNonScalingOffsetのラッパーに変更 2024/10/22
+		return this.parseNonScalingOffset(svgPoiNode.getAttribute("transform"));
+	}
+	
+	static parseNonScalingOffset(transformAttr){
 		try {
-			var pos = svgPoiNode.getAttribute("transform").replace("ref(svg,","").replace(")","").split(",");
+			var pos = transformAttr.replace("ref(svg,","").replace(")","").split(",");
 			var x = Number ( pos[0] );
 			var y = Number ( pos[1] );
 			if ( !isNaN(x) && !isNaN(y) ){
@@ -496,7 +506,7 @@ class UtilFuncs {
 			}
 		}
 	}
-
+	
 	static getDocumentId( svgelement ){
 		return ( svgelement.ownerDocument.documentElement.getAttribute("about") );
 	}
@@ -775,7 +785,7 @@ class UtilFuncs {
 	static addEvent(elm,listener,fn){
 		elm.addEventListener(listener,fn,false);
 	}
-			
+	
 	static getCanvasSize(){ // 画面サイズを得る
 		var w = window.innerWidth;
 		var h = window.innerHeight;
@@ -794,6 +804,40 @@ class UtilFuncs {
 		}
 	}
 	
+	static urlChanged(path1, path2){
+		var url1 = new URL(path1,location);
+		var url2 = new URL(path2,location);
+		//console.log("urlChanged func: path:",path1,path2,"  url:",url1,url2);
+		var pathChanged = false;
+		if ( url1.pathanme == url2.pathname){
+			pathChanged = true;
+		}
+		var hashChanged = undefined;
+		var searchChanged = undefined;
+		if ( !pathChanged ){
+			if (url1.hash == url2.hash ){
+				hashChanged = false;
+			} else {
+				hashChanged = true;
+			}
+			if ( url1.search == url2.search ){
+				searchChanged = false;
+			} else {
+				searchChanged = true;
+			}
+		}
+			
+		return {path:pathChanged,hash:hashChanged,search:searchChanged};
+	}
+	
+	static getPathWithoutHash(href){
+		const hashPos = href.indexOf("#");
+		if ( hashPos ==-1){
+			return href;
+		} else {
+			return ( href.substring(0,hashPos) );
+		}
+	}
 	/** Obsoluted funcs
 	#repairScript( resTxt ){
 		var resScript = (resTxt.match(/<script>([\s\S]*)<\/script>/ ))[1];

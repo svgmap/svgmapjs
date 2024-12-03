@@ -2861,11 +2861,11 @@ class SvgMapGIS {
 			//Array.prototype.forEach.call(folders, (folder) => {
 			//case IE11
 			//fld.forEach(function(folder,index){
-			fld.forEach(function(folder,index){
+			fld.forEach((folder,index)=>{
 				var kmlName = this.#getNameFromKML(folder);
 				var kmlDescription = this.#getDescriptionFromKML(folder);
 				//console.log('FOLDER',folder);
-				drawKml( folder, targetSvgDocId, strokeColor, strokeWidth, fillColor, POIiconId, kmlName, kmlDescription, parentElm,styleData);
+				this.drawKml( folder, targetSvgDocId, strokeColor, strokeWidth, fillColor, POIiconId, kmlName, kmlDescription, parentElm,styleData);
 			});
 		}else{
 			//Placemarkについて文法解釈
@@ -2873,7 +2873,7 @@ class SvgMapGIS {
 			//console.log(placemarkAll);
 			var plm = Array.prototype.slice.call(placemarkAll,0);
 			let arr_metadata = [];
-			plm.forEach(function(placemark,index){
+			plm.forEach((placemark,index)=>{
 				var kmlName = this.#getNameFromKML(placemark);
 				var kmlDescription = this.#getDescriptionFromKML(placemark);
 				if(kmlName === null && kmlDescription === null){
@@ -2888,11 +2888,11 @@ class SvgMapGIS {
 				}else if(kmlGeometory == "linestring"){
 					arr_metadata.push(kmlName);
 					arr_metadata.push(kmlDescription);
-					putLineString(kmlCoordinate, svgImage, crs, strokeColor, strokeWidth, arr_metadata, parentElm);
+					this.#putLineString(kmlCoordinate, svgImage, crs, strokeColor, strokeWidth, arr_metadata, parentElm);
 				}else if( kmlGeometory == "linearring"){
 					arr_metadata.push(kmlName);
 					arr_metadata.push(kmlDescription);
-					putLineString(kmlCoordinate, svgImage, crs, strokeColor, strokeWidth, arr_metadata, parentElm);
+					this.#putLineString(kmlCoordinate, svgImage, crs, strokeColor, strokeWidth, arr_metadata, parentElm);
 				}else if( kmlGeometory == "polygon"){
 				}else if( kmlGeometory == "multigeometry"){
 				
@@ -2941,7 +2941,7 @@ class SvgMapGIS {
 		var geoArray = []
 		var coordinates = item.querySelector('coordinates').textContent.trim().replace(/\n/g," ").replace(/\t/g," ").split(" ");
 		for (var i = 0; i < coordinates.length; i++){
-			coordinate = coordinates[i].trim().split(",");
+			let coordinate = coordinates[i].trim().split(",");
 			geoArray.push([coordinate[0],coordinate[1]]);
 		}
 		return geoArray;
@@ -3515,7 +3515,16 @@ class SvgMapGIS {
 		}
 	}
 	
-	
+	getImagePixelData(svgMapCoverageGeometry, callBack, callBackParam){
+		// returns  pixData , pixWidth , pixHeight , callBackParam
+		return this.#getImagePixData(
+			svgMapCoverageGeometry.href,
+			callBack,
+			callBackParam,
+			svgMapCoverageGeometry.src.getAttribute("iid"),
+			svgMapCoverageGeometry.src.getAttribute("style")
+		);
+	};
 	buildDifference(...params){ return (this.#buildDifference(...params))};
 	buildIntersection(...params){ return (this.#buildIntersection(...params))};
 	captureGeometries(...params){ return (this.#captureGeometries(...params))};
