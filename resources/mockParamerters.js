@@ -5,9 +5,23 @@ import {jest} from "@jest/globals";
 const mock_svgmapObj = {
     refreshScreen: jest.fn(), 
     getSvgImagesProps: jest.fn().mockReturnValue({
-        "root":{"Path":{"location":{"href":"aaa"}}},
+        "root":{"Path":{"location":{"href":"root.svg"}}},
+        "i5":{"Path":{"location":{"href":"layer.svg"}},"CRS":""},
     }),
-    getSvgImages: jest.fn(),
+    getSvgImages: jest.fn().mockReturnValue({
+        "root":{},
+        "i3":{
+
+        },
+        "i5":{
+            //無理やりdocumentを返しちゃっている
+            createElement: jest.fn().mockReturnValue(document.createElement("use")),
+            documentElement:{
+                appendChild: jest.fn()
+            }
+        },
+        "i7":{}
+    }),
     getRootLayersProps: jest.fn().mockReturnValue([]),
     getGeoViewBox: jest.fn().mockReturnValue({"x":0,"y":0,"width":0,"height":0}),
     getMapCanvasSize: jest.fn().mockReturnValue({width: 1200, height: 800})

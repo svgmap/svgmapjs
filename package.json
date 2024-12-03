@@ -1,7 +1,8 @@
 {
   "devDependencies": {
     "jest": "^29.7.0",
-    "jest-environment-jsdom": "^29.7.0"
+    "jest-environment-jsdom": "^29.7.0",
+    "jsts": "^2.12.1"
   },
   "name": "svgmaplv0.2",
   "description": "Modular SVGMap.js alpha",
