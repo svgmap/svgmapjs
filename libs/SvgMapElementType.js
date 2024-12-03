@@ -1,4 +1,4 @@
-class SvgMapElementType{
+class SvgMapElementType {
 	// for childCategory
 	static EMBEDSVG = 0;
 	static BITIMAGE = 1;
@@ -23,9 +23,8 @@ class SvgMapElementType{
 	// for layerCategory
 	static EXIST = 1;
 	static CLICKABLE = 2;
-	
-	
+
 	static ns_svg = "http://www.w3.org/2000/svg"; // つかわれてないな・・・
 }
 
-export{SvgMapElementType};
+export { SvgMapElementType };
