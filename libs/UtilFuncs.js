@@ -12,6 +12,13 @@ class UtilFuncs {
 		return s.replace(/[\s\r\t\n]+/gm, " ");
 	}
 
+	/**
+	 * 小数点以下の桁数をそろえる
+	 * 
+	 * @param {Number} number 
+	 * @param {Number} digits デフォルト7桁
+	 * @returns {Number}
+	 */
 	static numberFormat(number, digits) {
 		if (!digits) {
 			digits = 7;
@@ -252,6 +259,13 @@ class UtilFuncs {
 		}
 	}
 	
+	/**
+	 * 
+	 * @param {Object} rect1 x,y,width,height,nonScalingをキーに持つオブジェクト
+	 * @param {Object} rect2 x,y,width,height,nonScalingをキーに持つオブジェクト
+	 * @description nonScalingオプションがTrueの場合はwidth,heightを0として扱います
+	 * @returns {Boolean}
+	 */
 	static isIntersect( rect1 , rect2 ){
 		var sec1, sec2;
 		if ( rect1.nonScaling ){ // nonScaling設定の時はサイズ０として判断するようにする 2018.3.2
@@ -455,7 +469,12 @@ class UtilFuncs {
 		return ( matrix );
 	}
 	
-	static getNonScalingOffset( svgPoiNode ){ // getPoiPosから改称 2018.3.2 
+	/**
+	 * 
+	 * @param {Document} svgPoiNode 
+	 * @returns {Object} x,y,nonScalingを含む座標オブジェクト
+	 */
+	static getNonScalingOffset( svgPoiNode ){ // getPoiPosから改称 2018.3.2
 		// vectorEffect,transform(ref ノンスケールのための基点座標取得
 		// parseTransformMatrixと同様のparseNonScalingOffsetのラッパーに変更 2024/10/22
 		return this.parseNonScalingOffset(svgPoiNode.getAttribute("transform"));

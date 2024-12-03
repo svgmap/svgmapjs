@@ -15,6 +15,11 @@ class LayerManager{
 	
 	// レイヤーのID,title,番号,href(URI)のいずれかで、ルートコンテナSVGDOMにおけるレイヤーの(svg:animation or svg:iframe)要素を取得する
 	// getLayersと似ているが、getLayersのほうは任意のsvg文書(オプションなしではroot container)に対して、内包されるレイヤーのリストを返却。こちらはrootコンテナに対して検索キーに基づいてレイヤーを返却する
+	/**
+	 * 
+	 * @param {String} layerID_Numb_Title
+	 * @returns 
+	 */
 	getLayer(layerID_Numb_Title){
 		var layer=null;
 		var isSVG2 = this.#svgImagesProps["root"].isSVG2;
@@ -369,6 +374,15 @@ class LayerManager{
 	// 変化があるとtrueが返却される。ない・もしくは不合理の場合はfalseが返却される
 	// この時classで設定されているレイヤーグループの特性(switch)に基づいた制御がかかる
 	setRootLayersPropsPostprocessed=false; // add 2021/10/14 updateLayerListUIint();必須し忘れ問題への対策フラグ
+	/**
+	 * 
+	 * @param {String} layerID_Numb_Title 
+	 * @param {*} visible //Booleanなのかvisible/hiddenというStringが入るのかわからない
+	 * @param {Boolean} editing
+	 * @param {String} hashOption //queryStringとしてURLに付与されるようです。
+	 * @param {Boolean} removeLayer //子要素を削除するオプション
+	 * @returns 
+	 */
 	setRootLayersProps(layerID_Numb_Title, visible , editing , hashOption , removeLayer){
 		this.setRootLayersPropsPostprocessed=false; 
 		var layer = this.getLayer(layerID_Numb_Title);
@@ -460,6 +474,11 @@ class LayerManager{
 	}
 
 	// setRootLayersPropsの簡単版　ただし、layerListUIのアップデートも行ってくれる
+	/**
+	 * 
+	 * @param {String} layerID_Numb_Title 
+	 * @param {*} visible //型が不明(Boolean or String)
+	 */
 	setLayerVisibility( layerID_Numb_Title, visible ){
 		this.setRootLayersProps(layerID_Numb_Title, visible , false );
 		/** refreshScreen側で実行するように改修 2021/10/14

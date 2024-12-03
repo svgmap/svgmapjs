@@ -10,6 +10,16 @@ class CustomModal{
 	// アプリ側で利用できるモーダルフレームワーク
 	// メッセージ(のhtmlソースもしくはDOM)及び、複数個のボタン、コールバック(押したボタンのインデックス入り)が使える
 	// DOMをmessageHTMLに使っても良いことに 2019/7/9
+	/**
+	 * @function
+	 * @name setCustomModal
+	 * @description アプリ側で利用できるモーダルフレームワーク
+	 * 
+	 * @param {String|Document} messageHTML 
+	 * @param {Array} buttonMessages // どういう中身かまでわかっていない
+	 * @param {Function} callback 
+	 * @param {Object} callbackParam 
+	 */
 	setCustomModal( messageHTML , buttonMessages , callback,callbackParam){ // added 2017/1/25
 		console.log("setCustomModal :",buttonMessages, Array.isArray(buttonMessages) );
 		var cm = this.mapTicker.initModal( "customModal" );

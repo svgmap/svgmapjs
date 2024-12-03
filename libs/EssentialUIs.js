@@ -41,12 +41,16 @@ class EssentialUIs{
 	#vScale; // 中心緯度経度表示用font要素
 	#spButtonSize = 50;
 	
+	/**
+	 * 
+	 * @returns {String|null} Container.svgのPathが返る
+	 */
 	initMapCanvas(){
 //		this.#mapViewerProps.mapCanvas=document.getElementById("mapcanvas");
 		var mapCanvas=document.getElementById("mapcanvas");
 		if ( !mapCanvas ){
 			console.warn("NO id:mapcanvas div exit..");
-			return null;
+			return null;	// 本来はExcetionを吐くのが正解では？
 		}
 		
 		// 2023/05/24 zoom-out UI を改善するため、全画面mapcanvasのラッパーを仕掛ける
@@ -397,6 +401,15 @@ class EssentialUIs{
 		
 	}
 
+	/**
+	 * @function 
+	 * 
+	 * @name getVerticalScreenScale
+	 * @description 画面上の垂直距離を返す関数(地球は楕円なのでメルカトル図法では水平方向と垂直方向で距離が異なります)
+	 * 
+	 * @param {Number} screenLength // 単位はpx
+	 * @returns {Number}  // 単位はkm
+	 */
 	getVerticalScreenScale( screenLength ){
 		// input: px, return : Km
 		var p1 = this.screen2Geo(1, 1);
@@ -414,6 +427,13 @@ class EssentialUIs{
 		return geoCentral
 	}
 	
+	/**
+	 * 画面上の座標(px)を指定すると、その地理座標を返す
+	 * 
+	 * @param {Number} screenX 
+	 * @param {Number} screenY 
+	 * @returns {Object|null} lat/lngのキーを含むhashを戻す
+	 */
 	screen2Geo( screenX , screenY ){ // 画面上の座標(px)を指定すると、その地理座標を返す
 		var sx , sy;
 		if ( ! screenY ){
@@ -451,8 +471,14 @@ class EssentialUIs{
 			y : (rootXY.y - this.#mapViewerProps.rootViewBox.y) * this.#mapViewerProps.mapCanvasSize.height / this.#mapViewerProps.rootViewBox.height
 		}
 	}
-	// 中心地理座標を指定して地図を移動 (radiusは緯度方向の度1≒110Km) 2012/12/7
-	// lat,lng:必須 radius:[lat-side-deg]オプション(今の縮尺のまま移動) ( setGeoViewPort(lat,lng,h,w) という関数もあります )
+	/**
+	 * 中心地理座標を指定して地図を移動 (radiusは緯度方向の度1≒110Km) 2012/12/7 
+	 * @function
+	 * @param {Number} lat 必須
+	 * @param {Number} lng 必須
+	 * @param {Number} radius [lat-side-deg]オプション(今の縮尺のまま移動) ( setGeoViewPort(lat,lng,h,w) という関数もあります )
+	 * @returns {undefined}
+	 */
 	setGeoCenter( lat , lng , radius){
 		console.log("setGeoCenter:",lat,lng,radius);
 		if (!lat || !lng){
@@ -489,6 +515,18 @@ class EssentialUIs{
 	}
 
 	// 地理(グローバル)座標系で指定したエリアを包含する最小のviewportを設定する
+	/**
+	 * @function
+	 * @name setGeoViewPort
+	 * @description 地理(グローバル)座標系で指定したエリアを包含する最小のviewportを設定する
+	 * 
+	 * @param {Number} lat 
+	 * @param {Number} lng 
+	 * @param {Number} latSpan //緯度方向の範囲？単位はdegree？
+	 * @param {Number} lngSpan //軽度方向の範囲？単位はdegree？
+	 * @param {Boolean} norefresh //画面更新を実施するかのフラグ
+	 * @returns {Boolean}
+	 */
 	setGeoViewPort( lat, lng, latSpan , lngSpan , norefresh){
 		if (  !latSpan || !lngSpan ){
 			return ( false );
