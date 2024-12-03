@@ -30,6 +30,9 @@ Development has started in May 2022 as SVGMapLv0.1_r18module.js, and this versio
 
 
 ## development
+### code formatter
+```prettier --use-tabs "$F"```
+
 ### testing
 
 #### install nodejs & npm
