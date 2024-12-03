@@ -498,6 +498,10 @@ class ZoomPanManager{
 	}
 
 	#zoomRatio = 1.7320508;
+	/**
+	 * 
+	 * @param {Number} ratio ズーム倍率
+	 */
 	setZoomRatio(ratio){
 		this.#zoomRatio = ratio;
 	}

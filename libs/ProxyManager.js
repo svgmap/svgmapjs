@@ -47,7 +47,14 @@ class ProxyManager{
 	
 	
 
-	//, getUrlViaProxy;
+	/**
+	 * 
+	 * @param {Function} documentURLviaProxyFunction 
+	 * @param {Function} imageURLviaProxyFunction 
+	 * @param {Boolean} imageCrossOriginAnonymous 
+	 * @param {Function} imageURLviaProxyFunctionForNonlinearTransformation 
+	 * @param {Boolean} imageCrossOriginAnonymousForNonlinearTransformation 
+	 */
 	setProxyURLFactory( documentURLviaProxyFunction , imageURLviaProxyFunction , imageCrossOriginAnonymous , imageURLviaProxyFunctionForNonlinearTransformation , imageCrossOriginAnonymousForNonlinearTransformation){
 		// 2020/1/30 proxyURL生成のsetterを設けるとともに、ビットイメージに対するproxyも設定できるように
 		// 2021/1/27 ビットイメージの非線形変換のためだけに用いるプロキシを別設定可能にした。 APIの仕様がイケてない・・
