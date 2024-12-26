@@ -856,6 +856,7 @@ class SvgMapLayerUI {
 		img.style.verticalAlign = "middle";
 		img.width = 16;
 		img.height = 16;
+		img.style.visibility = "hidden";
 		img.style.cursor = "pointer";
 		img.style.marginRight = "4px";
 		img.addEventListener("click", () => {
