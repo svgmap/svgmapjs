@@ -15,7 +15,7 @@ class CustomModal {
 	 * @description アプリ側で利用できるモーダルフレームワーク
 	 *
 	 * @param {String|Document} messageHTML
-	 * @param {Array} buttonMessages // どういう中身かまでわかっていない
+	 * @param {Array} buttonMessages // Modalを閉じるためにダイアログ下に出現するボタン群(1個以上)のメッセージを入れた配列
 	 * @param {Function} callback
 	 * @param {Object} callbackParam
 	 */

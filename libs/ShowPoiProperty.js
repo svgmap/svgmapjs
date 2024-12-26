@@ -341,14 +341,18 @@ class ShowPoiProperty {
 	}
 
 	/**
-	 *
-	 * @param {String} htm UIなどを含むHTMLをStringにて受け渡します
-	 * @param {Number} maxW
-	 * @param {Number} maxH
+	 * モーダルではなく、実際はモードレスダイアログです。maxW,maxHがない場合、渡したコンテンツから適当なサイズでつくります
+	 * @param {string|HTMLElement} htm UIなどを含むHTMLをStringもしくはElement型にて受け渡します
+	 * @param {Number} [maxW] 
+	 * @param {Number} [maxH]
 	 * @returns {Document} UIのDocumentObjectが返却
 	 */
-	showModal(htm, maxW, maxH) {
+	showModal(htmOrChildDom, maxW, maxH) {
 		var modalDiv;
+		var flexibleSizing = false;
+		if (!maxW || !maxH) {
+			flexibleSizing = true;
+		}
 		if (document.getElementById("modalDiv")) {
 			modalDiv = document.getElementById("modalDiv");
 			modalDiv.parentNode.removeChild(modalDiv);
@@ -362,8 +366,13 @@ class ShowPoiProperty {
 		if (window.innerHeight - 140 < maxH) {
 			maxH = window.innerHeight - 100;
 		}
-		modalDiv.style.height = maxH + 36 + "px";
-		modalDiv.style.width = maxW + 10 + "px";
+		if (flexibleSizing) {
+			modalDiv.style.maxHeight = maxH + 36 + "px";
+			modalDiv.style.maxWidth = maxW + 10 + "px";
+		} else {
+			modalDiv.style.height = maxH + 36 + "px";
+			modalDiv.style.width = maxW + 10 + "px";
+		}
 		modalDiv.style.backgroundColor = "rgba(180, 180, 180, 0.4)";
 		modalDiv.style.zIndex = "1000";
 		modalDiv.style.position = "absolute";
@@ -373,22 +382,37 @@ class ShowPoiProperty {
 		modalDiv.style.overflowX = "hidden";
 		modalDiv.id = "modalDiv";
 
-		var infoDiv = document.createElement("div");
-		infoDiv.style.height = maxH + "px";
-		infoDiv.style.width = maxW + "px";
+		// Shadow DOMの作成
+		const shadowRoot = modalDiv.attachShadow({ mode: "closed" });
+
+		// Info divを作成
+		const infoDiv = document.createElement("div");
+		if (flexibleSizing) {
+			infoDiv.style.overflow = "hidden";
+			infoDiv.style.margin = "5px";
+			infoDiv.style.marginBottom = "30px";
+		} else {
+			infoDiv.style.height = maxH + "px";
+			infoDiv.style.width = maxW + "px";
+			infoDiv.style.position = "absolute";
+			infoDiv.style.top = "5px";
+			infoDiv.style.left = "5px";
+			infoDiv.style.overflowY = "scroll";
+			infoDiv.style.overflowX = "hidden";
+		}
 		infoDiv.style.backgroundColor = "rgba(255,240,220,0.7)";
-		infoDiv.style.position = "absolute";
-		infoDiv.style.top = "5px";
-		infoDiv.style.left = "5px";
-		infoDiv.style.overflowY = "scroll";
-		infoDiv.style.overflowX = "hidden";
 		infoDiv.id = "infoDiv";
-		modalDiv.appendChild(infoDiv);
 
-		infoDiv.innerHTML = htm;
+		if (typeof htmOrChildDom == "string") {
+			infoDiv.innerHTML = htmOrChildDom;
+		} else if (htmOrChildDom instanceof Element) {
+			// Shadow DOMに隔離
+			infoDiv.appendChild(htmOrChildDom);
+		}
 
-		var btn = document.createElement("button");
-		var txt = document.createTextNode("CLOSE");
+		// Close ボタンを作成
+		const btn = document.createElement("button");
+		const txt = document.createTextNode("CLOSE");
 		btn.appendChild(txt);
 		btn.onclick = function () {
 			modalDiv.parentNode.removeChild(modalDiv);
@@ -398,34 +422,37 @@ class ShowPoiProperty {
 		btn.style.bottom = "5px";
 		btn.style.right = "40px";
 
-		modalDiv.appendChild(btn);
+		// Shadow DOMに要素を追加
+		shadowRoot.appendChild(infoDiv);
+		shadowRoot.appendChild(btn);
 
-		var that = this;
+		// ホイールイベントリスナー（Shadow DOM外の設定）
 		modalDiv.addEventListener(
 			"wheel",
 			function (event) {
 				UtilFuncs.MouseWheelListenerFunc(event);
 			},
 			false
-		); //chrome
+		); // chrome
 		modalDiv.addEventListener(
 			"mousewheel",
 			function (event) {
 				UtilFuncs.MouseWheelListenerFunc(event);
 			},
 			false
-		); //chrome
+		); // chrome
 		modalDiv.addEventListener(
 			"DOMMouseScroll",
 			function (event) {
 				UtilFuncs.MouseWheelListenerFunc(event);
 			},
 			false
-		); //firefox
+		); // firefox
+
+		// Modal divをbodyに追加
 		document.getElementsByTagName("body")[0].appendChild(modalDiv);
 		return infoDiv;
 	}
-
 	/**
 	 * @function' や " でエスケープされたcsvの1ラインをパースして配列に格納する関数
 	 *
