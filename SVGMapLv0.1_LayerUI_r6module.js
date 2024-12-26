@@ -55,7 +55,8 @@
 // 2022/05/31 : ESM, Class化
 // 2023/07/25 : Firefoxの最新版では、力業のiFrameReady()がDOMContentLoadedタイミングをつかんだ処理ができないケースが多い、そこでloadイベント処理のリトライを行うルーチンを入れた（この実装までにかなりの試行錯誤があった）
 // 2023/08/24 : ↑の問題がChromeでも起きる環境があることが判明。iframeのhtmlのキャッシュを無効化することで対応。そろそろ仕様変更などの本質的な対策が求められる。
-// 2023/12-     : Rev6 レイヤーUIと、レイヤーwebAppハンドラの切り離し、＆レイヤUIとレイヤ制御の切り離し
+// 2023/12-24/03     : Rev6 レイヤーUIと、レイヤーwebAppハンドラの切り離し、＆レイヤUIとレイヤ制御の切り離し
+// 2024/12/26 : レイヤスタイルカスタマイザ、可視レイヤのみ表示、リスト開いた状態で起動・固定　機能拡張
 
 // ISSUES, ToDo:
 // 2021/10/14 rootsvgのDOM直編集ではupdateLayerTableが反映されるタイミングが直にない～updateLayerTableを多数呼びたくない理由は、LayerListTableの後進にオーバヘッドがかかるから　なので、それをせずにならば(例えばrefreshScreen毎に)いくら呼んでも気にならないはず
@@ -71,7 +72,11 @@
 import { BuiltinIcons } from "./libs/BuiltinIcons.js";
 import { UtilFuncs } from "./libs/UtilFuncs.js";
 
+import { LayerStyleCustomizer } from "./libs/LayerStyleCustomizer.js";
+
 class SvgMapLayerUI {
+	#layerListID = "layerList";
+
 	#layerList;
 	//#uiOpen; //ないかも
 	#layerTableDiv;
@@ -89,6 +94,8 @@ class SvgMapLayerUI {
 	#layerListmessageHead = "Layer List: ";
 	#layerListmessageFoot = " layers visible";
 
+	#layerStyleCustomizer;
+
 	constructor(svgMapObj, layerSpecificWebAppHandlerObj) {
 		this.#svgMap = svgMapObj;
 		svgMapObj.registLayerUiSetter(
@@ -104,6 +111,7 @@ class SvgMapLayerUI {
 		);
 		this.#layerSpecificWebAppHandler = layerSpecificWebAppHandlerObj;
 		// console.log("construct layerUI:");
+		this.#layerStyleCustomizer = new LayerStyleCustomizer(svgMapObj);
 	}
 
 	#updateLayerTable() {
@@ -134,6 +142,7 @@ class SvgMapLayerUI {
 
 	#setLayerListOpenClose(openFlg) {
 		var uiOpenBtn = document.getElementById("layerListOpenButton");
+		const hfb = document.getElementById("svgMapHiddenFilterButton");
 		this.#layerTableDiv = document.getElementById("layerTableDiv");
 		if (
 			openFlg &&
@@ -145,6 +154,9 @@ class SvgMapLayerUI {
 			uiOpenBtn.firstChild.src = BuiltinIcons.UTpng;
 			this.#layerTableDiv.style.display = "";
 			this.#uiOpened = true;
+			if (hfb) {
+				hfb.style.visibility = "visible";
+			}
 		} else if (
 			!openFlg &&
 			this.#layerList.style.height != this.#layerListFoldedHeight + "px"
@@ -154,6 +166,9 @@ class SvgMapLayerUI {
 			uiOpenBtn.firstChild.src = BuiltinIcons.DTpng;
 			this.#layerTableDiv.style.display = "none";
 			this.#uiOpened = false;
+			if (hfb) {
+				hfb.style.visibility = "hidden";
+			}
 		}
 	}
 
@@ -184,6 +199,9 @@ class SvgMapLayerUI {
 		var visibleLayersNameArray = [];
 		const visibleNum = 5; // 表示レイヤ名称数
 		for (var i = lps.length - 1; i >= 0; i--) {
+			if (this.#layerListOptions.hiddenFilter && !lps[i].visible) {
+				continue;
+			}
 			var tr = this.#getLayerTR(
 				lps[i].title,
 				lps[i].id,
@@ -290,7 +308,6 @@ class SvgMapLayerUI {
 			tr.className = "layerItem noGroup";
 		}
 		var cbid = "cb_" + id; // id for each layer's check box
-		var btid = "bt_" + id; // id for each button for layer specific UI
 		var ck = "";
 
 		// レイヤラベルおよびオンオフチェックボックス生成.
@@ -324,8 +341,20 @@ class SvgMapLayerUI {
 		labeltd.appendChild(label);
 		tr.appendChild(labeltd);
 
-		// レイヤ固有UIのボタン生成
 		var td = document.createElement("td");
+		// レイヤスタイルカスタマイザUIボタンの生成
+		if (this.#layerListOptions.styleController) {
+			this.#setLayerStyleCustomizerUiButton(td, visible, id);
+		}
+		// レイヤ固有UIのボタン生成
+		this.#setLayerSpecificUiButton(td, visible, hasLayerList, id);
+		tr.appendChild(td);
+
+		return tr;
+	}
+
+	#setLayerSpecificUiButton(td, visible, hasLayerList, id) {
+		var btid = "bt_" + id; // id for each button for layer specific UI
 		var btn = document.createElement("button");
 		btn.innerHTML =
 			"<img style='pointer-events: none;' src='" + BuiltinIcons.RTpng + "'>";
@@ -353,9 +382,47 @@ class SvgMapLayerUI {
 		}
 
 		td.appendChild(btn);
-		tr.appendChild(td);
+	}
 
-		return tr;
+	#setLayerStyleCustomizerUiButton(td, visible, id) {
+		var lscBtId = "lscBt_" + id;
+		var lscBtn = document.createElement("img");
+		lscBtn.src = BuiltinIcons.slenderHamburger;
+		/**
+		lscBtn.innerHTML =
+			"<img style='pointer-events: none' src='" + BuiltinIcons.slenderHamburger + "'>";
+		**/
+		lscBtn.className = "layerStyleCustomizerUiButton";
+		lscBtn.id = lscBtId;
+		lscBtn.style.verticalAlign = "middle";
+		lscBtn.style.padding = "3px 5px";
+		lscBtn.style.cursor = "pointer";
+		//		lscBtn.style.padding="1px";
+		//		lscBtn.style.border="none";
+		lscBtn.addEventListener(
+			"click",
+			function (event) {
+				console.log(
+					"レイヤスタイルカスタマイザを起動するイベントが出ました : id:",
+					id
+				);
+				this.#layerStyleCustomizer.openCustomizerUI(id);
+			}.bind(this),
+			false
+		);
+		lscBtn.addEventListener("mouseover", () => {
+			lscBtn.style.backgroundColor = "#ddd";
+		});
+		lscBtn.addEventListener("mouseout", () => {
+			lscBtn.style.backgroundColor = "";
+		});
+		if (visible) {
+			lscBtn.disabled = false;
+		} else {
+			lscBtn.disabled = true;
+			lscBtn.style.visibility = "hidden";
+		}
+		td.appendChild(lscBtn);
 	}
 
 	#setLayerSpecificWebAppLaunchUiEnable(layerId, controllerURL) {
@@ -521,6 +588,8 @@ class SvgMapLayerUI {
 		this.#svgMap.refreshScreen();
 	}
 
+	#layerListOptions = {};
+
 	#initLayerList(initOptions) {
 		if (initOptions) {
 			// obsoluted
@@ -532,16 +601,45 @@ class SvgMapLayerUI {
 		}
 		// console.log("CALLED initLayerList");
 		this.#layerGroupStatus = new Object();
-		this.#layerList = document.getElementById("layerList");
+		this.#layerList = document.getElementById(this.#layerListID);
+
+		if (this.#layerList.getAttribute("data-fixed") != null) {
+			// レイヤ開閉機能なし・固定状態
+			this.#layerListOptions.fixed = true;
+		}
+		if (this.#layerList.getAttribute("data-opened") != null) {
+			// 開いた状態で起動
+			this.#layerListOptions.initOpen = true;
+		}
+		if (this.#layerList.getAttribute("data-layerstylecontroller") != null) {
+			// レイヤのスタイル制御UIを出現させる
+			this.#layerListOptions.styleController = true;
+		}
+		if (this.#layerList.getAttribute("data-hiddenfilter") != null) {
+			// hideのレイヤーをリストから消す機能
+			this.#layerListOptions.hiddenFilterUI = true;
+		}
+		if (this.#layerList.getAttribute("data-customizer") != null) {
+			// hideのレイヤーをリストから消す機能
+			this.#layerListOptions.layersCustomizerPath =
+				this.#layerList.getAttribute("data-customizer");
+		}
+		//console.log("#layerListOptions:",this.#layerListOptions);
 
 		var llUItop;
 		if (this.#layerList) {
 			this.#initLayerListElem();
 
 			llUItop = document.createElement("div");
+			llUItop.id = "layerListUiTopDiv";
+			if (this.#layerListOptions.hiddenFilterUI) {
+				this.#initLayerHiddenUI(llUItop);
+			}
 			this.#initLayerListUiTopLabelElem(llUItop);
 			this.#initLayerListUiTopButtonElem(llUItop);
-			this.#initLayersCustomizerIcon(llUItop);
+			if (this.#layerListOptions.layersCustomizerPath) {
+				this.#initLayersCustomizerIcon(llUItop);
+			}
 
 			this.#layerList.appendChild(llUItop);
 
@@ -550,10 +648,26 @@ class SvgMapLayerUI {
 		window.setTimeout(
 			function (llUItop) {
 				this.#initLayerListStep2(llUItop);
+				if (this.#layerListOptions.fixed) {
+					this.#setLayerListFixed();
+				} else if (this.#layerListOptions.initOpen) {
+					this.#setLayerListOpenClose(true);
+				}
 			}.bind(this),
 			30,
 			llUItop
 		);
+	}
+
+	#setLayerListFixed() {
+		this.#setLayerListOpenClose(true);
+		var uiOpenBtn = document.getElementById("layerListOpenButton");
+		uiOpenBtn.disabled = true;
+		uiOpenBtn.style.display = "none";
+		var layersCustomizerBtn = document.getElementById(
+			"layersCustomizerImageButton"
+		);
+		layersCustomizerBtn.style.right = "5px";
 	}
 
 	#initLayerListElem() {
@@ -623,11 +737,12 @@ class SvgMapLayerUI {
 	}
 
 	#initLayersCustomizerIcon(layerListUiTopElem) {
-		var layersCustomizerPath = this.#layerList.getAttribute("data-customizer");
+		var layersCustomizerPath = this.#layerListOptions.layersCustomizerPath;
 		if (layersCustomizerPath) {
 			var layersCustomizerIcon = document.createElement("img");
 			layersCustomizerIcon.src = BuiltinIcons.hamburger;
 			layersCustomizerIcon.style.position = "absolute";
+			layersCustomizerIcon.id = "layersCustomizerImageButton";
 			layersCustomizerIcon.style.right = "35px";
 			layersCustomizerIcon.style.cursor = "pointer";
 			layerListUiTopElem.appendChild(layersCustomizerIcon);
@@ -641,6 +756,12 @@ class SvgMapLayerUI {
 					);
 				}.bind(this)
 			);
+			layersCustomizerIcon.addEventListener("mouseover", () => {
+				layersCustomizerIcon.style.backgroundColor = "#ddd";
+			});
+			layersCustomizerIcon.addEventListener("mouseout", () => {
+				layersCustomizerIcon.style.backgroundColor = "";
+			});
 		}
 	}
 
@@ -689,18 +810,22 @@ class SvgMapLayerUI {
 
 		var llUIcol1 = document.createElement("col");
 		llUIcol1.setAttribute("spanr", "1");
-		llUIcol1.style.width = "25px";
+		llUIcol1.style.width = "22px";
 		var llUIcol2 = document.createElement("col");
 		llUIcol2.setAttribute("spanr", "1");
 		var llUIcol3 = document.createElement("col");
 		llUIcol3.setAttribute("spanr", "1");
-		llUIcol3.style.width = "25px";
+		llUIcol3.style.width = "22px";
 		var llUIcol4 = document.createElement("col");
 		llUIcol4.setAttribute("spanr", "1");
-		llUIcol4.style.width = "25px";
+		llUIcol4.style.width = "22px";
 		var llUIcol5 = document.createElement("col");
 		llUIcol5.setAttribute("spanr", "1");
-		llUIcol5.style.width = "30px";
+		if (this.#layerListOptions.styleController) {
+			llUIcol5.style.width = "38px";
+		} else {
+			llUIcol5.style.width = "28px";
+		}
 
 		llUIcolgroup.appendChild(llUIcol1);
 		llUIcolgroup.appendChild(llUIcol2);
@@ -718,6 +843,45 @@ class SvgMapLayerUI {
 			this.#layerGroupStatus[lid] = false;
 		} else {
 			this.#layerGroupStatus[lid] = true;
+		}
+		this.#updateLayerTable();
+	}
+
+	#initLayerHiddenUI(layerListUiTopElem) {
+		const img = document.createElement("img");
+		img.src = BuiltinIcons.visibleIcon;
+		img.id = "svgMapHiddenFilterButton";
+		img.title =
+			"Toggle between showing only the layer currently displayed or all layers";
+		img.style.verticalAlign = "middle";
+		img.width = 16;
+		img.height = 16;
+		img.style.cursor = "pointer";
+		img.style.marginRight = "4px";
+		img.addEventListener("click", () => {
+			if (img.src == BuiltinIcons.visibleIcon) {
+				img.src = BuiltinIcons.hiddenIcon;
+				this.#applyListFilter({ hidden: true });
+			} else {
+				img.src = BuiltinIcons.visibleIcon;
+				this.#applyListFilter({});
+			}
+		});
+		img.addEventListener("mouseover", () => {
+			img.style.backgroundColor = "#ddd";
+		});
+		img.addEventListener("mouseout", () => {
+			img.style.backgroundColor = "";
+		});
+		layerListUiTopElem.appendChild(img);
+	}
+
+	#applyListFilter(mode) {
+		//console.log("applyListFilter:",mode);
+		if (mode.hidden) {
+			this.#layerListOptions.hiddenFilter = true;
+		} else {
+			delete this.#layerListOptions.hiddenFilter;
 		}
 		this.#updateLayerTable();
 	}
