@@ -1461,6 +1461,9 @@ class SvgMap {
 									img.style.left = 0;
 								}
 							}
+							if ( ip.imageFilter){
+								img.style.filter = ip.imageFilter;
+							}
 							if (!this.#svgImagesProps[docId].childImages) {
 								this.#svgImagesProps[docId].childImages = new Array();
 							}

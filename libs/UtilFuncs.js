@@ -681,7 +681,7 @@ class UtilFuncs {
 				pixelated = true;
 			}
 
-			if (category == SvgMapElementType.BITIMAGE) {
+			if (category == SvgMapElementType.BITIMAGE || category == SvgMapElementType.EMBEDSVG) {
 				if (
 					imgE.getAttribute("style") &&
 					imgE.getAttribute("style").indexOf("filter") >= 0

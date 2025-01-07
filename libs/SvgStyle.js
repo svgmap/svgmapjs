@@ -9,6 +9,7 @@ class SvgStyle {
 		"fill",
 		"fill-rule",
 		"fill-opacity",
+		"filter",
 		"opacity",
 		"vector-effect",
 		"display",
