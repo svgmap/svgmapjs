@@ -46,6 +46,7 @@
 // 2023/06/19 POIもoptionsで設定するように変更。 bufferedのvecrot-effectバグ修正、　いずれでもeditingStyle,shapeStyleを設定可能に（POIの場合はbuiffered時有効)
 // 2023/06/20 GenericTool周りのコードのブラッシュアップ、editingStyle,shapeStyleを設定可能に
 // 2023/08/10 フリーハンドツール実装
+// 2025/01/31 ポリラインポリゴンツール/まとめツールの同ツールに、xlink:title編集オプション(initPolygonTools,initGenericToolのoptionに{useXlinkTitle:true})
 //
 // ToDo,ISSUES:
 //  POI以外の描画オブジェクトを選択したときに出るイベントbase fwに欲しい
@@ -106,13 +107,13 @@ class SvgMapAuthoringTool {
 	#uiMapping = {};
 
 	#uiMappingG = {}; //  uiMapping[layerID]:uiMapping  layerID毎にuiMappingを入れる 2021/6/23
-	#defaultShapeStyle = {
+	#defaultShapeStyle = { // 編集が確定した段階での図形のスタイル
 		strokeWidth: 3,
 		opacity: 1,
 		fill: "skyblue",
 		stroke: "blue",
 	};
-	#defaultEditingStyle = {
+	#defaultEditingStyle = { // 編集中の図形のスタイル
 		strokeWidth: 3,
 		opacity: 1,
 		fill: "yellow",
@@ -762,9 +763,6 @@ class SvgMapAuthoringTool {
 			}
 			//		tbl.rows[1].cells[1].childNodes[0].value="";
 			//		tbl.rows[2].cells[1].childNodes[0].value="--,--";
-			if (targetDoc.getElementById("poiEditorTitle")) {
-				targetDoc.getElementById("poiEditorTitle").value = "";
-			}
 			targetDoc.getElementById("poiEditorPosition").value = "--,--";
 		} else if (
 			this.#uiMapping.editingMode === "POLYLINE" ||
@@ -774,6 +772,9 @@ class SvgMapAuthoringTool {
 			this.#removeChildren(tbl);
 			tbl.innerHTML =
 				'<tr><td><input type="button" id="pointAdd" value="ADD"/></td></tr>';
+		}
+		if (targetDoc.getElementById("poiEditorTitle")) {
+			targetDoc.getElementById("poiEditorTitle").value = "";
 		}
 
 		var tbl = targetDoc.getElementById("metaEditor");
@@ -952,6 +953,23 @@ class SvgMapAuthoringTool {
 			targetSvgElem.setAttribute("d", d);
 
 			var meta = this.#getMetaUiData(targetDoc);
+
+			if (targetDoc.getElementById("poiEditorTitle")) {
+				var title = targetDoc.getElementById("poiEditorTitle").value;
+				// svgの該当要素にxlink:title属性を設定する
+				targetSvgElem.setAttribute("xlink:title", title);
+
+				// titleに相当する重複メタデータを上書きする
+				var tbl = targetDoc.getElementById("metaEditor");
+				for (var i = 0; i < tbl.rows.length; i++) {
+					if (
+						tbl.rows[i].cells[1].childNodes[0].dataset.type == "titleMetaCol"
+					) {
+						meta[i] = title;
+					}
+				}
+			}
+
 			var metaStr = "";
 			for (var i = 0; i < meta.length; i++) {
 				metaStr += this.#svgMap.escape(meta[i]);
@@ -1902,7 +1920,7 @@ class SvgMapAuthoringTool {
 		if (poiNode.getAttribute("content")) {
 			metaData = poiNode.getAttribute("content").split(",");
 		}
-		//	var title = poiNode.getAttribute("xlink:title");
+		var title = poiNode.getAttribute("xlink:title");
 		//	var latlng = svgMap.SVG2Geo(Number(svgPos.x) , Number(svgPos.y) , svgImagesProps[poiDocId].CRS);
 
 		var geops;
@@ -1926,7 +1944,7 @@ class SvgMapAuthoringTool {
 			position: geops,
 			//		href : poiHref,
 			metaData: metaData,
-			//		title : title
+			title: title,
 		};
 	}
 
@@ -2218,6 +2236,9 @@ class SvgMapAuthoringTool {
 
 		//	uiMapping.insertPointsIndex = points.length;
 		this.#polyCanvas.updateCanvas();
+		if (uiDoc.getElementById("poiEditorTitle") && props.title) {
+			uiDoc.getElementById("poiEditorTitle").value = props.title;
+		}
 		if (
 			props.metaData &&
 			props.metaData.length &&
@@ -2280,6 +2301,15 @@ class SvgMapAuthoringTool {
 		if (options?.bufferOption == true) {
 			bufferOption = true;
 		}
+		var returnSvgElement = false;
+		if (options?.returnSvgElement == true) {
+			returnSvgElement = true;
+		}
+
+		var useXlinkTitle = false; // 2025/1/31 POItoolsとの互換を考えxlink:titleを使用可能にする(デフォルトはfalseだが・・)
+		if (options?.useXlinkTitle == true) {
+			useXlinkTitle = true;
+		}
 
 		this.#svgImages = this.#svgMap.getSvgImages();
 		this.#svgImagesProps = this.#svgMap.getSvgImagesProps();
@@ -2288,21 +2318,27 @@ class SvgMapAuthoringTool {
 		var ihtml =
 			'<div id="polyEditor" style="width:300px;height:100px;overflow:auto"><table id="polyEditorPosition"><tr><td><input type="button" id="pointAdd" value="ADD"/></td></tr></table></div>';
 
-		console.log(" init metaEditor table... metaSchema:", metaSchema);
+		if (useXlinkTitle) {
+			ihtml +=
+				'<table><tr><td>title</td><td><input type="text" id="poiEditorTitle" value="' +
+				"title" +
+				'"/></td></tr></table>';
+		}
 
+		console.log(" init metaEditor table... metaSchema:", metaSchema);
 		ihtml += '<table id="metaEditor">';
 		var latMetaCol, lngMetaCol, titleMetaCol; // 位置とtitleがメタデータにも用意されている（ダブっている）ときに、それらのカラム番号が設定される。
 		if (metaSchema) {
 			for (var i = 0; i < metaSchema.length; i++) {
 				var mdval = "";
-				if (metaSchema[i] == "title") {
+				if (useXlinkTitle && metaSchema[i] == "title") {
 					titleMetaCol = i;
 					ihtml +=
 						"<tr><td>" +
 						metaSchema[i] +
 						'</td><td><input id="meta' +
 						i +
-						'" type="text" disabled="disabled" value="' +
+						'" type="text" data-type="titleMetaCol" disabled="disabled" value="' +
 						"title" +
 						'"/></td></tr>';
 				} else if (
@@ -2376,6 +2412,7 @@ class SvgMapAuthoringTool {
 				insertPointsIndex: -1,
 				editingStyle: structuredClone(this.#defaultEditingStyle),
 				shapeStyle: structuredClone(this.#defaultShapeStyle),
+				returnSvgElement: returnSvgElement,
 			},
 			true
 		);
@@ -2743,7 +2780,7 @@ class SvgMapAuthoringTool {
 		this.#removeChildren(targetDiv);
 
 		var uiDoc = targetDiv.ownerDocument;
-		console.log("called initPolygonTools: docId:", poiDocId);
+		console.log("called initFreeHandTool: docId:", poiDocId);
 		var isRootLayer = this.#svgMap.setRootLayersProps(poiDocId, true, true); // 子docの場合もあり得ると思う・・
 		if (!isRootLayer) {
 			console.log(
@@ -3174,6 +3211,9 @@ class SvgMapAuthoringTool {
 	**/
 		var modeSelDiv = uiDoc.createElement("div");
 		modeSelDiv.id = this.#genericToolModeDivName;
+		if (options?.useXlinkTitle) {
+			this.#uiMapping.genericMode.useXlinkTitle = true;
+		}
 		targetDiv.appendChild(modeSelDiv);
 		var modeSelDivHTML = `	<input type="radio" value="poi" id="${
 			this.#pointToolRadio
@@ -3276,6 +3316,9 @@ class SvgMapAuthoringTool {
 			editingStyle: this.#uiMapping.genericMode.editingStyle,
 			shapeStyle: this.#uiMapping.genericMode.shapeStyle,
 		};
+		if (this.#uiMapping.genericMode.useXlinkTitle == true) {
+			options.useXlinkTitle = true;
+		}
 		if (mode.indexOf("b_") == 0) {
 			options.bufferOption = true;
 		}
@@ -3449,6 +3492,10 @@ class SvgMapAuthoringTool {
 		if (blen <= 0) {
 			return;
 		}
+
+		var xlinkTitle = svgElem.getAttribute("xlink:title");
+		var metaContent = svgElem.getAttribute("content");
+
 		var bgeom = this.#svgMapGIStool.getBufferedPolygon(geom, blen);
 		//console.log("Buffered Geometry : ", bgeom, svgElem.parentElement);
 		var svgDoc = svgElem.ownerDocument;
@@ -3461,6 +3508,12 @@ class SvgMapAuthoringTool {
 		bpath.setAttribute("opacity", this.#uiMapping.shapeStyle.opacity);
 		bpath.setAttribute("stroke-width", this.#uiMapping.shapeStyle.strokeWidth);
 		bpath.setAttribute("vector-effect", "non-scaling-stroke");
+		if (xlinkTitle) {
+			bpath.setAttribute("xlink:title", xlinkTitle);
+		}
+		if (metaContent) {
+			bpath.setAttribute("content", metaContent);
+		}
 		svgElem.parentElement.insertBefore(bpath, svgElem);
 		svgElem.remove();
 	}
@@ -3481,11 +3534,21 @@ class SvgMapAuthoringTool {
 			geom.coordinates[0],
 			layerCRS
 		);
+
+		var xlinkTitle = svgElem.getAttribute("xlink:title");
+		var metaContent = svgElem.getAttribute("content");
+
 		switch (geom.type.toLowerCase()) {
 			case "point":
 				use = svgDoc.createElement("use");
 				use.setAttribute("transform", `ref(svg,${svgCrds.x},${svgCrds.y})`);
 				use.setAttribute("xlink:href", geom.icon);
+				if (xlinkTitle) {
+					use.setAttribute("xlink:title", xlinkTitle);
+				}
+				if (metaContent) {
+					use.setAttribute("content", metaContent);
+				}
 				break;
 			case "linestring":
 				path = svgDoc.createElement("path");
@@ -3503,6 +3566,13 @@ class SvgMapAuthoringTool {
 			path.setAttribute("stroke", this.#uiMapping.shapeStyle.stroke);
 			path.setAttribute("stroke-width", this.#uiMapping.shapeStyle.strokeWidth);
 			path.setAttribute("vector-effect", "non-scaling-stroke");
+			if (xlinkTitle) {
+				path.setAttribute("xlink:title", xlinkTitle);
+			}
+			if (metaContent) {
+				path.setAttribute("content", metaContent);
+			}
+
 			unbufElm = path;
 		} else {
 			unbufElm = use;
