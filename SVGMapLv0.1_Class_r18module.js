@@ -1461,7 +1461,7 @@ class SvgMap {
 									img.style.left = 0;
 								}
 							}
-							if ( ip.imageFilter){
+							if (ip.imageFilter) {
 								img.style.filter = ip.imageFilter;
 							}
 							if (!this.#svgImagesProps[docId].childImages) {
@@ -2534,7 +2534,7 @@ class SvgMap {
 		return this.#matUtil.SVG2Geo(...params);
 	}
 	/**
-	 * @param {Element} elm 
+	 * @param {Element} elm
 	 * @param {string} listener "click", "keydown"のようなイベントの種類を指定
 	 * @param {Function} fn コールバック関数
 	 * @returns {void}
@@ -2554,7 +2554,7 @@ class SvgMap {
 	**/
 	//get basicPermanentLink(){return this.#resumeManager.getBasicPermanentLink()},
 	/**
-	 * 
+	 *
 	 * @param  {} cbFunc
 	 * @param  {} param1
 	 * @param  {} param2
@@ -2562,7 +2562,7 @@ class SvgMap {
 	 * @param  {} param4
 	 * @param  {} param5
 	 * @param  {} param6
-	 * @param  {} param7 
+	 * @param  {} param7
 	 * @returns { false | void } `GISgeometriesCaptureFlag`がすでに設定されている場合に false を返す
 	 */
 	captureGISgeometries(...params) {
@@ -2613,10 +2613,12 @@ class SvgMap {
 	}.bind(this);
 	/**
 	 * ただこれは`isSP`を代入しているところが見つかっていないので、使われていなさそう
-	 * @param  {boolean} isSP 
+	 * @param  {boolean} isSP
 	 * @returns {boolean}
 	 */
-	checkSmartphone(...params){ return (this.#mapViewerProps.uaProps.isSP) };
+	checkSmartphone(...params) {
+		return this.#mapViewerProps.uaProps.isSP;
+	}
 	/**
 	 * そもそもこのメソッドは使われていない
 	 * @param  {} func
@@ -2628,52 +2630,68 @@ class SvgMap {
 	 * @param  {} param5
 	 * @returns {any} funcによって型が変わるため、anyとするしかない（現状このメソッドは未使用）
 	 */
-	childDocOp(...params){ return (this.#linkedDocOp.childDocOp(...params)) };
+	childDocOp(...params) {
+		return this.#linkedDocOp.childDocOp(...params);
+	}
 	/**
-	 * 
+	 *
 	 * @param  {string} docId
 	 * @param  {HTMLElement} parentElem
 	 * @returns {void}
 	 */
-	dynamicLoad(...params){ return (this.#dynamicLoad(...params)) };
+	dynamicLoad(...params) {
+		return this.#dynamicLoad(...params);
+	}
 	/**
-	 * 
+	 *
 	 * @param  {string} str
 	 * @returns {string}
 	 */
-	escape(...params){ return (UtilFuncs.escape(...params)) };
+	escape(...params) {
+		return UtilFuncs.escape(...params);
+	}
 	/**
-	 * 
+	 *
 	 * @param  {number} lat
 	 * @param  {number} lng
-	 * @returns {{ x: number, y: number }} 
+	 * @returns {{ x: number, y: number }}
 	 */
-	geo2Screen(...params){ return (this.#essentialUIs.geo2Screen(...params)) };
+	geo2Screen(...params) {
+		return this.#essentialUIs.geo2Screen(...params);
+	}
 	/**
-	 * 
+	 *
 	 * @param  {boolean} copyLinkTextToClipboard
 	 * @returns {URL} パーマリンクを表すURLオブジェクト
 	 */
-	getBasicPermanentLink(...params){return( this.#resumeManager.getBasicPermanentLink(...params))};
+	getBasicPermanentLink(...params) {
+		return this.#resumeManager.getBasicPermanentLink(...params);
+	}
 	/**
-	 * 
+	 *
 	 * @param  {number} x
-	 * @param  {number} y 
+	 * @param  {number} y
 	 * @param  {number} width
 	 * @param  {number} height
 	 * @returns {{x: number, y: number, width: number, height: number}} バウンディングボックスを表すオブジェクト
 	 */
-	getBBox(...params){ return (UtilFuncs.getBBox(...params)) };
+	getBBox(...params) {
+		return UtilFuncs.getBBox(...params);
+	}
 	/**
-	 * 
+	 *
 	 * @returns {{x: number, y: number, width: number, height: number}}
 	 */
-	getCanvasSize(...params){ return (UtilFuncs.getCanvasSize(...params)) };
+	getCanvasSize(...params) {
+		return UtilFuncs.getCanvasSize(...params);
+	}
 	/**
-	 * 
+	 *
 	 * @returns {{ lng: number, lat: number }}
 	 */
-	getCentralGeoCoorinates(...params){ return (this.#essentialUIs.getCentralGeoCoorinates(...params)) };
+	getCentralGeoCoorinates(...params) {
+		return this.#essentialUIs.getCentralGeoCoorinates(...params);
+	}
 	/**
 	 * 
 	 * @param  {Object} fromCrs 
@@ -2681,62 +2699,82 @@ class SvgMap {
 	 * @returns {{ transform: conversionFunc, inverse: inverseFunc, scale: scale }}
 			}
 	 */
-	getConversionMatrixViaGCS(...params){ return (this.#matUtil.getConversionMatrixViaGCS(...params)) };
+	getConversionMatrixViaGCS(...params) {
+		return this.#matUtil.getConversionMatrixViaGCS(...params);
+	}
 	/**
 	 * TODO
 	 * @param  {string} originalURL
 	 * @param  {boolean} alsoCrossoriginParam
 	 * @returns {{ url: originalURL, crossorigin: false }}
 	 */
-	getCORSURL(...params){ return (this.#proxyManager.getCORSURL(...params)) };
+	getCORSURL(...params) {
+		return this.#proxyManager.getCORSURL(...params);
+	}
 	/**
 	 * TODO
 	 * @param  {Node} XMLNode
 	 * @param  {string} searchId
 	 * @returns {Element|null}
 	 */
-	getElementByImageId(...params){ return (UtilFuncs.getElementByImgIdNoNS(...params)) };
+	getElementByImageId(...params) {
+		return UtilFuncs.getElementByImgIdNoNS(...params);
+	}
 	/**
-	 * 
-	 * @returns {{x: number, y: number, width: number, height: number, cx: number, cy: number}} 
+	 *
+	 * @returns {{x: number, y: number, width: number, height: number, cx: number, cy: number}}
 	 */
-	getGeoViewBox( ){ return(this.#essentialUIs.getGeoViewBox( )) };
+	getGeoViewBox() {
+		return this.#essentialUIs.getGeoViewBox();
+	}
 	/**
-	 * 
-	 * @param  {string} docPath 
+	 *
+	 * @param  {string} docPath
 	 * @returns {string|null}
 	 */
-	getHashByDocPath(...params){ return (this.#layerManager.getHashByDocPath(...params)) };
+	getHashByDocPath(...params) {
+		return this.#layerManager.getHashByDocPath(...params);
+	}
 	/**
-	 * 
+	 *
 	 * @param  {Element} SvgNode
 	 * @returns {{href: string, target: string}|null}
 	 */
-	getHyperLink(...params){ return (UtilFuncs.getHyperLink(...params)) };
+	getHyperLink(...params) {
+		return UtilFuncs.getHyperLink(...params);
+	}
 	/**
-	 * 
+	 *
 	 * @param  {Object} matrix
 	 * @returns {Object|null} 複数パターンの行列を返す
 	 */
-	getInverseMatrix(...params){ return (this.#matUtil.getInverseMatrix(...params)) };
+	getInverseMatrix(...params) {
+		return this.#matUtil.getInverseMatrix(...params);
+	}
 	/**
-	 * 
-	 * @param  {string|number} layerID_Numb_Title 
+	 *
+	 * @param  {string|number} layerID_Numb_Title
 	 * @returns {Element|null}
 	 */
-	getLayer(...params){ return (this.#layerManager.getLayer(...params)) };
+	getLayer(...params) {
+		return this.#layerManager.getLayer(...params);
+	}
 	/**
-	 * 
+	 *
 	 * @param  {Element|string} layerKey title,url,もしくはrootの要素
 	 * @returns {string|null} レイヤーのimageIdを返す
 	 */
-	getLayerId(...params){ return (this.#layerManager.getLayerId(...params)) };
+	getLayerId(...params) {
+		return this.#layerManager.getLayerId(...params);
+	}
 	/**
-	 * 
+	 *
 	 * @param  {string}  [id="root"]
 	 * @returns {HTMLCollection}
 	 */
-	getLayers(...params){ return (this.#layerManager.getLayers(...params)) };
+	getLayers(...params) {
+		return this.#layerManager.getLayers(...params);
+	}
 	/**
 	 * @param {number} x1i - 変換前の1点目のx座標
 	 * @param {number} y1i - 変換前の1点目のy座標
@@ -2750,20 +2788,28 @@ class SvgMap {
 	 * @param {number} y2o - 変換後の2点目のy座標
 	 * @param {number} x3o - 変換後の3点目のx座標
 	 * @param {number} y3o - 変換後の3点目のy座標
-	 * @returns {{a: number, b: number, c: number, d: number, e: number, f: number} | null} 
+	 * @returns {{a: number, b: number, c: number, d: number, e: number, f: number} | null}
 	 */
-	getLinearTransformMatrix(...params){ return (TernarySimultaneousEquationsSolution.getLinearTransformMatrix(...params)) };
+	getLinearTransformMatrix(...params) {
+		return TernarySimultaneousEquationsSolution.getLinearTransformMatrix(
+			...params
+		);
+	}
 	/**
-	 *  
-	 * @returns {{timeoutBitImagesCount?: number, timeoutSvgDocCount?: number, otherBitImagesCount?: number, otherSvgDocCount?: number}} 
-	* 		現在のエラー統計を格納したオブジェクト。`#clearLoadErrorStatistics()`未実行の場合は空オブジェクトを返す
+	 *
+	 * @returns {{timeoutBitImagesCount?: number, timeoutSvgDocCount?: number, otherBitImagesCount?: number, otherSvgDocCount?: number}}
+	 * 		現在のエラー統計を格納したオブジェクト。`#clearLoadErrorStatistics()`未実行の場合は空オブジェクトを返す
 	 */
-	getLoadErrorStatistics(...params){ return (this.#getLoadErrorStatistics(...params)) };
+	getLoadErrorStatistics(...params) {
+		return this.#getLoadErrorStatistics(...params);
+	}
 	/**
-	 * 
+	 *
 	 * @returns {HTMLElement} mapCanvasは`addEvent`の引数になったり`getElementsByTagName`メソッドが使えたりするため、HTMLElementと推測される
 	 */
-	getMapCanvas(){ return (this.#mapViewerProps.mapCanvas) };
+	getMapCanvas() {
+		return this.#mapViewerProps.mapCanvas;
+	}
 	/**
 	 * キャンバスのサイズを表すオブジェクト
 	 * @typedef {Object} mapCanvasSize
@@ -2773,99 +2819,29 @@ class SvgMap {
 	 * @property {number} height - 高さ
 	 */
 	/**
-	 * 
+	 *
 	 * @returns {mapCanvasSize}　キャンバスサイズのオブジェクト（詳しくは上記）
 	 */
-	getMapCanvasSize(){ return (this.#mapViewerProps.mapCanvasSize) };
-	/**
-	 * 
-	 * @param {MouseEvent|TouchEvent} evt
-	 * @returns {{ x: number, y: number }}
-	 */
-	getMouseXY(...params){ return (this.#zoomPanManager.getMouseXY(...params)) };
-	/**
-	 * 
-	 * @param  { SVGElement } svgPoiNode
-	 * @returns {{ x: number, y: number, nonScaling: boolean}}
-	 */
-	getNonScalingOffset(...params){ return (UtilFuncs.getNonScalingOffset(...params)) };
-	checkSmartphone(...params) {
-		return this.#mapViewerProps.uaProps.isSP;
-	}
-	childDocOp(...params) {
-		return this.#linkedDocOp.childDocOp(...params);
-	}
-	dynamicLoad(...params) {
-		return this.#dynamicLoad(...params);
-	}
-	escape(...params) {
-		return UtilFuncs.escape(...params);
-	}
-	geo2Screen(...params) {
-		return this.#essentialUIs.geo2Screen(...params);
-	}
-	getBasicPermanentLink(...params) {
-		return this.#resumeManager.getBasicPermanentLink(...params);
-	}
-	getBBox(...params) {
-		return UtilFuncs.getBBox(...params);
-	}
-	getCanvasSize(...params) {
-		return UtilFuncs.getCanvasSize(...params);
-	}
-	getCentralGeoCoorinates(...params) {
-		return this.#essentialUIs.getCentralGeoCoorinates(...params);
-	}
-	getConversionMatrixViaGCS(...params) {
-		return this.#matUtil.getConversionMatrixViaGCS(...params);
-	}
-	getCORSURL(...params) {
-		return this.#proxyManager.getCORSURL(...params);
-	}
-	getElementByImageId(...params) {
-		return UtilFuncs.getElementByImgIdNoNS(...params);
-	}
-	getGeoViewBox() {
-		return this.#essentialUIs.getGeoViewBox();
-	}
-	getHashByDocPath(...params) {
-		return this.#layerManager.getHashByDocPath(...params);
-	}
-	getHyperLink(...params) {
-		return UtilFuncs.getHyperLink(...params);
-	}
-	getInverseMatrix(...params) {
-		return this.#matUtil.getInverseMatrix(...params);
-	}
-	getLayer(...params) {
-		return this.#layerManager.getLayer(...params);
-	}
-	getLayerId(...params) {
-		return this.#layerManager.getLayerId(...params);
-	}
-	getLayers(...params) {
-		return this.#layerManager.getLayers(...params);
-	}
-	getLinearTransformMatrix(...params) {
-		return TernarySimultaneousEquationsSolution.getLinearTransformMatrix(
-			...params
-		);
-	}
-	getLoadErrorStatistics(...params) {
-		return this.#getLoadErrorStatistics(...params);
-	}
-	getMapCanvas() {
-		return this.#mapViewerProps.mapCanvas;
-	}
 	getMapCanvasSize() {
 		return this.#mapViewerProps.mapCanvasSize;
 	}
+	/**
+	 *
+	 * @param {MouseEvent|TouchEvent} evt
+	 * @returns {{ x: number, y: number }}
+	 */
 	getMouseXY(...params) {
 		return this.#zoomPanManager.getMouseXY(...params);
 	}
+	/**
+	 *
+	 * @param  { SVGElement } svgPoiNode
+	 * @returns {{ x: number, y: number, nonScaling: boolean}}
+	 */
 	getNonScalingOffset(...params) {
 		return UtilFuncs.getNonScalingOffset(...params);
 	}
+
 	/**
 	getObject : function ( oname ){
 		return ( eval ( oname ) );
