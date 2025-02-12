@@ -754,7 +754,9 @@ class SvgMapCustomLayersManager {
 		}
 
 		// 編集前後でDifを取る 2021/7/20
-		var difObj = this.#getDif(editedLayersProperty, originalLayersProperty);
+		var difObj = this.#getDif(editedLayersProperty, originalLayersProperty, [
+			"iid",
+		]); // iidの変化は無視する 2025/2/12
 
 		var cls = {};
 		console.log(
@@ -1032,7 +1034,7 @@ class SvgMapCustomLayersManager {
 
 	#ignoreTitle = true; // titleが違ってもURLが同じならそのれいやーは「あり」、title属性が変化しているだけだと判断するときtrue　(なお、URLが変更されたレイヤーは、常に削除の上追加という位置づけにしてる)
 
-	#getDif(edit, orig) {
+	#getDif(edit, orig, exculdeAttributes) {
 		if (!edit) {
 			edit = this.#testEdit;
 		}
@@ -1105,6 +1107,9 @@ class SvgMapCustomLayersManager {
 			var addedAttributes = {};
 			// from側のattrを探索
 			for (var fa in frl.attributes) {
+				if (exculdeAttributes.indexOf(fa) != -1) {
+					continue;
+				}
 				if (tol.attributes[fa]) {
 					if (frl.attributes[fa] != tol.attributes[fa]) {
 						// to側にもあったが値が違う
@@ -1119,6 +1124,9 @@ class SvgMapCustomLayersManager {
 			}
 			// to側のattrを探索
 			for (var ta in tol.attributes) {
+				if (exculdeAttributes.indexOf(ta) != -1) {
+					continue;
+				}
 				if (!frl.attributes[ta]) {
 					// from側に無い
 					changed = true;
