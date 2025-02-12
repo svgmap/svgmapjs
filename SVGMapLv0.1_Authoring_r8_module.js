@@ -638,7 +638,8 @@ class SvgMapAuthoringTool {
 									targetDoc: targetDoc,
 									toolsCbFunc: this.#uiMapping.toolsCbFunc,
 									toolsCbFuncParam: this.#uiMapping.toolsCbFuncParam,
-								}
+								},
+								{position:e.target}
 							);
 							/**
 				confStat = "Delete";
