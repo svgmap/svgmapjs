@@ -1107,7 +1107,7 @@ class SvgMapCustomLayersManager {
 			var addedAttributes = {};
 			// from側のattrを探索
 			for (var fa in frl.attributes) {
-				if (exculdeAttributes.indexOf(fa) != -1) {
+				if (exculdeAttributes && exculdeAttributes.indexOf(fa) != -1) {
 					continue;
 				}
 				if (tol.attributes[fa]) {
@@ -1124,7 +1124,7 @@ class SvgMapCustomLayersManager {
 			}
 			// to側のattrを探索
 			for (var ta in tol.attributes) {
-				if (exculdeAttributes.indexOf(ta) != -1) {
+				if (exculdeAttributes && exculdeAttributes.indexOf(ta) != -1) {
 					continue;
 				}
 				if (!frl.attributes[ta]) {
