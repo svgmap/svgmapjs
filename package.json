@@ -1,37 +1,43 @@
 {
-  "devDependencies": {
-    "@playwright/test": "^1.48.2",
-    "@types/node": "^22.8.6",
-    "playwright": "^1.48.2",
-    "@testing-library/dom": "^10.4.0",
-    "jest": "^29.7.0",
-    "jest-environment-jsdom": "^29.7.0",
-    "jsts": "^2.12.1"
-  },
-  "name": "svgmaplv0.2",
-  "description": "Modular SVGMap.js alpha",
-  "version": "0.0.1",
-  "main": "SVGMapLv0.1.js",
-  "scripts": {
-    "test": "NODE_OPTIONS=--experimental-vm-modules npx jest",
-    "report": "NODE_OPTIONS=--experimental-vm-modules npx jest --coverage",
-    "e2e": "npx playwright test"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@github.com/svgmap/svgMapLv0.2.git"
-  },
-  "author": "",
-  "license": "SEE LICENSE IN LICENSE",
-  "bugs": {
-    "url": "https://github.com/svgmap/svgMapLv0.2/issues"
-  },
-  "homepage": "https://github.com/svgmap/svgMapLv0.2#readme",
-  "type": "module",
-  "jest": {
-    "verbose": true,
-    "testEnvironment": "jsdom",
-    "testMatch":["<rootDir>/tests/*.test.js", "<rootDir>/tests/**/*.test.js"],
-    "testPathIgnorePatterns":["<rootDir>/node_modules/", "<rootDir>/e2e/"]
-  }
+	"devDependencies": {
+		"@playwright/test": "^1.48.2",
+		"@types/node": "^22.8.6",
+		"playwright": "^1.48.2",
+		"@testing-library/dom": "^10.4.0",
+		"jest": "^29.7.0",
+		"jest-environment-jsdom": "^29.7.0",
+		"jsts": "^2.12.1"
+	},
+	"name": "svgmaplv0.2",
+	"description": "Modular SVGMap.js alpha",
+	"version": "0.0.1",
+	"main": "SVGMapLv0.1.js",
+	"scripts": {
+		"test": "NODE_OPTIONS=--experimental-vm-modules npx jest",
+		"report": "NODE_OPTIONS=--experimental-vm-modules npx jest --coverage",
+		"e2e": "npx playwright test"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+ssh://git@github.com/svgmap/svgMapLv0.2.git"
+	},
+	"author": "",
+	"license": "SEE LICENSE IN LICENSE",
+	"bugs": {
+		"url": "https://github.com/svgmap/svgMapLv0.2/issues"
+	},
+	"homepage": "https://github.com/svgmap/svgMapLv0.2#readme",
+	"type": "module",
+	"jest": {
+		"verbose": false,
+		"testEnvironment": "jsdom",
+		"testMatch": [
+			"<rootDir>/tests/unittest/*.test.js",
+			"<rootDir>/tests/unittest/**.test.js"
+		],
+		"testPathIgnorePatterns": [
+			"<rootDir>/node_modules/",
+			"<rootDir>/tests/e2e/"
+		]
+	}
 }

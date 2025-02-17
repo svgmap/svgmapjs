@@ -493,7 +493,7 @@ class UtilFuncs {
 	/**
 	 *
 	 * @param {Document} svgPoiNode
-	 * @returns {Object} x,y,nonScalingを含む座標オブジェクト
+	 * @returns {{x:number, y:number, nonScaling:boolean}} x,y,nonScalingを含む座標オブジェクト
 	 */
 	static getNonScalingOffset(svgPoiNode) {
 		// getPoiPosから改称 2018.3.2
@@ -821,6 +821,12 @@ class UtilFuncs {
 		};
 	}.bind(this);
 
+	/**
+	 * 指定されたSVGドキュメントからシンボルを取得します。
+	 *
+	 * @param {Document} svgDoc SVGドキュメント
+	 * @returns {Array} シンボルオブジェクト
+	 */
 	static getSymbols(svgDoc) {
 		// 2013.7.30 -- POI編集のsymbol選択を可能にするとともに、defsは、useより前に無いといけないという制約を払った
 		var symbols = new Array();
