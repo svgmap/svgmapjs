@@ -192,6 +192,12 @@ class LayerManager {
 		return layerClass;
 	}
 
+	/**
+	 * 指定されたレイヤーIDに対応するSWレイヤーを取得します。
+	 *
+	 * @param {string} cat レイヤーに付与されたクラス名
+	 * @returns {Array} 引数のクラス名が設定されたレイヤーリスト
+	 */
 	getSwLayers(cat) {
 		// swLayers[クラス名]に、クラス名ごとのレイヤー(のSVG要素)の全リストを構築する
 		// catがある場合は、catの名称を持つもののリストのみを構築する

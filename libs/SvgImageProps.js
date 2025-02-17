@@ -11,6 +11,10 @@ class SvgImageProps {
 	get hash() {
 		return new URL(this.Path, location).hash;
 	}
+	/**
+	 * @description URLのハッシュを設定します
+	 * @param {string} val - ハッシュとして追加したい文字列
+	 */
 	set hash(val) {
 		if (!val || val == "") {
 			// hashを消した場合・・

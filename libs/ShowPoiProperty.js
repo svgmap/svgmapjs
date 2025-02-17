@@ -168,7 +168,10 @@ class ShowPoiProperty {
 	//
 
 	#specificShowPoiPropFunctions = {};
-
+	/**
+	 *
+	 * @param {HTMLElement} target -
+	 */
 	showPoiPropertyWrapper(target) {
 		var targetIsXMLElement = false;
 		if (target.nodeType === Node.ELEMENT_NODE) {
