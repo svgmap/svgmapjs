@@ -1,77 +1,74 @@
-class GlobalMessageDisplay {
+class GlobalMessageDisplay{
 	static #GlobalMessageprefix = "gMsg_";
 	static #maxGlobalMessages = 5;
-	static #globalMessageID = "globalMessage";
-
-	constructor() {}
-
+	static #globalMessageID="globalMessage";
+	
+	constructor(){
+	}
+	
 	// ローバルエリアにID="globalMesasge" span要素がある場合、そこに(調停付きで)レイヤー固有UIframeからメッセージを出せるフレームワーク 2019/12/02
-	#putGlobalMessage(message, layerId) {
+	#putGlobalMessage(message , layerId){
 		//console.log("caller:",putGlobalMessage.caller); // layerIdはいらないんだよね
 		//console.log("this:",this); // layerIdはいらないんだよね
-		var gs = document.getElementById(GlobalMessageDisplay.#globalMessageID);
-		if (!gs) {
-			console.log(
-				'NO id="' + GlobalMessageDisplay.#globalMessageID + '" element skip'
-			);
-			return false;
+		var gs = document.getElementById(GlobalMessageDisplay.#globalMessageID)
+		if ( !gs ){
+			console.log('NO id="'+GlobalMessageDisplay.#globalMessageID+'" element skip');
+			return(false);
 		}
 		var tbl = gs.getElementsByTagName("table")[0];
-		if (!tbl) {
+		if ( !tbl ){
 			console.log("init globalMesasge area");
 			tbl = document.createElement("table");
-			tbl.style.border = "0px";
-			tbl.style.padding = "0px";
-			tbl.style.margin = "0px";
+			tbl.style.border="0px";
+			tbl.style.padding="0px";
+			tbl.style.margin="0px";
 			gs.appendChild(tbl);
 		}
-
+		
 		var gmc = gs.children;
-		var msgCell = document.getElementById(
-			GlobalMessageDisplay.#GlobalMessageprefix + layerId
-		);
-		if (!msgCell) {
-			if (gmc.length >= GlobalMessageDisplay.#maxGlobalMessages) {
+		var msgCell = document.getElementById(GlobalMessageDisplay.#GlobalMessageprefix+layerId);
+		if ( ! msgCell ){
+			if ( gmc.length >= GlobalMessageDisplay.#maxGlobalMessages ){
 				console.log("can not append global message due to limit");
-				return false;
+					return(false);
 			} else {
 				msgCell = document.createElement("td");
 				var tr = document.createElement("tr");
-				tr.id = GlobalMessageDisplay.#GlobalMessageprefix + layerId;
+				tr.id=GlobalMessageDisplay.#GlobalMessageprefix+layerId;
 				tr.appendChild(msgCell);
 				gs.appendChild(tr);
 			}
 		}
-		console.log(msgCell, message);
+		console.log(msgCell,message);
 		msgCell.innerText = message;
-		return true;
+		return ( true );
 	}
 
-	putGlobalMessageForLayer(layerID) {
-		return function (message) {
-			this.#putGlobalMessage(message, layerID);
-		}.bind(this);
+	putGlobalMessageForLayer(layerID){
+		return function(message){
+			this.#putGlobalMessage(message,layerID);
+		}.bind(this)
+		
 	}
 
 	//layerUIが消滅したもののglobalMessageを消す
-	clearGlobalMessage(layerId) {
-		console.log("clearGlobalMessage:", layerId);
-		//	var svgLayers = svgMap.getSvgImagesProps()["root"]; // この機に、全チェックしたほうが良いのかなぁ・・
+	clearGlobalMessage(layerId){
+		console.log("clearGlobalMessage:",layerId);
+	//	var svgLayers = svgMap.getSvgImagesProps()["root"]; // この機に、全チェックしたほうが良いのかなぁ・・
 		var gs = document.getElementById(GlobalMessageDisplay.#globalMessageID);
-		console.log("globalMessage:", gs);
-		if (!gs) {
+		console.log("globalMessage:",gs);
+		if ( !gs ){
 			console.log('NO id="globalMesasge" element skip');
 			return;
 		}
-		var gmc = document.getElementById(
-			GlobalMessageDisplay.#GlobalMessageprefix + layerId
-		);
-		console.log("globalMessageCell:", gmc);
-		if (gmc) {
-			console.log("Remove GlobalMessage for layer:", layerId);
+		var gmc = document.getElementById(GlobalMessageDisplay.#GlobalMessageprefix + layerId);
+		console.log("globalMessageCell:",gmc);
+		if ( gmc ){
+			console.log("Remove GlobalMessage for layer:",layerId);
 			gmc.parentNode.removeChild(gmc);
 		}
 	}
 }
 
-export { GlobalMessageDisplay };
+
+export {GlobalMessageDisplay}

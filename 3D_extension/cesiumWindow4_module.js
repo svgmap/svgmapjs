@@ -2,22 +2,22 @@
 //
 // Assitant for SVGMapLv0.1_CesiumWrapper_r3.js
 //
-//
+//  
 //  Copyright (C) 2018-2022 by Satoru Takagi @ KDDI CORPORATION
 //
 // License: (GPL v3)
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License version 3 as
 //  published by the Free Software Foundation.
-//
+//  
 //  This program is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
-//
+//  
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-//
+// 
 //
 // Rev.1 : 2018/02/10 2D vector view
 // Rev.2 : 2018/02/28 Raster and POI bar graph impl.
@@ -31,17 +31,18 @@
 // 地理院のテレインでは、sampleTerrainMostDetailedが動かなくなった(Cesiumがまた仕様変更した感じ)
 // 一方でCesium標準テレインで、sampleTerrainを使うと　たとえばレベル15指定すると動かない
 
+
 //var testData="ddd";
 
-import { CesiumProviderViewModels } from "./getProviderViewModels_module.js";
-import { InterWindowMessaging } from "./InterWindowMessaging.js";
+import { CesiumProviderViewModels } from './getProviderViewModels_module.js';
+import { InterWindowMessaging } from './InterWindowMessaging.js';
 
-class CesiumWindow {
-	constructor(cesiumObj, svgMapOpenerWindow, accessTokens) {
-		this.#initCesiumWindow(cesiumObj, svgMapOpenerWindow, accessTokens);
+class CesiumWindow{
+	constructor( cesiumObj, svgMapOpenerWindow, accessTokens){
+		this.#initCesiumWindow( cesiumObj, svgMapOpenerWindow, accessTokens);
 	}
 
-	#reldir2imageUrl; // このSVGMapコンテンツのルートコンテナのあるディレクトリへ相対パス　（なので、本来は呼び元から提供すべきだが・・）
+	#reldir2imageUrl ; // このSVGMapコンテンツのルートコンテナのあるディレクトリへ相対パス　（なので、本来は呼び元から提供すべきだが・・）
 
 	#viewer;
 	#scene;
@@ -49,118 +50,101 @@ class CesiumWindow {
 	#iwmsg;
 	#Cesium;
 
-	#initCesiumWindow(cesiumObj, svgMapOpenerWindow, accessTokens) {
+	#initCesiumWindow( cesiumObj , svgMapOpenerWindow, accessTokens  ){
 		// 初期化関数
 		// 引数：accessTokens: 特定の地図サービスを使う場合のアクセストークンの連想配列
 		// "bing"と "ion"が使える
-
-		if (!svgMapOpenerWindow || !cesiumObj) {
-			console.warn(
-				"NO window.opener(svgMapOpenerWindow) or cesiumObject exit."
-			);
+		
+		if ( !svgMapOpenerWindow || !cesiumObj ){
+			console.warn("NO window.opener(svgMapOpenerWindow) or cesiumObject exit.");
 			return;
 		}
-
-		this.#iwmsg = new InterWindowMessaging(
-			{
-				viewGeoJson: this.#viewGeoJson,
-			},
-			svgMapOpenerWindow,
-			true
-		);
-
+		
+		this.#iwmsg = new InterWindowMessaging({
+			viewGeoJson  : this.#viewGeoJson
+		}, svgMapOpenerWindow, true);
+		
 		this.#getReldir2imageUrl();
-
+		
 		this.#Cesium = cesiumObj;
-
+		
 		console.log("initCesiumWindow  ");
-
+		
 		var srcs = new CesiumProviderViewModels(cesiumObj, accessTokens);
-
-		console.log(
-			"imagerySources:",
-			srcs.imagerySources,
-			" terrainSources:",
-			srcs.terrainSources,
-			" accessTokens:",
-			accessTokens
-		);
-		this.#viewer = new Cesium.Viewer("cesiumContainer", {
-			imageryProviderViewModels: srcs.imagerySources,
-			terrainProviderViewModels: srcs.terrainSources,
-			//		imageryProvider: false,
-			//		baseLayerPicker: false,
+		
+		console.log("imagerySources:",srcs.imagerySources," terrainSources:",srcs.terrainSources," accessTokens:",accessTokens);
+		this.#viewer = new Cesium.Viewer('cesiumContainer', {
+			imageryProviderViewModels : srcs.imagerySources,
+			terrainProviderViewModels : srcs.terrainSources,
+	//		imageryProvider: false,
+	//		baseLayerPicker: false,
 			timeline: false,
 			animation: false,
-			selectedImageryProviderViewModel:
-				srcs.imagerySources[srcs.defaultImageryIndex],
-			selectedTerrainProviderViewModel:
-				srcs.terrainSources[srcs.defaultTerrianIndex],
+			selectedImageryProviderViewModel : srcs.imagerySources[srcs.defaultImageryIndex],
+			selectedTerrainProviderViewModel : srcs.terrainSources[srcs.defaultTerrianIndex]
 		});
-
-		if (!accessTokens || !accessTokens.ion) {
+		
+		if ( !accessTokens || !accessTokens.ion){
 			this.#viewer._cesiumWidget._creditContainer.style.display = "none";
 		}
-
-		//	console.log( "Resource.fetchText?:", Cesium.Resource.fetchText);
-
+		
+	//	console.log( "Resource.fetchText?:", Cesium.Resource.fetchText);
+		
 		/**
 		// set basic terrain https://cesiumjs.org/tutorials/Terrain-Tutorial/
 	//	this.#viewer.terrainProvider = terrainProvider;
 		this.#viewer.terrainProvider = terrainProvider2;
 		// see also https://groups.google.com/forum/#!topic/cesium-dev/2UYkQyA7amU
 		**/
-
+		
 		this.#scene = this.#viewer.scene;
-		console.log("onLoad :    scene:", this.#scene);
+		console.log("onLoad :    scene:",this.#scene);
+		
+		
+		
 	}
 
-	async #getCORSresolvedURL(path) {
-		var url = await this.#iwmsg.callRemoteFunc("getCORSURL", [path]);
-		return url;
+	async #getCORSresolvedURL(path){
+		var url = await this.#iwmsg.callRemoteFunc("getCORSURL",[path]);
+		return (url);
 	}
 
-	async #getReldir2imageUrl() {
-		if (this.#reldir2imageUrl) {
+	async #getReldir2imageUrl(){
+		if ( this.#reldir2imageUrl ){
 			return this.#reldir2imageUrl;
 		} else {
-			var ans = await this.#iwmsg.callRemoteFunc("reldir2imageUrl", []);
+			var ans = await this.#iwmsg.callRemoteFunc("reldir2imageUrl",[]);
 			this.#reldir2imageUrl = ans;
-			console.log(" get reldir2imageUrl:", this.#reldir2imageUrl);
-			return ans;
+			console.log( " get reldir2imageUrl:",this.#reldir2imageUrl);
+			return (ans);
 		}
 	}
 
-	#flyToRectangle(west, south, east, north, showViewport) {
+	#flyToRectangle(west,south,east,north , showViewport) {
 		// https://gis.stackexchange.com/questions/157781/how-to-control-the-zoom-amount-in-cesium-camera-flyto
-
-		var dy = (north - south) * 1.0; // pitch による視線のずれ分だけずらす・・
+		
+		var dy = ( north - south )*1.0 ; // pitch による視線のずれ分だけずらす・・
 		var dw = (east - west) * 0.2;
 		var dh = (north - south) * 0.2;
-
-		var rectangle = Cesium.Rectangle.fromDegrees(
-			west + dw,
-			south + dh - dy,
-			east - dw,
-			north - dh - dy
-		);
+		
+		var rectangle = Cesium.Rectangle.fromDegrees(west+dw, south+dh - dy, east-dw, north-dh - dy);
 		var rectangleV = Cesium.Rectangle.fromDegrees(west, south, east, north);
 		this.#viewer.camera.flyTo({
-			destination: rectangle,
-			orientation: {
-				heading: Cesium.Math.toRadians(0.0),
-				pitch: Cesium.Math.toRadians(-40.0),
-				roll: 0.0,
-			},
+			destination : rectangle,
+			orientation : {
+				heading : Cesium.Math.toRadians(0.0),
+				pitch : Cesium.Math.toRadians(-40.0),
+				roll : 0.0
+			}
 		});
 
-		if (showViewport) {
-			//		this.#setGroundRect(rectangleV);
-			//		this.#setRect(rectangleV);
-			this.#setRectOfHeight((west + east) / 2, (north + south) / 2, rectangleV);
-			//		this.#testGroundPrimitive();
+		if ( showViewport ){
+	//		this.#setGroundRect(rectangleV);
+	//		this.#setRect(rectangleV);
+			this.#setRectOfHeight((west+east)/2,(north+south)/2,rectangleV);
+	//		this.#testGroundPrimitive();
 		}
-
+		
 		/**
 		console.log("flyToRectangle scene:",this.#scene,"   scene.camera:",this.#scene.camera);
 	    this.#scene.camera.flyToRectangle({
@@ -169,7 +153,7 @@ class CesiumWindow {
 		**/
 	}
 
-	#setGroundRect(rectangleV) {
+	#setGroundRect(rectangleV){
 		console.log("setGroundRect:");
 		// https://stackoverflow.com/questions/29911691/cesium-how-to-drape-a-polygon-or-line-onto-terrain-surface
 		// うまくつくれない？
@@ -177,64 +161,56 @@ class CesiumWindow {
 		// https://stackoverflow.com/questions/34727726/what-is-difference-between-entity-and-primitive-in-cesiumjs
 		// https://cesiumjs.org/Cesium/Build/Documentation/GroundPrimitive.html
 		var rectangleInstance = new Cesium.GeometryInstance({
-			geometry: new Cesium.RectangleGeometry({
-				rectangle: rectangleV,
+			
+			geometry : new Cesium.RectangleGeometry({
+				rectangle : rectangleV
 			}),
-			id: "rectangle",
-			attributes: {
-				color: new Cesium.ColorGeometryInstanceAttribute(0.0, 1.0, 1.0, 0.5),
-			},
+			id : 'rectangle',
+			attributes : {
+				color : new Cesium.ColorGeometryInstanceAttribute(0.0, 1.0, 1.0, 0.5)
+			}
 		});
 		this.#scene.primitives.removeAll();
-		this.#scene.primitives.add(
-			new Cesium.GroundPrimitive({
-				geometryInstance: rectangleInstance,
-			})
-		);
+		this.#scene.primitives.add(new Cesium.GroundPrimitive({
+		  geometryInstance : rectangleInstance
+		}));
 	}
 
-	#testGroundPrimitive() {
+	#testGroundPrimitive(){
 		// これも同じ・・・
 		var rectangleInstance = new Cesium.GeometryInstance({
-			geometry: new Cesium.RectangleGeometry({
-				rectangle: Cesium.Rectangle.fromDegrees(135.0, 35.0, 3.0, 3.0),
+			geometry : new Cesium.RectangleGeometry({
+				rectangle : Cesium.Rectangle.fromDegrees(135.0, 35.0, 3.0, 3.0)
 			}),
-			id: "rectangle",
-			attributes: {
-				color: new Cesium.ColorGeometryInstanceAttribute(0.0, 1.0, 1.0, 0.5),
-			},
+			id : 'rectangle',
+			attributes : {
+				color : new Cesium.ColorGeometryInstanceAttribute(0.0, 1.0, 1.0, 0.5)
+			}
 		});
-		console.log(
-			"testGroundPrimitive:",
-			this.#scene,
-			this.#scene.primitives,
-			rectangleInstance
-		);
-		this.#scene.primitives.add(
-			new Cesium.GroundPrimitive({
-				geometryInstance: rectangleInstance,
-			})
-		);
+		console.log("testGroundPrimitive:",this.#scene,this.#scene.primitives,rectangleInstance);
+		this.#scene.primitives.add(new Cesium.GroundPrimitive({
+			geometryInstance : rectangleInstance
+		}));
 	}
 
-	#setRect(rectangleV, height) {
+	#setRect(rectangleV,height){
 		hv = 0;
-		if (height) {
+		if ( height ){
 			hv = height;
 		}
 		this.#viewer.entities.add({
-			rectangle: {
-				coordinates: rectangleV,
-				fill: false,
-				outline: true,
-				outlineColor: Cesium.Color.WHITE.withAlpha(0.3),
-				height: hv,
-			},
+			rectangle : {
+				coordinates : rectangleV,
+				fill : false,
+				outline : true,
+				outlineColor : Cesium.Color.WHITE.withAlpha(0.3),
+				height: hv
+			}
 		});
 	}
 
-	#setBox(lng, lat, title, boxSize, boxTall, terrainHeight) {
-		if (!boxSize) {
+	#setBox(lng,lat,title,boxSize, boxTall , terrainHeight){
+		if ( ! boxSize ){
 			boxSize = 100;
 		}
 		/**
@@ -242,107 +218,72 @@ class CesiumWindow {
 			boxTall = 500;
 		}
 		**/
-
-		if (!terrainHeight) {
+		
+		if ( ! terrainHeight ){
 			terrainHeight = 0;
 		}
-
-		var boxZpos = boxTall * 0.5 + terrainHeight;
-
-		//	console.log("Called setBox:lng,lat,title,boxSize, boxTall , terrainHeight:",lng,lat,title,boxSize, boxTall , terrainHeight);
+		
+		var boxZpos = boxTall*0.5 + terrainHeight;
+		
+	//	console.log("Called setBox:lng,lat,title,boxSize, boxTall , terrainHeight:",lng,lat,title,boxSize, boxTall , terrainHeight);
 		var redBox = this.#viewer.entities.add({
-			name: title,
+			name : title,
 			position: Cesium.Cartesian3.fromDegrees(lng, lat, boxZpos),
-			box: {
-				dimensions: new Cesium.Cartesian3(boxSize, boxSize, boxTall),
-				material: Cesium.Color.RED.withAlpha(0.35),
-				outline: true,
-				outlineColor: Cesium.Color.BLACK.withAlpha(0.35),
-			},
+			box : {
+				dimensions : new Cesium.Cartesian3(boxSize, boxSize, boxTall),
+				material : Cesium.Color.RED.withAlpha(0.35),
+				outline : true,
+				outlineColor : Cesium.Color.BLACK.withAlpha(0.35)
+			}
 		});
 	}
 
+
 	// posArray should be [[lng0,lat0],[lng1,lat1],.....]
 	// positions of callBackFunc ( positions ) may be positions[0].height,positions[1].height, ...
-	#getHeights(posArray, callBackFunc, progressFunc) {
+	#getHeights(posArray, callBackFunc,progressFunc){
 		var positions = [];
-		for (var i = 0; i < posArray.length; i++) {
+		for ( var i = 0 ; i < posArray.length ; i++ ){
 			var pos = Cesium.Cartographic.fromDegrees(posArray[i][0], posArray[i][1]);
 			positions.push(pos);
 		}
-		console.log(
-			"called getHeights,sampleTerrainMostDetailed:",
-			positions,
-			"  viewer.terrainProvider:",
-			this.#viewer.terrainProvider.availability
-		);
-		//	Cesium.sampleTerrain(this.#viewer.terrainProvider, 9, positions).then(callBackFunc);
-		//	Cesium.sampleTerrainMostDetailed(this.#viewer.terrainProvider, positions).then(callBackFunc);
-
-		var stC = new SampleTerrainWrapper(
-			this.#viewer.terrainProvider,
-			positions,
-			callBackFunc,
-			progressFunc
-		);
+		console.log("called getHeights,sampleTerrainMostDetailed:",positions,"  viewer.terrainProvider:",this.#viewer.terrainProvider.availability);
+	//	Cesium.sampleTerrain(this.#viewer.terrainProvider, 9, positions).then(callBackFunc);
+	//	Cesium.sampleTerrainMostDetailed(this.#viewer.terrainProvider, positions).then(callBackFunc);
+		
+		var stC = new SampleTerrainWrapper(this.#viewer.terrainProvider, positions, callBackFunc,progressFunc);
 		/**
 		var stC = this.#sampleTerrainWrapperC();
 		stC.sampleTerrainWrapper(this.#viewer.terrainProvider, positions, callBackFunc,progressFunc);
 		**/
+		
 	}
 
-	#setRectOfHeight(lng, lat, rect) {
+	#setRectOfHeight(lng,lat,rect){
 		// これを使って中心点の高さを取り出し、それに合わせる
 		// https://stackoverflow.com/questions/28291013/get-ground-altitude-cesiumjs
 		// https://groups.google.com/forum/#!topic/cesium-dev/imIpoZHvKrM
 		// https://cesiumjs.org/Cesium/Build/Documentation/sampleTerrain.html
-		console.log(
-			"setRectOfHeight:",
-			lng,
-			lat,
-			"  viewer.terrainProvider:",
-			this.#viewer.terrainProvider,
-			"   when",
-			Cesium.when,
-			"   Cesium:",
-			Cesium
-		);
-		this.#viewer.terrainProvider.readyPromise.then(function () {
-			console.log("readyPromise");
-		});
-
-		var pointOfInterest = Cesium.Cartographic.fromDegrees(
-			lng,
-			lat,
-			5000,
-			new Cesium.Cartographic()
-		);
-		console.log("terrainProvider", this.#viewer.terrainProvider);
-		if (this.#viewer.terrainProvider.availability) {
-			console.log("availability", this.#viewer.terrainProvider.availability);
-			console.log(
-				"availability.computeMaximumLevelAtPosition : ",
-				this.#viewer.terrainProvider.availability.computeMaximumLevelAtPosition(
-					pointOfInterest
-				)
-			);
+		console.log( "setRectOfHeight:",lng,lat, "  viewer.terrainProvider:",this.#viewer.terrainProvider  ,"   when", Cesium.when,"   Cesium:",Cesium);
+		this.#viewer.terrainProvider.readyPromise.then(function() { console.log("readyPromise") });
+		
+		
+		var pointOfInterest = Cesium.Cartographic.fromDegrees(lng, lat, 5000, new Cesium.Cartographic());
+		console.log( "terrainProvider",this.#viewer.terrainProvider);
+		if ( this.#viewer.terrainProvider.availability ){
+		console.log( "availability",this.#viewer.terrainProvider.availability);
+		console.log("availability.computeMaximumLevelAtPosition : ",this.#viewer.terrainProvider.availability.computeMaximumLevelAtPosition(pointOfInterest));
 		}
 		//,this.#viewer.terrainProvider.availability.computeMaximumLevelAtPosition(pointOfInterest));
-		//	var samPromise = Cesium.sampleTerrainMostDetailed(this.#viewer.terrainProvider, [ pointOfInterest ]);
-		var samPromise = Cesium.sampleTerrain(this.#viewer.terrainProvider, 10, [
-			pointOfInterest,
-		]);
-		console.log("samPromise:sampleTerrain:", samPromise);
-		samPromise.then(function (samples) {
-			console.log(
-				"Height in meters is: " + samples[0].height,
-				"   rect:",
-				rect
-			);
-			this.#setRect(rect, samples[0].height);
+	//	var samPromise = Cesium.sampleTerrainMostDetailed(this.#viewer.terrainProvider, [ pointOfInterest ]);
+		var samPromise = Cesium.sampleTerrain(this.#viewer.terrainProvider, 10, [ pointOfInterest ]);
+		console.log("samPromise:sampleTerrain:",samPromise);
+		samPromise.then(function(samples) {
+			console.log('Height in meters is: ' + samples[0].height, "   rect:",rect);
+			this.#setRect(rect,samples[0].height);
 		});
-
-		//	Cesium.sampleTerrain(this.#viewer.terrainProvider, 9, [ pointOfInterest ])
+		
+	//	Cesium.sampleTerrain(this.#viewer.terrainProvider, 9, [ pointOfInterest ])
 		/**
 		Cesium.sampleTerrainMostDetailed(this.#viewer.terrainProvider, [ pointOfInterest ])
 		.then(function(samples) {
@@ -350,15 +291,17 @@ class CesiumWindow {
 			this.#setRect(rect,samples[0].height);
 		});
 		**/
+
 	}
 
-	#getGeoJsonTemplate() {
-		var geoJSinstanceTmpl = {
-			type: "FeatureCollection",
-			features: [],
-		};
-		return geoJSinstanceTmpl;
+	#getGeoJsonTemplate(){
+		var geoJSinstanceTmpl={
+			"type": "FeatureCollection",
+			"features": []
+		}
+		return(geoJSinstanceTmpl);
 	}
+
 
 	// POIのスタイルを変えるには。。
 	//		markerSymbol: 'golf'　とか・・
@@ -368,217 +311,158 @@ class CesiumWindow {
 	// https://cesiumjs.org/Cesium/Apps/SampleData/simplestyles.geojson
 	// geojsonにこのように記載すればそれが反映されると思う
 
-	#pColor = [
-		"blue",
-		"red",
-		"green",
-		"purple",
-		"yellow",
-		"aqua",
-		"maroon",
-		"olive",
-		"lime",
-		"navy",
-		"fuchsia",
-		"teal",
-		"white",
-		"black",
-	];
-	#pLvl = [
-		"A",
-		"B",
-		"C",
-		"D",
-		"E",
-		"F",
-		"G",
-		"H",
-		"I",
-		"J",
-		"K",
-		"L",
-		"M",
-		"N",
-	];
+	#pColor=["blue","red","green","purple","yellow","aqua","maroon","olive","lime","navy","fuchsia","teal","white","black"];
+	#pLvl=["A","B","C","D","E","F","G","H","I","J","K","L","M","N"];
 	#strokeRatio = 500; // Cesium画面の何分の一の幅で「線」を表現するか
 	#relBarTickness = 4.0; // 「線」の幅の何倍の大きさで、バーグラフの太さを表現するか
 	#relBarFullRange = 25.0; // バーグラフの太さの何倍を正規化値のフルレンジにするか
 
-	#viewGeoJson = async function (geojsInp, rect) {
-		console.log("viewGeoJson:  jsGeom", geojsInp, "  rect:", rect);
-		//	console.log( this.#viewer, this.#viewer.dataSources);
-
-		if (this.#viewer && this.#viewer.dataSources) {
+	#viewGeoJson = async function(geojsInp, rect){
+		console.log("viewGeoJson:  jsGeom",geojsInp, "  rect:",rect);
+	//	console.log( this.#viewer, this.#viewer.dataSources);
+		
+		if ( this.#viewer && this.#viewer.dataSources ){
 			// countinue
 		} else {
 			console.log("wait instansiation..");
-			setTimeout(
-				function () {
-					this.#viewGeoJson(geojsInp, rect);
-				}.bind(this),
-				200
-			);
+			setTimeout(function(){ this.#viewGeoJson(geojsInp, rect);}.bind(this),200);
 		}
-
+		
 		var js = geojsInp;
-
+		
 		var geoJSinstance = this.#getGeoJsonTemplate();
-
+		
+		
 		// いろいろ消去する。
 		this.#clearCoverageImageries();
-		this.#viewer.entities.removeAll();
+		this.#viewer.entities.removeAll(); 
 
-		var sw = (rect.width * 111111) / this.#strokeRatio; // 線幅(sw)はメートル次元を持つらしい。決め打ちのストローク幅 画面の大きさのstrokeRatio分の一の幅にするという意味ですね。
+		var sw = rect.width * 111111 / this.#strokeRatio; // 線幅(sw)はメートル次元を持つらしい。決め打ちのストローク幅 画面の大きさのstrokeRatio分の一の幅にするという意味ですね。
 		// Cesiumの線幅定義がいつの間にか変化しえらく太く描画される・・よくわからなくなってきた・・・2018/7/25
-
-		var layerNumb = {};
+		
+		var layerNumb={};
 		var layerCount = 0;
 		for (var subLayerId in js) {
-			var mainValueMin, mainValueMax;
-
-			if (js[subLayerId].layerProps) {
-				mainValueMin =
-					js[js[subLayerId].layerProps.svgImageProps.rootLayer].mainValueMin;
-				mainValueMax =
-					js[js[subLayerId].layerProps.svgImageProps.rootLayer].mainValueMax;
+			
+			var mainValueMin,mainValueMax;
+			
+			if ( js[subLayerId].layerProps ){
+				mainValueMin = js[js[subLayerId].layerProps.svgImageProps.rootLayer].mainValueMin;
+				mainValueMax = js[js[subLayerId].layerProps.svgImageProps.rootLayer].mainValueMax;
 			}
-
-			var geoms = js[subLayerId].geometry;
+			
+			var geoms= js[subLayerId].geometry;
 			var layerId = "root";
 			var layerName = "root";
 			var layerProps = js[subLayerId].layerProps;
-			if (layerProps) {
+			if ( layerProps ){
 				layerId = layerProps.id; // 異なるレイヤ(サブレイヤとかタイルではなくルートのレイヤ)ごとに色を変える。 2018.2.16
 				layerName = layerProps.title;
 			}
-
+			
 			var colorNumber = -1;
-			if (!geoms) {
+			if ( !geoms ){
 				continue;
 			}
-			if (geoms.length > 0) {
-				// 色をレイヤごとに変化させる機能
-				if (layerNumb[layerId] !== undefined) {
-					colorNumber = layerNumb[layerId];
+			if ( geoms.length > 0 ){ // 色をレイヤごとに変化させる機能
+				if ( layerNumb[layerId] !== undefined ){
+					colorNumber=layerNumb[layerId];
 				} else {
 					layerNumb[layerId] = layerCount;
-					++layerCount;
-					if (layerCount > 13) {
+					++ layerCount;
+					if ( layerCount > 13 ){
 						layerCount = 0;
 					}
 				}
-				colorNumber = layerNumb[layerId];
+				colorNumber=layerNumb[layerId];
 			}
-
-			if (geoms.length > 0) {
-				for (var i = 0; i < geoms.length; i++) {
-					if (geoms[i].type !== "Coverage") {
-						var pTitle = i + ":" + layerName;
-						//				console.log(geoms[i].src.getAttribute("xlink:title"));
-						if (geoms[i].src && geoms[i].src.title) {
-							pTitle = geoms[i].src.title + "/" + layerName;
+			
+			
+			if ( geoms.length > 0 ){
+				for ( var i = 0 ; i < geoms.length ; i++ ){
+					if ( geoms[i].type !== "Coverage"){
+						var pTitle=i+":"+layerName;
+		//				console.log(geoms[i].src.getAttribute("xlink:title"));
+						if ( geoms[i].src && geoms[i].src.title){
+							pTitle = geoms[i].src.title + "/"+layerName;
 						}
 						var feature = new Object();
 						feature.type = "Feature";
 						feature.properties = {
-							title: pTitle,
-							"marker-symbol": pTitle.substring(0, 1),
-							"marker-color": this.#pColor[colorNumber],
+							"title": pTitle,
+							"marker-symbol": pTitle.substring(0,1),
+							"marker-color": this.#pColor[colorNumber]
 						};
 						feature.geometry = geoms[i];
-						if (geoms[i].mainValue != undefined && geoms[i].type == "Point") {
-							var normalizedValue =
-								(geoms[i].mainValue - mainValueMin) /
-								(mainValueMax - mainValueMin);
-							//						console.log("calling setBox: geom:",geoms[i],"   mainVal(N):", normalizedValue, "   mainVal:",geoms[i].mainValue,"   min,max:",mainValueMin,mainValueMax);
-							this.#setBox(
-								geoms[i].coordinates[0],
-								geoms[i].coordinates[1],
-								pTitle,
-								sw * this.#relBarTickness,
-								sw *
-									(normalizedValue + 0.01) *
-									this.#relBarTickness *
-									this.#relBarFullRange
-							); // 0.01は0になると柱が消えちゃうので、1%程度サバ読み
+						if ( geoms[i].mainValue != undefined && geoms[i].type == "Point"){
+							var normalizedValue = (geoms[i].mainValue - mainValueMin)/(mainValueMax-mainValueMin);
+	//						console.log("calling setBox: geom:",geoms[i],"   mainVal(N):", normalizedValue, "   mainVal:",geoms[i].mainValue,"   min,max:",mainValueMin,mainValueMax);
+							this.#setBox(geoms[i].coordinates[0],geoms[i].coordinates[1],pTitle, sw * this.#relBarTickness, sw * (normalizedValue+0.01) * this.#relBarTickness * this.#relBarFullRange ); // 0.01は0になると柱が消えちゃうので、1%程度サバ読み
 						} else {
 							geoJSinstance.features.push(feature);
 						}
 					} else {
 						// ビットイメージはcesium内蔵のgeojson描画ではない専用実装で描画する
-						if (
-							layerProps.groupName != "basemap" &&
-							layerProps.groupName != "背景地図"
-						) {
-							// この部分　ちょっと決めうち気味・・
+						if ( layerProps.groupName != "basemap" && layerProps.groupName != "背景地図"){ // この部分　ちょっと決めうち気味・・
 							await this.#setCoverage2Imagery(geoms[i]);
 						} else {
-							//						console.log("Skip basemap:",geoms[i].href);
+	//						console.log("Skip basemap:",geoms[i].href);
 						}
 					}
 				}
 			}
 		}
 
-		console.log("geojs:", geoJSinstance, "   rect:", rect, "   sw:", sw);
-
-		if (rect) {
-			this.#addGeoJsonObj(geoJSinstance, true, sw);
+		
+		console.log("geojs:",geoJSinstance , "   rect:",rect,"   sw:",sw);
+		
+		if ( rect ){
+			this.#addGeoJsonObj(geoJSinstance,true,sw);
 		} else {
-			this.#addGeoJsonObj(geoJSinstance, true);
+			this.#addGeoJsonObj(geoJSinstance,true);
 		}
-
-		if (rect) {
+		
+		if ( rect ){
 			// x:geoViewBox.x , y:geoViewBox.y , width:geoViewBox.width, height:geoViewBox.height, cx: geoViewBox.x + 0.5*geoViewBox.width, cy:geoViewBox.y + 0.5*geoViewBox.height
-
-			this.#flyToRectangle(
-				rect.x,
-				rect.y,
-				rect.x + rect.width,
-				rect.y + rect.height,
-				true
-			);
-			//		this.#flyToRectangle(rect.x, rect.y, rect.x + rect.width, rect.y + rect.height , false );
+			
+			this.#flyToRectangle(rect.x, rect.y, rect.x + rect.width, rect.y + rect.height , true );
+	//		this.#flyToRectangle(rect.x, rect.y, rect.x + rect.width, rect.y + rect.height , false );
 		}
 	}.bind(this);
 
-	#coverageImageries = [];
+	#coverageImageries=[];
 
-	async #setCoverage2Imagery(geom) {
-		//	console.log("Coverage is rendered by special inplemantaion  :", geom.coordinates[0].lng , geom.coordinates[0].lat, geom.coordinates[1].lng , geom.coordinates[1].lat, geom.href);
 
+	async #setCoverage2Imagery(geom){
+	//	console.log("Coverage is rendered by special inplemantaion  :", geom.coordinates[0].lng , geom.coordinates[0].lat, geom.coordinates[1].lng , geom.coordinates[1].lat, geom.href);
+		
 		var imageUrl = geom.href;
 		imageUrl = await this.#getCORSresolvedURL(imageUrl);
-		console.log("orig:", geom.href, "  imageUrl:", imageUrl);
-		if (imageUrl.startsWith("https://") || imageUrl.startsWith("http://")) {
-		} else if (imageUrl.startsWith("/")) {
+		console.log("orig:", geom.href, "  imageUrl:",imageUrl);
+		if ( imageUrl.startsWith("https://") || imageUrl.startsWith("http://")  ){
+		} else if ( imageUrl.startsWith("/") ){
 			// imageUrl = imageUrl;
 		} else {
-			imageUrl = (await this.#getReldir2imageUrl()) + imageUrl;
+			imageUrl = await this.#getReldir2imageUrl() + imageUrl;
 		}
-		console.log("CORSimageUrl:", imageUrl);
-
-		//	console.log("geom rect:",geom.coordinates[0].lng , geom.coordinates[0].lat, geom.coordinates[1].lng , geom.coordinates[1].lat);
-		var coverageImagery = this.#viewer.imageryLayers.addImageryProvider(
-			new Cesium.SingleTileImageryProvider({
-				//		url : "test-signal2.jpg",
-				url: imageUrl,
-				rectangle: Cesium.Rectangle.fromDegrees(
-					geom.coordinates[0].lng,
-					geom.coordinates[0].lat,
-					geom.coordinates[1].lng,
-					geom.coordinates[1].lat
-				),
-			})
-		);
-
+		console.log("CORSimageUrl:",imageUrl);
+		
+	//	console.log("geom rect:",geom.coordinates[0].lng , geom.coordinates[0].lat, geom.coordinates[1].lng , geom.coordinates[1].lat);
+		var coverageImagery = this.#viewer.imageryLayers.addImageryProvider(new Cesium.SingleTileImageryProvider({
+	//		url : "test-signal2.jpg",
+			url : imageUrl,
+			rectangle : Cesium.Rectangle.fromDegrees(geom.coordinates[0].lng , geom.coordinates[0].lat, geom.coordinates[1].lng , geom.coordinates[1].lat)
+		}));
+		
 		coverageImagery.alpha = 0.5;
 		this.#coverageImageries.push(coverageImagery);
+		
 	}
 
-	#clearCoverageImageries() {
-		for (var i = 0; i < this.#coverageImageries.length; i++) {
-			console.log("should be removed:", this.#coverageImageries[i]);
+
+	#clearCoverageImageries(){
+		for ( var i = 0 ; i < this.#coverageImageries.length ; i++ ){
+			console.log("should be removed:",this.#coverageImageries[i]);
 			this.#viewer.imageryLayers.remove(this.#coverageImageries[i], true);
 		}
 		this.#coverageImageries = [];
@@ -588,31 +472,29 @@ class CesiumWindow {
 
 	//	var fillColor = Cesium.Color.PINK.withAlpha(0.5);
 
-	#addGeoJsonObj(geoJSinstance, doClear, swidth) {
+	#addGeoJsonObj(geoJSinstance, doClear, swidth){
 		var sw = 20;
-		if (swidth) {
+		if ( swidth ){
 			sw = swidth;
 		}
-		console.log(
-			"called addGeoJsonObj : coverageImageries",
-			this.#coverageImageries
-		);
-		if (doClear) {
+		console.log( "called addGeoJsonObj : coverageImageries",this.#coverageImageries);
+		if ( doClear ){
 			this.#viewer.dataSources.removeAll();
 		}
-		console.log("geoJson:", JSON.stringify(geoJSinstance));
-		this.#viewer.dataSources.add(
-			Cesium.GeoJsonDataSource.load(geoJSinstance, {
-				stroke: Cesium.Color.HOTPINK.withAlpha(0.6),
-				fill: Cesium.Color.PINK.withAlpha(0.35),
-				strokeWidth: sw / 4, // 2018.7.25 cesiumのstrokeWidth定義が変化した？　えらく太くなるので４分の１にしてみる・・・nonScalingになった？
-				markerSymbol: "?",
-				clampToGround: this.#clampToGround,
-			})
-		);
-	}
+		console.log("geoJson:",JSON.stringify(geoJSinstance));
+		this.#viewer.dataSources.add(Cesium.GeoJsonDataSource.load(geoJSinstance, { 
+			stroke: Cesium.Color.HOTPINK.withAlpha(0.6), 
+			fill: Cesium.Color.PINK.withAlpha(0.35), 
+			strokeWidth: sw/4,  // 2018.7.25 cesiumのstrokeWidth定義が変化した？　えらく太くなるので４分の１にしてみる・・・nonScalingになった？
+			markerSymbol: '?',
+			clampToGround : this.#clampToGround
+		}));
+	}	
 
-	#sampleTerrainWrapperC() {
+
+
+
+	#sampleTerrainWrapperC(){
 		var sampleTerrainWrapperCBF;
 		var sampleTerrainWrapperProgressF;
 		var sampleTerrainWrapperTerrainProvider;
@@ -621,12 +503,7 @@ class CesiumWindow {
 		var completedCount;
 		var inputPositions;
 
-		function sampleTerrainWrapper(
-			terrainProvider,
-			positions,
-			callBackFunc,
-			progressFunc
-		) {
+		function sampleTerrainWrapper(terrainProvider, positions, callBackFunc,progressFunc){
 			answerPositions = [];
 			completedCount = 0;
 			inputPositions = positions;
@@ -636,27 +513,19 @@ class CesiumWindow {
 			sampleSubTerrain();
 		}
 
-		function sampleSubTerrain() {
+		function sampleSubTerrain(){
 			// どうも大量に問い合わせをするとスロットルリクエストタイプの地理院地形データで問い合わせをあきらめられてしまうので、１０件づつ問い合わせを徐々にするようにしてみる
-			console.log("called sampleSubTerrain:", completedCount);
-			var subPositions = inputPositions.slice(
-				completedCount,
-				completedCount + subCount
-			);
-			Cesium.sampleTerrainMostDetailed(
-				sampleTerrainWrapperTerrainProvider,
-				subPositions
-			).then(
-				//		Cesium.sampleTerrain(sampleTerrainWrapperTerrainProvider,9, subPositions).then(
-				function (resolvedSubPositions) {
-					console.log("sampleTerrainMostDetailed SUB:", resolvedSubPositions);
+			console.log("called sampleSubTerrain:",completedCount);
+			var subPositions = inputPositions.slice(completedCount, completedCount+subCount);
+			Cesium.sampleTerrainMostDetailed(sampleTerrainWrapperTerrainProvider, subPositions).then(
+	//		Cesium.sampleTerrain(sampleTerrainWrapperTerrainProvider,9, subPositions).then(
+				function(resolvedSubPositions){
+					console.log("sampleTerrainMostDetailed SUB:",resolvedSubPositions);
 					completedCount += subCount;
 					answerPositions = answerPositions.concat(resolvedSubPositions);
-					console.log(completedCount, inputPositions.length);
-					if (completedCount < inputPositions.length) {
-						sampleTerrainWrapperProgressF(
-							completedCount / inputPositions.length
-						);
+					console.log( completedCount, inputPositions.length );
+					if ( completedCount < inputPositions.length ){
+						sampleTerrainWrapperProgressF( completedCount / inputPositions.length );
 						sampleSubTerrain();
 					} else {
 						sampleTerrainWrapperCBF(answerPositions);
@@ -664,23 +533,22 @@ class CesiumWindow {
 				}
 			);
 		}
-
+		
 		return {
-			sampleTerrainWrapper: sampleTerrainWrapper,
-		};
+			sampleTerrainWrapper: sampleTerrainWrapper
+		}
+		
 	}
+
 }
 
-class SampleTerrainWrapper {
-	constructor(terrainProvider, positions, callBackFunc, progressFunc) {
-		this.#sampleTerrainWrapper(
-			terrainProvider,
-			positions,
-			callBackFunc,
-			progressFunc
-		);
-	}
 
+class SampleTerrainWrapper{
+	
+	constructor(terrainProvider, positions, callBackFunc,progressFunc){
+		this.#sampleTerrainWrapper(terrainProvider, positions, callBackFunc,progressFunc);
+	}
+	
 	#sampleTerrainWrapperCBF;
 	#sampleTerrainWrapperProgressF;
 	#sampleTerrainWrapperTerrainProvider;
@@ -689,12 +557,7 @@ class SampleTerrainWrapper {
 	#completedCount;
 	#inputPositions;
 
-	#sampleTerrainWrapper(
-		terrainProvider,
-		positions,
-		callBackFunc,
-		progressFunc
-	) {
+	#sampleTerrainWrapper(terrainProvider, positions, callBackFunc,progressFunc){
 		this.#answerPositions = [];
 		this.#completedCount = 0;
 		this.#inputPositions = positions;
@@ -704,28 +567,19 @@ class SampleTerrainWrapper {
 		this.#sampleSubTerrain();
 	}
 
-	#sampleSubTerrain = function () {
+	#sampleSubTerrain = function(){
 		// どうも大量に問い合わせをするとスロットルリクエストタイプの地理院地形データで問い合わせをあきらめられてしまうので、１０件づつ問い合わせを徐々にするようにしてみる
-		console.log("called sampleSubTerrain:", this.#completedCount);
-		var subPositions = this.#inputPositions.slice(
-			this.#completedCount,
-			this.#completedCount + this.#subCount
-		);
-		Cesium.sampleTerrainMostDetailed(
-			this.#sampleTerrainWrapperTerrainProvider,
-			subPositions
-		).then(
-			//		Cesium.sampleTerrain(this.#sampleTerrainWrapperTerrainProvider,9, subPositions).then(
-			function (resolvedSubPositions) {
-				console.log("sampleTerrainMostDetailed SUB:", resolvedSubPositions);
+		console.log("called sampleSubTerrain:",this.#completedCount);
+		var subPositions = this.#inputPositions.slice(this.#completedCount, this.#completedCount+this.#subCount);
+		Cesium.sampleTerrainMostDetailed(this.#sampleTerrainWrapperTerrainProvider, subPositions).then(
+//		Cesium.sampleTerrain(this.#sampleTerrainWrapperTerrainProvider,9, subPositions).then(
+			function(resolvedSubPositions){
+				console.log("sampleTerrainMostDetailed SUB:",resolvedSubPositions);
 				this.#completedCount += this.#subCount;
-				this.#answerPositions =
-					this.#answerPositions.concat(resolvedSubPositions);
-				console.log(this.#completedCount, this.#inputPositions.length);
-				if (this.#completedCount < this.#inputPositions.length) {
-					this.#sampleTerrainWrapperProgressF(
-						this.#completedCount / this.#inputPositions.length
-					);
+				this.#answerPositions = this.#answerPositions.concat(resolvedSubPositions);
+				console.log( this.#completedCount, this.#inputPositions.length );
+				if ( this.#completedCount < this.#inputPositions.length ){
+					this.#sampleTerrainWrapperProgressF( this.#completedCount / this.#inputPositions.length );
 					this.#sampleSubTerrain();
 				} else {
 					this.#sampleTerrainWrapperCBF(this.#answerPositions);
@@ -733,6 +587,7 @@ class SampleTerrainWrapper {
 			}
 		);
 	}.bind(this);
+	
 }
 
-export { CesiumWindow };
+export {CesiumWindow};

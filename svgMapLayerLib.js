@@ -31,20 +31,17 @@
 // History:
 // 2024/07/23 1st implementatiion, to fix https://github.com/svgmap/svgmapjs/issues/5
 
-// Note:
+// Note: 
 // 将来、このイニシャライザーは、より高度・複雑な実装になる可能性がある。またWeb App Layerの作法もさらに変更される可能性もある
 // 今のところWebAppLayerはESMを必須としていない為、このライブラリもmoduleではないことにしている。
 
-addEventListener("DOMContentLoaded", function () {
+addEventListener("DOMContentLoaded",function(){
 	// console.log(window.parent, window.parent.svgMap);
-	if (window.parent?.initSvgMapWebAppLayer) {
-		// for svgMapESM
+	if ( window.parent?.initSvgMapWebAppLayer ){ // for svgMapESM
 		window.parent?.initSvgMapWebAppLayer(window);
-	} else if (window.parent?.svgMap?.initSvgMapWebAppLayer) {
-		// for svgMapESM (2)
+	} else if ( window.parent?.svgMap?.initSvgMapWebAppLayer ){  // for svgMapESM (2)
 		window.parent?.svgMap?.initSvgMapWebAppLayer(window);
-	} else if (window.parent?.svgMapLayerUI?.initSvgMapWebAppLayer) {
-		// for svgMap0.1_r17
+	} else if ( window.parent?.svgMapLayerUI?.initSvgMapWebAppLayer ){  // for svgMap0.1_r17
 		window.parent.svgMapLayerUI.initSvgMapWebAppLayer(window);
 	}
 });

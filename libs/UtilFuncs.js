@@ -1,7 +1,7 @@
 // なんかいろいろ使われている単純なstaticな関数を集めたもの・・
 // 全部staticとする
 
-import { SvgMapElementType } from "./SvgMapElementType.js";
+import { SvgMapElementType } from './SvgMapElementType.js';
 
 class UtilFuncs {
 	static trim(s) {
@@ -40,16 +40,16 @@ class UtilFuncs {
 		return null;
 	}
 
-	static addCommonQueryAtQueryString(originalUrl, commonQuery) {
+	static addCommonQueryAtQueryString( originalUrl, commonQuery ){
 		//	 認証キーなどに用いるレイヤー(もしくはフレームワーク全体)共通クエリストリング設置
 		var rPath = originalUrl;
-		if (rPath.lastIndexOf("?") > 0) {
+		if (rPath.lastIndexOf("?")>0){
 			rPath += "&";
 		} else {
 			rPath += "?";
 		}
-		rPath += commonQuery; // 2022/09/26 queryKey+"="も含めてcommonQueryで設定することにする
-		return rPath;
+		rPath +=  commonQuery; // 2022/09/26 queryKey+"="も含めてcommonQueryで設定することにする
+		return ( rPath );
 	}
 
 	static getElementByIdUsingQuerySelector(qid) {
@@ -200,149 +200,140 @@ class UtilFuncs {
 		var tmp = Math.pow(10, n);
 		return Math.round(num * tmp) / tmp;
 	}
-
-	static getNoCacheRequest(originalUrl) {
-		//	強制的にキャッシュを除去するため、unixTimeをQueryに設置する
-		//	console.log("NO CACHE GET REQUEST");
+	
+	static getNoCacheRequest( originalUrl ){
+	//	強制的にキャッシュを除去するため、unixTimeをQueryに設置する
+	//	console.log("NO CACHE GET REQUEST");
 		var rPath = originalUrl;
-		if (rPath.lastIndexOf("?") > 0) {
+		if (rPath.lastIndexOf("?")>0){
 			rPath += "&";
 		} else {
 			rPath += "?";
 		}
-		rPath += "unixTime=" + new Date().getTime();
-		return rPath;
+		rPath += "unixTime=" + (new Date()).getTime();
+		return ( rPath );
 	}
-
-	static getDocDir(docPath) {
-		// 2016.10.14 関数化
+	
+	static getDocDir( docPath ){  // 2016.10.14 関数化
 		// 2016.8.10 ここに konnoさんによる、http://時の特殊処理( http://の場合docDir=""にする 2014.2.25 )が入っていたのを削除 (たぶん proxy処理に対するエラーだったと思うが・・・　テスト不十分)
-		var pathWoQF = docPath.replace(/#.*/g, "");
-		pathWoQF = pathWoQF.replace(/\?.*/, "");
-		var docDir = pathWoQF.substring(0, pathWoQF.lastIndexOf("/") + 1);
-		//	docDir = docPath.substring(0,docPath.lastIndexOf("/")+1);
-		return docDir;
+		var pathWoQF = docPath.replace(/#.*/g,"");
+		pathWoQF = pathWoQF.replace(/\?.*/,"");
+		var docDir = pathWoQF.substring(0,pathWoQF.lastIndexOf("/")+1);
+	//	docDir = docPath.substring(0,docPath.lastIndexOf("/")+1);
+		return ( docDir );
 	}
-
+			
 	// 指定した要素がzoomrange内にあるかどうかを返事する
-	static inZoomRange(ip, zoom, c2rScale) {
-		if (!ip || (!ip.minZoom && !ip.maxZoom)) {
+	static inZoomRange( ip , zoom , c2rScale ){
+		if ( !ip || (!ip.minZoom && !ip.maxZoom) ){
 			// プロパティない場合はtrue
-			return true;
+			return ( true );
 		} else {
-			if (ip.minZoom && zoom * c2rScale < ip.minZoom) {
-				return false;
+			if ( ip.minZoom && zoom * c2rScale < ip.minZoom ){
+				return(false);
 			}
-			if (ip.maxZoom && zoom * c2rScale > ip.maxZoom) {
-				return false;
+			if ( ip.maxZoom && zoom * c2rScale > ip.maxZoom ){
+				return(false);
 			}
 		}
-		return true;
+		return ( true );
 	}
-
-	static isVisible(ip) {
-		if (ip.visible) {
-			return true;
+	
+	static isVisible(ip){
+		if ( ip.visible ){
+			return ( true );
 		} else {
-			return false;
+			return ( false );
 		}
 	}
-
-	static isIntersect(rect1, rect2) {
+	
+	static isIntersect( rect1 , rect2 ){
 		var sec1, sec2;
-		if (rect1.nonScaling) {
-			// nonScaling設定の時はサイズ０として判断するようにする 2018.3.2
-			sec1 = { x: rect1.x, y: rect1.y, width: 0, height: 0 };
+		if ( rect1.nonScaling ){ // nonScaling設定の時はサイズ０として判断するようにする 2018.3.2
+			sec1 = { x:rect1.x,y:rect1.y,width:0,height:0 }
 		} else {
 			sec1 = rect1;
 		}
-		if (rect2.nonScaling) {
-			sec2 = { x: rect2.x, y: rect2.y, width: 0, height: 0 };
+		if ( rect2.nonScaling ){
+			sec2 = { x:rect2.x,y:rect2.y,width:0,height:0 }
 		} else {
 			sec2 = rect2;
 		}
-
+		
 		var ans = false;
-		if (
-			sec1.x > sec2.x + sec2.width ||
-			sec2.x > sec1.x + sec1.width ||
-			sec1.y > sec2.y + sec2.height ||
-			sec2.y > sec1.y + sec1.height
-		) {
-			return false;
+		if ( sec1.x > sec2.x + sec2.width || sec2.x > sec1.x + sec1.width 
+		 || sec1.y > sec2.y + sec2.height || sec2.y > sec1.y + sec1.height ){
+			return ( false );
 		} else {
-			return true;
+			return ( true );
 		}
 	}
 
-	static getBBox(x, y, width, height) {
+	static getBBox( x , y , width , height ){
 		return {
 			x: x,
 			y: y,
 			width: width,
-			height: height,
-		};
+			height: height
+		}
 	}
 
+			
+			
 	//
 	// 以下は、DOM系Utils
-	//
-	static getElementsByDualTagName(doc, tagn1, tagn2) {
+	// 
+	static getElementsByDualTagName( doc , tagn1 , tagn2 ){
 		var layers;
 		layers = Array.prototype.slice.call(doc.getElementsByTagName(tagn1));
-		layers = layers.concat(
-			Array.prototype.slice.call(doc.getElementsByTagName(tagn2))
-		);
-		return layers;
+		layers = layers.concat(Array.prototype.slice.call(doc.getElementsByTagName(tagn2)));
+		return ( layers );
 	}
 
-	// 2013.7.30 getElementByIdはSVGNSで無いと引っかからない@Firefox 動的レイヤーでも要注意 createElement"NS"で作ることが重要(IE11でも同じことがおきるので、すべての呼び出しをこれに変更することにした 2014.6.20)
-	static getElementByIdNoNS(XMLNode, searchId) {
-		return this.getElementByAttr(XMLNode, searchId, "id");
+	 // 2013.7.30 getElementByIdはSVGNSで無いと引っかからない@Firefox 動的レイヤーでも要注意 createElement"NS"で作ることが重要(IE11でも同じことがおきるので、すべての呼び出しをこれに変更することにした 2014.6.20)
+	static getElementByIdNoNS( XMLNode , searchId ){
+		return ( this.getElementByAttr( XMLNode , searchId , "id" ) );
 	}
 
-	static getElementByImgIdNoNS(XMLNode, searchId) {
-		return this.getElementByAttr(XMLNode, searchId, "iid");
+	static getElementByImgIdNoNS( XMLNode , searchId ){
+		return ( this.getElementByAttr( XMLNode , searchId , "iid" ) );
 	}
 
-	static getElementByAttr(XMLNode, searchId, atName) {
-		// 2020/09/28 元のをgetElementByAttr_obsolutedにした ISSUE対応
-		if (!XMLNode || !XMLNode.hasChildNodes()) {
-			return null;
+	static getElementByAttr( XMLNode , searchId , atName ){ // 2020/09/28 元のをgetElementByAttr_obsolutedにした ISSUE対応
+		if ( !XMLNode || ! XMLNode.hasChildNodes() ){
+			return ( null );
 		}
-		var ans = XMLNode.querySelector("[" + atName + '="' + searchId + '"]');
-		return ans;
+		var ans = XMLNode.querySelector('['+atName+'="'+searchId+'"]');
+		return ( ans );
 	}
+	
 
-	static getControllerSrc(resTxt, svgImageProps) {
-		// 2017.2.21
+	static getControllerSrc( resTxt , svgImageProps ){ // 2017.2.21
 		// data-controller-srcがある場合、そのソースをを取得して、svgImageProps.controllerに投入するとともに
 		// resTxtからdata-controller-srcを除去する
 		// 注意:やらないとは思うが、したがって、data-controller-srcをDOMで操作しても何も起きない・・
-		var controllerSrc = resTxt.match(
-			/data-controller-src[\s\S]*?"([\s\S]*?)"/
-		)[1];
-		controllerSrc = controllerSrc.replace(/&amp;/g, "&");
-		controllerSrc = controllerSrc.replace(/&quot;/g, '"');
-		svgImageProps.controller = { src: controllerSrc };
-		//	console.log("controllerSrc:",controllerSrc);
-		return resTxt.replace(/data-controller-src[\s\S]*?"[\s\S]*?"/, "");
+		var controllerSrc = (resTxt.match(/data-controller-src[\s\S]*?"([\s\S]*?)"/ ))[1];
+		controllerSrc = controllerSrc.replace(/&amp;/g,'&');
+		controllerSrc = controllerSrc.replace(/&quot;/g,'"');
+		svgImageProps.controller = {"src":controllerSrc};
+	//	console.log("controllerSrc:",controllerSrc);
+                                                          		return (resTxt.replace(/data-controller-src[\s\S]*?"[\s\S]*?"/, "" ) );
 	}
 
-	static getSvgScript(resTxt, svgImageProps) {
+	static getSvgScript(resTxt, svgImageProps){ 
 		// 2022/3/4  controller-srcと同じ仕組みでsvg scriptを切り出す(eval除去工程)
 		// とりあえずdata-controllerやcontrollerと排他的な実装を試してみる～svgMapLayerUIへの波及を考え
-		var resScript = resTxt.match(/<script>([\s\S]*)<\/script>/)[1];
-		resScript = resScript.replace(/&lt;/g, "<");
-		resScript = resScript.replace(/&gt;/g, ">");
-		resScript = resScript.replace(/&amp;/g, "&");
-		resScript = resScript.replace(/&quot;/g, '"');
-
+		var resScript = (resTxt.match(/<script>([\s\S]*)<\/script>/ ))[1];
+		resScript = resScript.replace(/&lt;/g,'<');
+		resScript = resScript.replace(/&gt;/g,'>');
+		resScript = resScript.replace(/&amp;/g,'&');
+		resScript = resScript.replace(/&quot;/g,'"');
+		
 		svgImageProps.svgScript = resScript;
-		return resTxt.replace(/<script>[\s\S]*<\/script>/, "");
+		return (resTxt.replace(/<script>[\s\S]*<\/script>/ , "" ) );
 	}
-
-	static getSymbolProps(imageNode) {
+			
+	static getSymbolProps( imageNode ){
 		var id = imageNode.getAttribute("id");
 		var path = imageNode.getAttribute("xlink:href");
 		var offsetX = Number(imageNode.getAttribute("x"));
@@ -351,338 +342,264 @@ class UtilFuncs {
 		var height = Number(imageNode.getAttribute("height"));
 		return {
 			type: "symbol",
-			id: id,
-			path: path,
-			offsetX: offsetX,
-			offsetY: offsetY,
-			width: width,
-			height: height,
-		};
+			id : id ,
+			path : path ,
+			offsetX : offsetX ,
+			offsetY : offsetY ,
+			width : width ,
+			height : height
+		}
 	}
 
-	static getGraphicsGroupSymbol(groupNode) {
+	static getGraphicsGroupSymbol( groupNode ){
 		return {
 			type: "group",
 			id: groupNode.getAttribute("id"),
-			node: groupNode,
-		};
+			node : groupNode
+		}
+		
 	}
 
-	static getPathSymbolMakerProps(pathNode) {
+	static getPathSymbolMakerProps( pathNode ){
 		var d = pathNode.getAttribute("d");
 		var id = pathNode.getAttribute("id");
 		return {
 			type: "marker",
-			id: id,
-			d: d,
-		};
+			id : id ,
+			d : d
+		}
 	}
 
-	static getrootViewBoxFromRootSVG(viewBox, mapCanvasSize_, ignoreMapAspect) {
-		var rVPx, rVPy, rVPwidth, rVPheight;
-
-		if (ignoreMapAspect) {
-			return viewBox;
+	static getrootViewBoxFromRootSVG( viewBox , mapCanvasSize_ , ignoreMapAspect){
+		var rVPx , rVPy , rVPwidth , rVPheight;
+		
+		if ( ignoreMapAspect ){
+			return ( viewBox );
 		}
-
-		if (viewBox) {
-			if (
-				mapCanvasSize_.height / mapCanvasSize_.width >
-				viewBox.height / viewBox.width
-			) {
+		
+		if(viewBox){
+			if ( mapCanvasSize_.height / mapCanvasSize_.width > viewBox.height / viewBox.width ){
 				//キャンバスよりもviewBoxが横長の場合・・横をviewPortに充てる
 				rVPwidth = viewBox.width;
-				rVPheight =
-					(viewBox.width * mapCanvasSize_.height) / mapCanvasSize_.width;
+				rVPheight = viewBox.width * mapCanvasSize_.height / mapCanvasSize_.width;
 				rVPx = viewBox.x;
 				rVPy = viewBox.y + viewBox.height / 2.0 - rVPheight / 2.0;
 			} else {
 				rVPheight = viewBox.height;
-				rVPwidth =
-					(viewBox.height * mapCanvasSize_.width) / mapCanvasSize_.height;
+				rVPwidth = viewBox.height * mapCanvasSize_.width / mapCanvasSize_.height;
 				rVPy = viewBox.y;
 				rVPx = viewBox.x + viewBox.width / 2.0 - rVPwidth / 2.0;
 			}
+			
 		} else {
 			rVPx = 0;
 			rVPy = 0;
 			rVPwidth = mapCanvasSize_.width;
 			rVPheight = mapCanvasSize_.height;
 		}
-
+		
 		return {
-			x: rVPx,
-			y: rVPy,
-			width: rVPwidth,
-			height: rVPheight,
-		};
+			x : rVPx ,
+			y : rVPy ,
+			width : rVPwidth ,
+			height : rVPheight
+		}
 	}
 
 	// 定期的更新プロパティの取得
-	static getRefresh(svgDoc) {
+	static getRefresh( svgDoc ){
 		var ans = new Array();
 		ans.timeout = -1;
-		ans.url = "";
+		ans.url ="";
 		ans.start = false;
 		ans.loadScript = false;
-		var metas = svgDoc.getElementsByTagName("meta");
-		for (var i = 0; i < metas.length; i++) {
-			if (
-				metas[i].getAttribute("http-equiv") &&
-				metas[i].getAttribute("http-equiv") == "refresh" &&
-				metas[i].getAttribute("content")
-			) {
-				var refr = metas[i].getAttribute("content").split(";"); // at this time, ignore URL...
+		var metas =  svgDoc.getElementsByTagName("meta");
+		for ( var i = 0 ; i < metas.length ; i++ ){
+			if ( metas[i].getAttribute("http-equiv") && metas[i].getAttribute("http-equiv") == "refresh" && metas[i].getAttribute("content") ){
+				var refr = (metas[i].getAttribute("content")).split(";"); // at this time, ignore URL...
 				ans.timeout = Number(refr[0]);
 				ans.loadScript = true;
-				if (refr[1]) {
+				if ( refr[1] ){
 					ans.url = refs[1];
 				}
 				break;
 			}
 		}
-		return ans;
+		return ( ans );
 	}
 
-	static getMetaSchema(svgDoc) {
-		return svgDoc.documentElement.getAttribute("property");
+	static getMetaSchema( svgDoc ){
+		return ( svgDoc.documentElement.getAttribute("property"));
 	}
 
-	static parseTransformMatrix(transformAttr) {
-		var matrix = null;
-		if (transformAttr) {
-			var tmat = transformAttr
-				.replace("matrix(", "")
-				.replace(")", "")
-				.split(",");
-			if (tmat.length == 6) {
-				matrix = {
-					a: Number(tmat[0]),
-					b: Number(tmat[1]),
-					c: Number(tmat[2]),
-					d: Number(tmat[3]),
-					e: Number(tmat[4]),
-					f: Number(tmat[5]),
-				};
+	static parseTransformMatrix(transformAttr){
+		var matrix=null;
+		if ( transformAttr ){
+			var tmat = transformAttr.replace("matrix(","").replace(")","").split(",");
+			if ( tmat.length == 6){
+				matrix ={
+					a : Number(tmat[0]) ,
+					b : Number(tmat[1]) ,
+					c : Number(tmat[2]) ,
+					d : Number(tmat[3]) ,
+					e : Number(tmat[4]) ,
+					f : Number(tmat[5]) ,
+				}
 			}
 		}
-		return matrix;
+		return ( matrix );
 	}
-
-	static getNonScalingOffset(svgPoiNode) {
-		// getPoiPosから改称 2018.3.2
+	
+	static getNonScalingOffset( svgPoiNode ){ // getPoiPosから改称 2018.3.2
 		// vectorEffect,transform(ref ノンスケールのための基点座標取得
 		try {
-			var pos = svgPoiNode
-				.getAttribute("transform")
-				.replace("ref(svg,", "")
-				.replace(")", "")
-				.split(",");
-			var x = Number(pos[0]);
-			var y = Number(pos[1]);
-			if (!isNaN(x) && !isNaN(y)) {
+			var pos = svgPoiNode.getAttribute("transform").replace("ref(svg,","").replace(")","").split(",");
+			var x = Number ( pos[0] );
+			var y = Number ( pos[1] );
+			if ( !isNaN(x) && !isNaN(y) ){
 				return {
-					x: Number(pos[0]),
-					y: Number(pos[1]),
-					nonScaling: true,
-				};
+					x : Number ( pos[0] ),
+					y : Number ( pos[1] ),
+					nonScaling : true
+				}
 			} else {
-				return {
-					x: null,
-					y: null,
-					nonScaling: false,
-				};
+				return{
+					x : null,
+					y : null,
+					nonScaling : false
+				}
 			}
-		} catch (e) {
-			return {
-				x: null,
-				y: null,
-				nonScaling: false,
-			};
+		} catch (e){
+			return{
+				x : null,
+				y : null,
+				nonScaling : false
+			}
 		}
 	}
 
-	static getDocumentId(svgelement) {
-		return svgelement.ownerDocument.documentElement.getAttribute("about");
+	static getDocumentId( svgelement ){
+		return ( svgelement.ownerDocument.documentElement.getAttribute("about") );
 	}
-
+			
 	// POI,タイル(use,image要素)のプロパティを得る DIRECTPOI,USEDPOIの処理に変更2018.3.2
-	static getImageProps = function (
-		imgE,
-		category,
-		parentProps,
-		subCategory,
-		GISgeometry
-	) {
-		var x,
-			y,
-			width,
-			height,
-			meta,
-			title,
-			elemClass,
-			href,
-			transform,
-			text,
-			cdx,
-			cdy,
-			href_fragment,
-			commonQuery;
+	static getImageProps=function( imgE , category , parentProps , subCategory , GISgeometry){
+		var x, y, width, height, meta, title, elemClass, href, transform, text , cdx , cdy , href_fragment, commonQuery;
 		var nonScaling = false;
 		cdx = 0;
 		cdy = 0;
 		var pixelated = false;
 		var imageFilter = null;
 		var crossorigin = null;
-		if (!subCategory && category == SvgMapElementType.POI) {
-			// subCategory無しで呼び出しているものに対するバックワードコンパチビリティ・・・ 2018.3.2
+		if ( !subCategory && category == SvgMapElementType.POI){ // subCategory無しで呼び出しているものに対するバックワードコンパチビリティ・・・ 2018.3.2
 			subCategory = SvgMapElementType.USEDPOI;
 		}
-		if (
-			category == SvgMapElementType.EMBEDSVG ||
-			category == SvgMapElementType.BITIMAGE ||
-			subCategory == SvgMapElementType.DIRECTPOI
-		) {
-			if (
-				category == SvgMapElementType.EMBEDSVG &&
-				subCategory == SvgMapElementType.SVG2EMBED
-			) {
-				// svg2のsvgインポート
+		if ( category == SvgMapElementType.EMBEDSVG || category == SvgMapElementType.BITIMAGE || subCategory == SvgMapElementType.DIRECTPOI ){
+			if ( category == SvgMapElementType.EMBEDSVG && subCategory == SvgMapElementType.SVG2EMBED ){ // svg2のsvgインポート
 				href = imgE.getAttribute("src");
-
-				var idx = href.indexOf("globe", href.lastIndexOf("#"));
+				
+				var idx = href.indexOf("globe",href.lastIndexOf("#"));
 				var postpone = imgE.getAttribute("postpone");
-				if (!postpone) {
+				if ( !postpone ){
 					// #gpostpone="true"があることを想定しているので、本来ERRORです
 				}
-				if (idx > 0) {
-					//				href = href.substring(0,idx ); // 2014.6.27 この処理は getSvgLocation()等に移管
+				if ( idx > 0 ){
+	//				href = href.substring(0,idx ); // 2014.6.27 この処理は getSvgLocation()等に移管
 				} else {
 					// #globeがあることを想定しているので、本来ERRORです
 				}
-				var clip = imgE
-					.getAttribute("clip")
-					.replace(/rect\(|\)/g, "")
-					.replace(/\s*,\s*|\s+/, ",")
-					.split(",");
-				if (clip && clip.length == 4) {
-					x = Number(clip[0]);
-					y = Number(clip[1]);
+				var clip = imgE.getAttribute("clip").replace(/rect\(|\)/g,"").replace(/\s*,\s*|\s+/,",").split(",");
+				if ( clip && clip.length == 4 ){
+					x= Number(clip[0]);
+					y= Number(clip[1]);
 					width = Number(clip[2]);
-					height = Number(clip[3]);
+					height= Number(clip[3]);
 				} else {
 					x = -30000;
 					y = -30000;
 					width = 60000;
-					height = 60000;
+					height= 60000;
 				}
-			} else {
-				// svg1のsvgインポート及び svg1,svg2のビットイメージ(含DIRECTPOI)インポート
+			} else { // svg1のsvgインポート及び svg1,svg2のビットイメージ(含DIRECTPOI)インポート
 				var tf = UtilFuncs.getNonScalingOffset(imgE);
-				if (tf.nonScaling) {
+				if ( tf.nonScaling ){
 					nonScaling = true;
 					x = tf.x;
 					y = tf.y;
-					if (imgE.getAttribute("x")) {
+					if ( imgE.getAttribute("x") ){
 						cdx = Number(imgE.getAttribute("x"));
 					}
-					if (imgE.getAttribute("y")) {
+					if ( imgE.getAttribute("y") ){
 						cdy = Number(imgE.getAttribute("y"));
 					}
 				} else {
 					x = Number(imgE.getAttribute("x"));
 					y = Number(imgE.getAttribute("y"));
-					transform = UtilFuncs.parseTransformMatrix(
-						imgE.getAttribute("transform")
-					);
+					transform = UtilFuncs.parseTransformMatrix( imgE.getAttribute("transform") );
 				}
 				width = Number(imgE.getAttribute("width")); // nonScalingではwidth,heightの値はisIntersectでは0とみなして計算するようにします
 				height = Number(imgE.getAttribute("height"));
 				href = imgE.getAttribute("xlink:href");
-				if (!href) {
+				if ( ! href ){
 					href = imgE.getAttribute("href");
 				}
-				if (!href) {
+				if ( ! href ){
 					href = "";
 				}
-				if (
-					href.indexOf("#") > 0 &&
-					href.indexOf("xywh=", href.indexOf("#")) > 0
-				) {
-					// 2015.7.3 spatial fragment
-					href_fragment = href.substring(
-						5 + href.indexOf("xywh=", href.indexOf("#"))
-					);
-					href = href.substring(0, href.indexOf("#")); // ブラウザが#以下があるとキャッシュ無視するのを抑止
+				if ( href.indexOf("#")>0 && href.indexOf("xywh=", href.indexOf("#") )>0){ // 2015.7.3 spatial fragment
+					href_fragment = (href.substring( 5+href.indexOf("xywh=" ,  href.indexOf("#") ) ));
+					href = href.substring(0,href.indexOf("#")); // ブラウザが#以下があるとキャッシュ無視するのを抑止
 				}
-
-				crossorigin = imgE.getAttribute("crossorigin");
-				if (crossorigin == "") {
-					crossorigin = "anonymous";
-				}
-
-				if (GISgeometry) {
-					if (category == SvgMapElementType.BITIMAGE && !nonScaling) {
-						// 2018.2.26
-						GISgeometry.setCoverage(x, y, width, height, transform, href);
-					} else if (subCategory == SvgMapElementType.DIRECTPOI) {
-						// 2018.3.2 上の話を改修した部分
-						GISgeometry.setPoint(x, y);
+				
+				crossorigin=imgE.getAttribute("crossorigin");
+				if ( crossorigin==""){crossorigin="anonymous"}
+				
+				if ( GISgeometry){
+					if ( category == SvgMapElementType.BITIMAGE && !nonScaling ){ // 2018.2.26
+						GISgeometry.setCoverage(x,y,width,height,transform,href);
+					} else if ( subCategory == SvgMapElementType.DIRECTPOI ){ // 2018.3.2 上の話を改修した部分
+						GISgeometry.setPoint(x,y);
 					}
 				}
-
-				if (subCategory == SvgMapElementType.DIRECTPOI) {
-					// 2018.3.2
+				
+				if ( subCategory == SvgMapElementType.DIRECTPOI){ // 2018.3.2
 					meta = imgE.getAttribute("content");
 					title = imgE.getAttribute("xlink:title");
 				}
+				
 			}
 			elemClass = imgE.getAttribute("class");
-
-			if (
-				category == SvgMapElementType.BITIMAGE &&
-				((imgE.getAttribute("style") &&
-					imgE.getAttribute("style").indexOf("image-rendering:pixelated") >=
-						0) ||
-					(parentProps &&
-						parentProps["image-rendering"] &&
-						parentProps["image-rendering"] == "pixelated"))
-			) {
+			
+			if ( category == SvgMapElementType.BITIMAGE  && ( (imgE.getAttribute("style") && imgE.getAttribute("style").indexOf("image-rendering:pixelated")>=0) || (parentProps && parentProps["image-rendering"]  && parentProps["image-rendering"]  == "pixelated") ) ){
 				pixelated = true;
 			}
-
-			if (category == SvgMapElementType.BITIMAGE) {
-				if (
-					imgE.getAttribute("style") &&
-					imgE.getAttribute("style").indexOf("filter") >= 0
-				) {
-					// bitimageのfilterは継承させてない
-					var fls = imgE.getAttribute("style") + ";";
+			
+			if ( category == SvgMapElementType.BITIMAGE ){
+				if ( imgE.getAttribute("style") && imgE.getAttribute("style").indexOf("filter")>=0  ){ // bitimageのfilterは継承させてない
+					var fls = imgE.getAttribute("style")+";";
 					fls = fls.substring(fls.indexOf("filter:"));
-					fls = fls.substring(7, fls.indexOf(";"));
+					fls = fls.substring(7,fls.indexOf(";"));
 					imageFilter = fls;
-					/** これと styleCatalog[]を編集すれば多分継承するけれど　やめておく
+				/** これと styleCatalog[]を編集すれば多分継承するけれど　やめておく
 				} else if ( parentProps && parentProps["filter"] ){
 					imageFilter = parentProps["filter"];
 				**/
 				}
 			}
-		} else if (subCategory == SvgMapElementType.USEDPOI) {
-			// USEDによるPOI
+			
+		} else if ( subCategory ==SvgMapElementType.USEDPOI ){ // USEDによるPOI
 			var tf = UtilFuncs.getNonScalingOffset(imgE);
-			if (tf.nonScaling) {
-				// non scaling POI
+			if ( tf.nonScaling ){ // non scaling POI
 				nonScaling = true;
 				x = tf.x;
 				y = tf.y;
-				if (imgE.getAttribute("x")) {
+				if ( imgE.getAttribute("x") ){ 
 					cdx = Number(imgE.getAttribute("x"));
 				}
-				if (imgE.getAttribute("y")) {
+				if ( imgE.getAttribute("y") ){
 					cdy = Number(imgE.getAttribute("y"));
 				}
-			} else {
-				// scaling POI (added 2015.7.3)
+			} else { // scaling POI (added 2015.7.3)
 				nonScaling = false;
 				x = Number(imgE.getAttribute("x"));
 				y = Number(imgE.getAttribute("y"));
@@ -692,20 +609,19 @@ class UtilFuncs {
 			meta = imgE.getAttribute("content");
 			title = imgE.getAttribute("xlink:title");
 			href = imgE.getAttribute("xlink:href");
-			if (GISgeometry) {
-				// 2016.12.1 scaling でもnon scalingでもここで出たx,yがそのsvg座標におけるPOIの中心位置のはず
-				GISgeometry.setPoint(x, y);
+			if ( GISgeometry ){ // 2016.12.1 scaling でもnon scalingでもここで出たx,yがそのsvg座標におけるPOIの中心位置のはず
+				GISgeometry.setPoint(x,y);
 			}
-		} else if (category == SvgMapElementType.TEXT) {
+		} else if ( category == SvgMapElementType.TEXT ){
 			var tf = UtilFuncs.getNonScalingOffset(imgE);
-			if (tf.nonScaling) {
+			if ( tf.nonScaling ){
 				nonScaling = true;
 				x = tf.x;
 				y = tf.y;
-				if (imgE.getAttribute("x")) {
+				if ( imgE.getAttribute("x") ){
 					cdx = Number(imgE.getAttribute("x"));
 				}
-				if (imgE.getAttribute("y")) {
+				if ( imgE.getAttribute("y") ){
 					cdy = Number(imgE.getAttribute("y"));
 				}
 			} else {
@@ -713,164 +629,152 @@ class UtilFuncs {
 				x = Number(imgE.getAttribute("x"));
 				y = Number(imgE.getAttribute("y"));
 			}
-			height = 16; // きめうちです　最近のブラウザは全部これ？
-			if (imgE.getAttribute("font-size")) {
+			height = 16; // きめうちです　最近のブラウザは全部これ？ 
+			if (imgE.getAttribute("font-size")){
 				height = Number(imgE.getAttribute("font-size"));
 			}
-			if (nonScaling) {
+			if (nonScaling){
 				height = 0; // 2018.2.23 上の決め打ちはnon-scalingの場合まずい・・・ 拡大すると常にビューポートに入ってしまうと誤解する。これならたぶん0にした方がベター
 			}
 			width = height; // 適当・・ 実際は文字列の長さに応じた幅になるはずだが・・・ ISSUE
 			text = imgE.textContent;
 		}
-
-		var minZoom, maxZoom;
-		if (subCategory == SvgMapElementType.SVG2EMBED) {
+		
+		var minZoom , maxZoom;
+		if ( subCategory == SvgMapElementType.SVG2EMBED ){
 			// この部分は、今後CSS media query  zoom featureに置き換えるつもりです！
-			if (imgE.getAttribute("visibleMinZoom")) {
-				minZoom = Number(imgE.getAttribute("visibleMinZoom")) / 100;
-			} else if (parentProps && parentProps.minZoom) {
+			if ( imgE.getAttribute("visibleMinZoom") ){
+				minZoom = Number(imgE.getAttribute("visibleMinZoom"))/100;
+			} else if (parentProps && parentProps.minZoom){
 				minZoom = parentProps.minZoom;
 			}
-			if (imgE.getAttribute("visibleMaxZoom")) {
-				maxZoom = Number(imgE.getAttribute("visibleMaxZoom")) / 100;
-			} else if (parentProps && parentProps.maxZoom) {
+			if ( imgE.getAttribute("visibleMaxZoom") ){
+				maxZoom = Number(imgE.getAttribute("visibleMaxZoom"))/100;
+			} else if (parentProps && parentProps.maxZoom){
 				maxZoom = parentProps.maxZoom;
 			}
 		} else {
-			if (imgE.getAttribute("visibleMinZoom")) {
-				minZoom = Number(imgE.getAttribute("visibleMinZoom")) / 100;
-			} else if (parentProps && parentProps.minZoom) {
+			if ( imgE.getAttribute("visibleMinZoom") ){
+				minZoom = Number(imgE.getAttribute("visibleMinZoom"))/100;
+			} else if (parentProps && parentProps.minZoom){
 				minZoom = parentProps.minZoom;
 			}
-			if (imgE.getAttribute("visibleMaxZoom")) {
-				maxZoom = Number(imgE.getAttribute("visibleMaxZoom")) / 100;
-			} else if (parentProps && parentProps.maxZoom) {
+			if ( imgE.getAttribute("visibleMaxZoom") ){
+				maxZoom = Number(imgE.getAttribute("visibleMaxZoom"))/100;
+			} else if (parentProps && parentProps.maxZoom){
 				maxZoom = parentProps.maxZoom;
 			}
 		}
-
+		
 		var visible = true;
-		if (
-			imgE.getAttribute("visibility") == "hidden" ||
-			imgE.getAttribute("display") == "none"
-		) {
+		if ( imgE.getAttribute("visibility") == "hidden" || imgE.getAttribute("display") == "none" ){
 			visible = false;
 		}
 		var opacity = Number(imgE.getAttribute("opacity"));
-		if (opacity > 1 || opacity < 0) {
+		if ( opacity > 1 || opacity < 0){
 			opacity = 1;
 		}
-
+		
 		//  認証キーなどに用いるレイヤー(もしくはフレームワーク全体)共通クエリストリング
 		commonQuery = imgE.getAttribute("commonQuery");
-
+		
 		return {
-			x: x,
-			y: y,
-			width: width,
-			height: height,
-			href: href,
-			opacity: opacity,
-			minZoom: minZoom,
-			maxZoom: maxZoom,
-			metadata: meta,
-			title: title,
-			visible: visible,
-			elemClass: elemClass,
-			transform: transform,
-			text: text,
-			cdx: cdx,
-			cdy: cdy,
-			nonScaling: nonScaling,
-			href_fragment: href_fragment,
-			pixelated: pixelated,
-			imageFilter: imageFilter,
+			x : x ,
+			y : y ,
+			width : width ,
+			height : height ,
+			href : href ,
+			opacity : opacity ,
+			minZoom : minZoom ,
+			maxZoom : maxZoom ,
+			metadata : meta ,
+			title : title ,
+			visible : visible ,
+			elemClass : elemClass ,
+			transform : transform ,
+			text : text ,
+			cdx : cdx ,
+			cdy : cdy ,
+			nonScaling : nonScaling , 
+			href_fragment : href_fragment,
+			pixelated : pixelated,
+			imageFilter : imageFilter,
 			crossorigin: crossorigin,
 			commonQuery: commonQuery,
-		};
+		}
 	}.bind(this);
-
-	static getSymbols(svgDoc) {
-		// 2013.7.30 -- POI編集のsymbol選択を可能にするとともに、defsは、useより前に無いといけないという制約を払った
+	
+	static getSymbols(svgDoc){ // 2013.7.30 -- POI編集のsymbol選択を可能にするとともに、defsは、useより前に無いといけないという制約を払った
 		var symbols = new Array();
 		var defsNodes = svgDoc.getElementsByTagName("defs");
-		for (var i = 0; i < defsNodes.length; i++) {
+		for ( var i = 0 ; i < defsNodes.length ; i++ ){
 			var svgNode = defsNodes[i];
-			if (svgNode.hasChildNodes) {
+			if ( svgNode.hasChildNodes ){
 				var symbolNodes = svgNode.childNodes;
-				for (var k = 0; k < symbolNodes.length; k++) {
-					if (symbolNodes[k].nodeName == "image") {
-						// imageが直接入っているタイプ
-						var symb = UtilFuncs.getSymbolProps(symbolNodes[k]);
-						symbols["#" + symb.id] = symb;
-					} else if (symbolNodes[k].nodeName == "g") {
-						// 2012/11/27 <g>の直下のimage一個のタイプに対応
-						if (symbolNodes[k].hasChildNodes) {
-							for (var l = 0; l < symbolNodes[k].childNodes.length; l++) {
-								if (symbolNodes[k].childNodes[l].nodeType != 1) {
+				for ( var k = 0 ; k < symbolNodes.length ; k++ ){
+					if (  symbolNodes[k].nodeName == "image"){ // imageが直接入っているタイプ
+						var symb = UtilFuncs.getSymbolProps( symbolNodes[k] );
+						symbols["#"+symb.id] = symb;
+					} else if ( symbolNodes[k].nodeName == "g"){ // 2012/11/27 <g>の直下のimage一個のタイプに対応
+						if ( symbolNodes[k].hasChildNodes ){
+							for ( var l = 0 ; l < symbolNodes[k].childNodes.length ; l++ ){
+								if ( symbolNodes[k].childNodes[l].nodeType != 1){
 									continue;
-								} else if (symbolNodes[k].childNodes[l].nodeName == "image") {
-									var symb = UtilFuncs.getSymbolProps(
-										symbolNodes[k].childNodes[l]
-									);
-									if (!symb.id) {
+								} else if ( symbolNodes[k].childNodes[l].nodeName == "image" ){
+									var symb = UtilFuncs.getSymbolProps( symbolNodes[k].childNodes[l] );
+									if ( !symb.id ){
 										symb.id = symbolNodes[k].getAttribute("id");
 									}
-									symbols["#" + symb.id] = symb;
+									symbols["#"+symb.id] = symb;
 									break;
-								} else {
-									// ベクタ図形などが入っている場合は、グループシンボルとしてPOIではなくグループに回す前処理(2017.1.17)
-									var symb = UtilFuncs.getGraphicsGroupSymbol(symbolNodes[k]);
-									symbols["#" + symb.id] = symb;
-									break;
-								}
-							}
-						}
-					} else if (symbolNodes[k].nodeName == "marker") {
-						// 2015/3/30 marker下path一個のmarkerに対応
-						if (symbolNodes[k].hasChildNodes) {
-							for (var l = 0; l < symbolNodes[k].childNodes.length; l++) {
-								if (symbolNodes[k].childNodes[l].nodeName == "path") {
-									var symb = UtilFuncs.getPathSymbolMakerProps(
-										symbolNodes[k].childNodes[l]
-									);
-									symbols["#" + symb.id] = symb;
+								} else { // ベクタ図形などが入っている場合は、グループシンボルとしてPOIではなくグループに回す前処理(2017.1.17)
+									var symb = UtilFuncs.getGraphicsGroupSymbol( symbolNodes[k] );
+									symbols["#"+symb.id] = symb;
 									break;
 								}
 							}
 						}
-					} else {
-						// ベクトル図形一個だけのシンボルを！　（後日　ペンディング・・・2014/5/12）
+					} else if ( symbolNodes[k].nodeName == "marker" ){ // 2015/3/30 marker下path一個のmarkerに対応
+						if ( symbolNodes[k].hasChildNodes ){
+							for ( var l = 0 ; l < symbolNodes[k].childNodes.length ; l++ ){
+								if ( symbolNodes[k].childNodes[l].nodeName == "path" ){
+									var symb = UtilFuncs.getPathSymbolMakerProps( symbolNodes[k].childNodes[l] );
+									symbols["#"+symb.id] = symb;
+									break;
+								}
+							}
+						}
+					} else { // ベクトル図形一個だけのシンボルを！　（後日　ペンディング・・・2014/5/12）
+						
 					}
 				}
 			}
 		}
-		return symbols;
+		return ( symbols );
 	}
-
-	static addEvent(elm, listener, fn) {
-		elm.addEventListener(listener, fn, false);
+	
+	static addEvent(elm,listener,fn){
+		elm.addEventListener(listener,fn,false);
 	}
-
-	static getCanvasSize() {
-		// 画面サイズを得る
+			
+	static getCanvasSize(){ // 画面サイズを得る
 		var w = window.innerWidth;
 		var h = window.innerHeight;
-		if (!w) {
-			//		w = document.body.clientWidth;
+		if ( !w ) {
+	//		w = document.body.clientWidth;
 			w = document.documentElement.clientWidth;
-			//		h = document.body.clientHeight;
+	//		h = document.body.clientHeight;
 			h = document.documentElement.clientHeight;
 		}
 		return {
-			width: w,
-			height: h,
-			x: 0,
-			y: 0,
-		};
+			width : w,
+			height : h,
+			x : 0,
+			y : 0
+			
+		}
 	}
-
+	
 	/** Obsoluted funcs
 	#repairScript( resTxt ){
 		var resScript = (resTxt.match(/<script>([\s\S]*)<\/script>/ ))[1];
