@@ -1,49 +1,48 @@
-class MapViewerProps{
+class MapViewerProps {
 	// SVGMapのビューアにまつわる内部グローバル変数をまとめたオブジェクト
 	root2Geo;
 	mapCanvas;
 	rootCrs;
 	uaProps;
-	
+
 	mapCanvas;
 	mapCanvasWrapper;
-	
-	constructor(){
-		Object.defineProperty(this, "rootViewBox",{value:{}});
-		Object.defineProperty(this, "mapCanvasSize",{value:{}});
-		
+
+	constructor() {
+		Object.defineProperty(this, "rootViewBox", { value: {} });
+		Object.defineProperty(this, "mapCanvasSize", { value: {} });
+
 		//Object.defineProperty(this, "svgImages",{value:{}});
 		//Object.defineProperty(this, "svgImagesProps",{value:{}});
 	}
-	
-	hasUaProps(){
+
+	hasUaProps() {
 		var ans = false;
-		if( this.uaProps && this.uaProps.verIE){
+		if (this.uaProps && this.uaProps.verIE) {
 			ans = true;
 		}
-		return ( ans );
+		return ans;
 	}
-	hasMapCanvasSize(){
-		if ( this.mapCanvasSize.width ){
-			return ( true );
+	hasMapCanvasSize() {
+		if (this.mapCanvasSize.width) {
+			return true;
 		} else {
-			return ( false );
+			return false;
 		}
 	}
-	setRootViewBox(vb){
+	setRootViewBox(vb) {
 		this.rootViewBox.x = vb.x;
 		this.rootViewBox.y = vb.y;
 		this.rootViewBox.width = vb.width;
 		this.rootViewBox.height = vb.height;
 	}
-	setMapCanvasSize( size ){ // this.#mapCanvasSizeをconst扱いにする
+	setMapCanvasSize(size) {
+		// this.#mapCanvasSizeをconst扱いにする
 		this.mapCanvasSize.x = size.x;
 		this.mapCanvasSize.y = size.y;
 		this.mapCanvasSize.width = size.width;
 		this.mapCanvasSize.height = size.height;
 	}
-
 }
 
-
-export{ MapViewerProps }
+export { MapViewerProps };

@@ -1,63 +1,79 @@
-import { UtilFuncs } from './UtilFuncs.js';
+import { UtilFuncs } from "./UtilFuncs.js";
 
-class SvgStyle{
-	styleCatalog = new Array("stroke" , "stroke-width" , "stroke-linejoin" , "stroke-linecap" , "fill" , "fill-rule" , "fill-opacity" , "opacity" , "vector-effect" , "display" , "font-size" , "stroke-dasharray" , "marker-end" , "visibility" ,"image-rendering"); 
-	
-	constructor(getNonScalingOffset){
+class SvgStyle {
+	styleCatalog = new Array(
+		"stroke",
+		"stroke-width",
+		"stroke-linejoin",
+		"stroke-linecap",
+		"fill",
+		"fill-rule",
+		"fill-opacity",
+		"opacity",
+		"vector-effect",
+		"display",
+		"font-size",
+		"stroke-dasharray",
+		"marker-end",
+		"visibility",
+		"image-rendering"
+	);
+
+	constructor(getNonScalingOffset) {
 		this.getNonScalingOffset = getNonScalingOffset;
 	}
-	
+
 	getNonScalingOffset;
-	
-	getStyle( svgNode , defaultStyle , hasHyperLink , styleCacheMap ){
+
+	getStyle(svgNode, defaultStyle, hasHyperLink, styleCacheMap) {
 		// 親のスタイルを継承して該当要素のスタイルを生成する
 		// hasUpdateはその要素自身にスタイルattrが付いていたときに設定される
-		
+
 		var nodeStyle;
-		
-		if ( styleCacheMap ){
+
+		if (styleCacheMap) {
 			nodeStyle = styleCacheMap.get(svgNode);
 		}
-		
-		if ( nodeStyle==undefined){
-//			if ( true){}
-			nodeStyle = this.getNodeStyle(svgNode,hasHyperLink);
-			if ( styleCacheMap ){
+
+		if (nodeStyle == undefined) {
+			//			if ( true){}
+			nodeStyle = this.getNodeStyle(svgNode, hasHyperLink);
+			if (styleCacheMap) {
 				styleCacheMap.set(svgNode, nodeStyle);
 			}
 		}
-		
+
 		var computedStyle = {};
 		var hasStyle = false;
-		for (var styleName of  this.styleCatalog) {
-			if ( nodeStyle[styleName]){
+		for (var styleName of this.styleCatalog) {
+			if (nodeStyle[styleName]) {
 				computedStyle[styleName] = nodeStyle[styleName];
 				hasStyle = true;
-			} else if ( defaultStyle && defaultStyle[styleName]){
+			} else if (defaultStyle && defaultStyle[styleName]) {
 				computedStyle[styleName] = defaultStyle[styleName];
 				hasStyle = true;
 			}
 		}
-		if ( nodeStyle.minZoom ){
+		if (nodeStyle.minZoom) {
 			computedStyle.minZoom = nodeStyle.minZoom;
-		} else if ( defaultStyle && defaultStyle.minZoom) {
+		} else if (defaultStyle && defaultStyle.minZoom) {
 			computedStyle.minZoom = defaultStyle.minZoom;
 			hasStyle = true;
 		}
-		if ( nodeStyle.maxZoom ){
+		if (nodeStyle.maxZoom) {
 			computedStyle.maxZoom = nodeStyle.maxZoom;
-		} else if ( defaultStyle && defaultStyle.maxZoom) {
+		} else if (defaultStyle && defaultStyle.maxZoom) {
 			computedStyle.maxZoom = defaultStyle.maxZoom;
 			hasStyle = true;
 		}
-		if (nodeStyle.nonScalingOffset){
+		if (nodeStyle.nonScalingOffset) {
 			computedStyle.nonScalingOffset = nodeStyle.nonScalingOffset;
-		}else if ( defaultStyle && defaultStyle.nonScalingOffset) {
+		} else if (defaultStyle && defaultStyle.nonScalingOffset) {
 			// 2017.1.17 debug
 			computedStyle.nonScalingOffset = defaultStyle.nonScalingOffset;
 			hasStyle = true;
 		}
-		if ( defaultStyle && defaultStyle.usedParent) {
+		if (defaultStyle && defaultStyle.usedParent) {
 			// use要素のためのhittest用情報・・・ 2017.1.17
 			computedStyle.usedParent = defaultStyle.usedParent;
 			hasStyle = true;
@@ -65,8 +81,8 @@ class SvgStyle{
 		//console.log(svgNode.nodeName, computedStyle, nodeStyle);
 		return computedStyle;
 	}
-	
-	getNodeStyle(svgNode, hasHyperLink){
+
+	getNodeStyle(svgNode, hasHyperLink) {
 		// getStyleの親スタイル継承部を分離した処理
 		var hasUpdate = false;
 		var style = {};
@@ -109,21 +125,21 @@ class SvgStyle{
 		}
 		return style;
 	}
-	
-	getStyleAttribute( svgElement ){
-		var styles=null;
-		if ( svgElement.getAttribute("style")){
+
+	getStyleAttribute(svgElement) {
+		var styles = null;
+		if (svgElement.getAttribute("style")) {
 			styles = {};
 			var stylesa = svgElement.getAttribute("style").split(";");
-			if ( stylesa ){
-				for ( var i = 0 ; i < stylesa.length ; i++ ){
+			if (stylesa) {
+				for (var i = 0; i < stylesa.length; i++) {
 					var style = stylesa[i].split(":");
-					if ( style && style.length > 1 ){
+					if (style && style.length > 1) {
 						var name = UtilFuncs.trim(style[0]);
 						var value = UtilFuncs.trim(style[1]);
-						if ( name == "fill" || name == "stroke" ){
-							if ( value.length==6 && value.match(/^[0-9A-F]/)){
-								value = "#"+value;
+						if (name == "fill" || name == "stroke") {
+							if (value.length == 6 && value.match(/^[0-9A-F]/)) {
+								value = "#" + value;
 							}
 						}
 						styles[name] = value;
@@ -131,73 +147,75 @@ class SvgStyle{
 				}
 			}
 		}
-		return ( styles );
+		return styles;
 	}
 
-	getStyleOf( styleName , svgElement , styleAtt ){
+	getStyleOf(styleName, svgElement, styleAtt) {
 		var style;
-		if (  svgElement.getAttribute(styleName) ){ 
+		if (svgElement.getAttribute(styleName)) {
 			style = svgElement.getAttribute(styleName);
-		} else if ( styleAtt && styleAtt[styleName]){
+		} else if (styleAtt && styleAtt[styleName]) {
 			style = styleAtt[styleName];
 		}
-		return ( style );
+		return style;
 	}
 
-	static setCanvasStyle(style , context){
+	static setCanvasStyle(style, context) {
 		// var styleCatalog = new Array("stroke" , "stroke-width" , "stroke-linejoin" , "stroke-linecap" , "fill" , "fill-rule" , "fill-opacity" , "opacity" , "vector-effect");
 		// http://www.html5.jp/canvas/ref/method/beginPath.html
 		var ret = {
 			fillStyle: null,
 			strokeStyle: null,
 		};
-		
-		if ( style ){
-			if (style["stroke"]){
-				if ( style["stroke"] == "none" ){
-					context.strokeStyle = "rgba(0, 0, 0, 0)"; 
+
+		if (style) {
+			if (style["stroke"]) {
+				if (style["stroke"] == "none") {
+					context.strokeStyle = "rgba(0, 0, 0, 0)";
 				} else {
 					context.strokeStyle = style["stroke"];
 					ret.strokeStyle = style.stroke;
 				}
 			} else {
-				context.strokeStyle = "rgba(0, 0, 0, 0)"; 
+				context.strokeStyle = "rgba(0, 0, 0, 0)";
 			}
-			if (style.fill){
-				if ( style.fill == "none" ){
-					context.fillStyle = "rgba(0, 0, 0, 0)"; 
+			if (style.fill) {
+				if (style.fill == "none") {
+					context.fillStyle = "rgba(0, 0, 0, 0)";
 				} else {
 					context.fillStyle = style.fill;
 					ret.fillStyle = style.fill;
 				}
 			}
-			if ( style["stroke-width"] ){ // 2014.2.26
-				if ( style["vector-effect"] ){
-					if ( style["stroke-width"] ){
+			if (style["stroke-width"]) {
+				// 2014.2.26
+				if (style["vector-effect"]) {
+					if (style["stroke-width"]) {
 						context.lineWidth = style["stroke-width"];
 					} else {
 						context.lineWidth = 0;
 					}
-				} else { // if none then set lw to 1 .... working
+				} else {
+					// if none then set lw to 1 .... working
 					context.lineWidth = 1;
 				}
 			} else {
-			 context.lineWidth = 0;
+				context.lineWidth = 0;
 			}
-			if (style["stroke-dasharray"] ){
+			if (style["stroke-dasharray"]) {
 				var dashList = style["stroke-dasharray"].split(/\s*[\s,]\s*/);
 				context.setLineDash(dashList);
 			}
-			if (style["stroke-linejoin"] ){
+			if (style["stroke-linejoin"]) {
 				context.lineJoin = style["stroke-linejoin"];
 			}
-			if (style["stroke-linecap"] ){
+			if (style["stroke-linecap"]) {
 				context.lineCap = style["stroke-linecap"];
 			}
-			if (style.opacity){
+			if (style.opacity) {
 				context.globalAlpha = style.opacity;
 			}
-			if (style["fill-opacity"]){
+			if (style["fill-opacity"]) {
 				context.globalAlpha = style["fill-opacity"];
 			}
 		}
