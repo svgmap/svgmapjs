@@ -30,6 +30,10 @@ Development has started in May 2022 as SVGMapLv0.1_r18module.js, and this versio
 
 
 ## development
+
+### branch
+Contributions (pull request) will only be accepted for the `dev*` branch.
+
 ### code formatter
 ```prettier --use-tabs "$F"```
 
