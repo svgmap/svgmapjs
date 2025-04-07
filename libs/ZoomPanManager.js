@@ -1,5 +1,14 @@
+// Description:
+// ZoomPanManager Class for SVGMap.js
 // SVGMap.jsのzoom/panに関する機能を制御するモジュール
 // Programmed by Satoru Takagi
+//
+// License: (MPL v2)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// History:
 // 2022/08/16 SVGMap.jsから切り出し
 
 class ZoomPanManager {

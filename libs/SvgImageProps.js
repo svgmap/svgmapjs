@@ -1,4 +1,15 @@
+// Description:
+// SvgImageProps Class for SVGMap.js
+// Programmed by Satoru Takagi
+//
+// License: (MPL v2)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// History:
 // 2024/10/01 : 連想配列svgImagesProps{}の要素の値SvgImagePropsを無名関数によるオブジェクトではなく、クラス定義をすることにします。
+//
 class SvgImageProps {
 	// TBD: ここに、svgImagePropsで使われるメンバーを書いておきましょう。基本的にsvgImagePropsはwebAppレイヤーからはreadOnlyなのでgetterで制御するべきかと思います。 Proxy(https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Proxy)を使えば呼び元ごとの読み書き権限制御できそう
 

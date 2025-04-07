@@ -3,25 +3,13 @@
 // SVGMap GIS Module for >rev13 of SVGMap Lv0.1 framework
 // Programmed by Satoru Takagi
 //
-//  Programmed by Satoru Takagi
-//
-//  Copyright (C) 2016-2021 by Satoru Takagi @ KDDI CORPORATION
-//
 // Contributors:
-//  jakkyfc
+//  kusariya
 //
-// License: (GPL v3)
-//  This program is free software: you can redistribute it and/or modify
-//  it under the terms of the GNU General Public License version 3 as
-//  published by the Free Software Foundation.
-//
-//  This program is distributed in the hope that it will be useful,
-//  but WITHOUT ANY WARRANTY; without even the implied warranty of
-//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//  GNU General Public License for more details.
-//
-//  You should have received a copy of the GNU General Public License
-//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// License: (MPL v2)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 //
 // History:
 // 2016.12.02 コアにGeoJSONパース機能実装、それを用いたPolygon内のPoitns包含チェック初期実装
@@ -2800,7 +2788,7 @@ class SvgMapGIS {
 	#polygonFilling(points, pixWidth, pixHeight) {
 		/**
 		 * スキャンラインアルゴリズムによるポリゴンフィルライブラリ
-		 * by jakkyfc 2021/06
+		 * by kusariya 2021/06
 		 *
 		 *　@Parameters
 		 * -------------------------

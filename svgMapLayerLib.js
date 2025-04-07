@@ -7,26 +7,16 @@
 //
 // Programmed by Satoru Takagi
 //
-// Copyright (C) 2012-2021 by Satoru Takagi @ KDDI CORPORATION
-//
 // Contributors:
-//  jakkyfc
+//  kusariya
 //
 // Home Page: http://svgmap.org/
-// GitHub: https://github.com/svgmap/svgMapLv0.1
+// GitHub: https://github.com/svgmap/svgmapjs
 //
-// License: (GPL v3)
-//  This program is free software: you can redistribute it and/or modify
-//  it under the terms of the GNU General Public License version 3 as
-//  published by the Free Software Foundation.
-//
-//  This program is distributed in the hope that it will be useful,
-//  but WITHOUT ANY WARRANTY; without even the implied warranty of
-//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//  GNU General Public License for more details.
-//
-//  You should have received a copy of the GNU General Public License
-//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// License: (MPL v2)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 //
 // History:
 // 2024/07/23 1st implementatiion, to fix https://github.com/svgmap/svgmapjs/issues/5

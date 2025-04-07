@@ -1,5 +1,12 @@
 //SVGMapCustomLayersManager_r3module.htmlの拡張機能
 // Others - Container　のボタンを実装している
+//
+// License: (MPL v2)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+
 addEventListener("load", function () {
 	document
 		.getElementById("saveContainerSvg")

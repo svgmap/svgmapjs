@@ -2,23 +2,14 @@
 //
 // Assitant for SVGMapLv0.1_CesiumWrapper_r3.js
 //
+// Programmed by Satoru Takagi @ KDDI CORPORATION
 //
-//  Copyright (C) 2018-2022 by Satoru Takagi @ KDDI CORPORATION
+// License: (MPL v2)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 //
-// License: (GPL v3)
-//  This program is free software: you can redistribute it and/or modify
-//  it under the terms of the GNU General Public License version 3 as
-//  published by the Free Software Foundation.
-//
-//  This program is distributed in the hope that it will be useful,
-//  but WITHOUT ANY WARRANTY; without even the implied warranty of
-//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//  GNU General Public License for more details.
-//
-//  You should have received a copy of the GNU General Public License
-//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-//
-//
+// History:
 // Rev.1 : 2018/02/10 2D vector view
 // Rev.2 : 2018/02/28 Raster and POI bar graph impl.
 //         2018/04/05 Add getHeights Func
