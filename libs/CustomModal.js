@@ -46,15 +46,17 @@ class CustomModal {
 			options
 		);
 		let position = { top: 0, left: 0 };
-		if (options.position?.tagName) {
-			// instanceof Elementとかダメだった・・・ iframeのdocだから？？
-			position = this.#getAbsolutePosition(options.position);
-			console.log(position);
-		} else if (
-			isNaN(options.position?.top) == false &&
-			isNaN(options.position?.left) == false
-		) {
-			position = { top: options.position?.top, left: options.position?.left };
+		if (options && options.position) {
+			if (options.position?.tagName) {
+				// instanceof Elementとかダメだった・・・ iframeのdocだから？？
+				position = this.#getAbsolutePosition(options.position);
+				console.log(position);
+			} else if (
+				isNaN(options.position?.top) == false &&
+				isNaN(options.position?.left) == false
+			) {
+				position = { top: options.position?.top, left: options.position?.left };
+			}
 		}
 		var cm = this.mapTicker.initModal("customModal");
 
