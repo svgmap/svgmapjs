@@ -593,31 +593,32 @@ class SvgMapLayerUI {
 		this.#layerGroupStatus = new Object();
 		this.#layerList = document.getElementById(this.#layerListID);
 
-		if (this.#layerList.getAttribute("data-fixed") != null) {
-			// レイヤ開閉機能なし・固定状態
-			this.#layerListOptions.fixed = true;
-		}
-		if (this.#layerList.getAttribute("data-opened") != null) {
-			// 開いた状態で起動
-			this.#layerListOptions.initOpen = true;
-		}
-		if (this.#layerList.getAttribute("data-layerstylecontroller") != null) {
-			// レイヤのスタイル制御UIを出現させる
-			this.#layerListOptions.styleController = true;
-		}
-		if (this.#layerList.getAttribute("data-hiddenfilter") != null) {
-			// hideのレイヤーをリストから消す機能
-			this.#layerListOptions.hiddenFilterUI = true;
-		}
-		if (this.#layerList.getAttribute("data-customizer") != null) {
-			// hideのレイヤーをリストから消す機能
-			this.#layerListOptions.layersCustomizerPath =
-				this.#layerList.getAttribute("data-customizer");
-		}
-		//console.log("#layerListOptions:",this.#layerListOptions);
-
 		var llUItop;
+		
 		if (this.#layerList) {
+			if (this.#layerList.getAttribute("data-fixed") != null) {
+				// レイヤ開閉機能なし・固定状態
+				this.#layerListOptions.fixed = true;
+			}
+			if (this.#layerList.getAttribute("data-opened") != null) {
+				// 開いた状態で起動
+				this.#layerListOptions.initOpen = true;
+			}
+			if (this.#layerList.getAttribute("data-layerstylecontroller") != null) {
+				// レイヤのスタイル制御UIを出現させる
+				this.#layerListOptions.styleController = true;
+			}
+			if (this.#layerList.getAttribute("data-hiddenfilter") != null) {
+				// hideのレイヤーをリストから消す機能
+				this.#layerListOptions.hiddenFilterUI = true;
+			}
+			if (this.#layerList.getAttribute("data-customizer") != null) {
+				// hideのレイヤーをリストから消す機能
+				this.#layerListOptions.layersCustomizerPath =
+					this.#layerList.getAttribute("data-customizer");
+			}
+			//console.log("#layerListOptions:",this.#layerListOptions);
+
 			this.#initLayerListElem();
 
 			llUItop = document.createElement("div");

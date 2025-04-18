@@ -1375,12 +1375,14 @@ class LayerSpecificWebAppHandler {
 
 	#transferCustomEvent4layerUi(layerId) {
 		return function (ev) {
+			/**
 			console.log(
 				"get event from root doc : type: ",
 				ev.type,
 				" forLayer:",
 				layerId
 			);
+			**/
 			// レイヤー固有UIがある場合のみイベントを転送する
 			var lsuiDoc = this.#layerSpecificUI.ownerDocument;
 			var ifr = lsuiDoc.getElementById(this.#getIframeId(layerId));

@@ -2453,17 +2453,19 @@ class SvgMap {
 		// 一方、他の非同期読み込みが進んでいるときに動作することは好ましくないので・・
 
 		// ペンディングされている間に、更に新たなrefreshScreenが来た場合は、原理的に不要(caputureGISgeomも含め)のはずなので無視する。
-		console.log("rootViewBox:", this.#mapViewerProps.rootViewBox);
+		// console.log("rootViewBox:", this.#mapViewerProps.rootViewBox);
 		if (this.#retryingRefreshScreen && !isRetryCall) {
 			console.log("Is refreshScreen retry queue:: SKIP this Call");
 			return;
 		}
 
 		var rsCaller;
+		/**
 		console.log(
 			"called refreshScreen",
 			this.#resourceLoadingObserver.getLoadCompleted() ? "" : " : now loading"
 		);
+		**/
 		if (this.#resourceLoadingObserver.getLoadCompleted() == false) {
 			// loadCompletedしてないときに実行すると破綻するのを回避 2019/11/14
 			if (!noRetry) {
