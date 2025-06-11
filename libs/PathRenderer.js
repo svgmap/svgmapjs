@@ -33,8 +33,36 @@ class PathRenderer {
 		fill: {
 			color: "rgba(255,0,0,1)",
 			lineWidth: 6,
+			lineColor: null,
 		},
 	};
+
+	setDefaultHilightStyle(style) {
+		if (typeof style !== "object") {
+			return;
+		}
+		if (style.stroke) {
+			if (typeof style.stroke.color == "string") {
+				this.defaultHilightStyle.stroke.color = style.stroke.color;
+			}
+			if (typeof style.stroke.widthIncrement == "number") {
+				this.defaultHilightStyle.stroke.widthIncrement =
+					style.stroke.widthIncrement;
+			}
+		}
+		if (style.fill) {
+			if (typeof style.fill.color == "string") {
+				this.defaultHilightStyle.fill.color = style.fill.color;
+			}
+			if (typeof style.fill.lineWidth == "number") {
+				this.defaultHilightStyle.fill.lineWidth = style.fill.lineWidth;
+			}
+			if (typeof style.fill.lineColor == "string") {
+				this.defaultHilightStyle.fill.lineColor = style.fill.lineColor;
+			}
+		}
+		console.log("Set defaultHilightStyle:", this.defaultHilightStyle);
+	}
 
 	setSVGcirclePoints(
 		pathNode,
@@ -606,9 +634,14 @@ class PathRenderer {
 					var pathStyle = context.fillStyle;
 					context.fillStyle = hilightFillStyle.color;
 					context.fill();
+					var pathColor = context.strokeStyle;
+					if (hilightFillStyle.lineColor) {
+						context.strokeStyle = hilightFillStyle.lineColor;
+					}
 					context.stroke();
 					context.fillStyle = pathStyle;
 					context.lineWidth = pathWidth;
+					context.strokeStyle = pathColor;
 				}
 			}
 		}

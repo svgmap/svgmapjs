@@ -153,8 +153,8 @@ class LayerSpecificWebAppHandler {
 		// さらに、レイヤ固有UIのオートスタートなどの制御を加える 2017.9.8 - 9.22
 		// さらに、イヤーUIに、レイヤ固有UIの起動UIがある場合、それをイネーブルにする関数があれば呼び出す
 		// console.log("checkController:",layerId);
-		var ctrUrl; // ":"+path+hash(ソース埋め込みパターン),  ":"+hash(svgScriptパターン),path(通常のコントローラがあるパターン)
-		var lsuiDoc = this.#layerSpecificUI.ownerDocument;
+		let ctrUrl; // ":"+path+hash(ソース埋め込みパターン),  ":"+hash(svgScriptパターン),path(通常のコントローラがあるパターン)
+		const lsuiDoc = this.#layerSpecificUI.ownerDocument;
 
 		if (!svgImageProps.controller && svgImageProps.svgScript) {
 			// svgScriptだけがあるパターン
@@ -187,10 +187,7 @@ class LayerSpecificWebAppHandler {
 				typeof this.#svgMapLayerUI.setLayerSpecificWebAppLaunchUiEnable ==
 				"function"
 			) {
-				this.#svgMapLayerUI.setLayerSpecificWebAppLaunchUiEnable(
-					layerId,
-					ctrUrl
-				);
+				this.#svgMapLayerUI.setLayerSpecificWebAppLaunchUiEnable(layerId);
 			}
 			//		console.log("checkController: ctbtn.dataset.url: ",ctbtn.dataset.url);
 		}
@@ -216,6 +213,15 @@ class LayerSpecificWebAppHandler {
 					} else {
 						lhash.exec = "appearOnLayerLoad";
 					}
+				}
+				if (svgImageProps._execHint) {
+					// LayerManagerのsetRootLayersPropsによる、起動のヒント 2025/05/13
+					if (!lhash) {
+						lhash = { exec: svgImageProps._execHint };
+					} else {
+						lhash.exec = svgImageProps._execHint;
+					}
+					delete svgImageProps._execHint;
 				}
 				// console.log("ctrUrl:",ctrUrl,"  lhash:",lhash)
 				if (lhash && lhash.exec) {
@@ -406,6 +412,11 @@ class LayerSpecificWebAppHandler {
 		//	var controllerURL = lprops[layerId].svgImageProps.controller;
 		//	console.log(lprops[layerId],controllerURL,e.target.dataset.url);
 		//	var controllerURL = e.target.dataset.url;
+
+		if (!controllerURL) {
+			const lprops = svgMap.getRootLayersProps();
+			controllerURL = lprops[layerId].svgImageProps.controller;
+		}
 
 		/**
 		var loadButHide = false;

@@ -811,12 +811,12 @@ class SvgMap {
 		if (docId == "root") {
 			this.#resourceLoadingObserver.usedImages = {};
 			this.#mapTicker.pathHitTester.setCentralVectorObjectsGetter(); // 2018.1.18 checkTicker()の二重パースの非効率を抑制する処理を投入
-			if (!this.#layerManager.setRootLayersPropsPostprocessed) {
+			if (!this.#layerManager.setRootLayersPropsPostprocessed.processed) {
 				// 2021/10/14 updateLayerListUIint()必須し忘れ対策
 				if (typeof this.#updateLayerListUIint == "function") {
 					this.#updateLayerListUIint();
 				}
-				this.#layerManager.setRootLayersPropsPostprocessed = true;
+				this.#layerManager.setRootLayersPropsPostprocessed.processed = true;
 			}
 			//		console.log("called root dynamicLoad");
 
@@ -838,6 +838,11 @@ class SvgMap {
 			this.#resumeManager.checkResume(svgDoc.documentElement, symbols); // 2016/12/08 bug fix 2016/12/13 more bug fix
 
 			this.#clearLoadErrorStatistics();
+		}
+		if (this.#layerManager.setRootLayersPropsPostprocessed.execHint[docId]) {
+			this.#svgImagesProps[docId]._execHint =
+				this.#layerManager.setRootLayersPropsPostprocessed.execHint[docId];
+			delete this.#layerManager.setRootLayersPropsPostprocessed.execHint[docId];
 		}
 		this.#parseSVG(
 			svgDoc.documentElement,
@@ -2181,7 +2186,7 @@ class SvgMap {
 				var ctrSrc = svgImageProps.controller.src;
 				svgImageProps.controller = new String(cntPath); // 旧版との互換を取るための裏技的な・・(stringを構造化したのだが旧版対応のアプリはこの変数をstringとして処理しているケースがある為)
 				svgImageProps.controller.url = cntPath;
-				vgImageProps.controller.src = ctrSrc;
+				svgImageProps.controller.src = ctrSrc;
 			}
 		} else {
 			if (cntPath) {
@@ -3202,6 +3207,15 @@ class SvgMap {
 	 */
 	setCustomModal(...params) {
 		return this.#customModal.setCustomModal(...params);
+	}
+
+	/**
+	 * デフォルトのヒット時のハイライトスタイルを上書きする
+	 * @param {Object} style .stroke.(color,widthIncrement), .fill.(color,lineWidth)
+	 * @returns {undefined}
+	 */
+	setDefaultHilightStyle(...params) {
+		this.#pathRenderer.setDefaultHilightStyle(...params);
 	}
 
 	/**

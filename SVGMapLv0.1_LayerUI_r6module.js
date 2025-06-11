@@ -357,8 +357,7 @@ class SvgMapLayerUI {
 			"click",
 			function (event) {
 				var layerId = this.#getLayerId(event);
-				var lsUiUrl = event.target.dataset.url;
-				this.#layerSpecificWebAppHandler.showLayerSpecificUI(layerId, lsUiUrl); // hiddenもcbfも不要でレイヤ固有UI表示
+				this.#layerSpecificWebAppHandler.showLayerSpecificUI(layerId); // hiddenもcbfも不要でレイヤ固有UI表示
 			}.bind(this),
 			false
 		);
@@ -415,13 +414,12 @@ class SvgMapLayerUI {
 		td.appendChild(lscBtn);
 	}
 
-	#setLayerSpecificWebAppLaunchUiEnable(layerId, controllerURL) {
+	#setLayerSpecificWebAppLaunchUiEnable(layerId) {
 		// console.log("setLayerSpecificWebAppLaunchUiEnable:", layerId);
 		var ctbtn = document.getElementById("bt_" + layerId);
 		if (ctbtn) {
 			// グループが閉じられている場合などにはボタンがないので
 			ctbtn.style.visibility = "visible";
-			ctbtn.dataset.url = controllerURL;
 		} else {
 			console.log(
 				"Could not find launcher button: setLayerSpecificWebAppLaunchUiEnable:",
@@ -594,7 +592,7 @@ class SvgMapLayerUI {
 		this.#layerList = document.getElementById(this.#layerListID);
 
 		var llUItop;
-		
+
 		if (this.#layerList) {
 			if (this.#layerList.getAttribute("data-fixed") != null) {
 				// レイヤ開閉機能なし・固定状態

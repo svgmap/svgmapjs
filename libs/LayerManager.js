@@ -15,7 +15,10 @@ class LayerManager {
 		this.#svgImages = svgImages;
 		this.#loadingImgs = loadingImgs;
 		this.#refreshScreen = refreshScreen;
+		this.setRootLayersPropsPostprocessed = { processed: false, execHint: {} };
 	}
+
+	setRootLayersPropsPostprocessed; // add 2021/10/14 updateLayerListUIint();必須し忘れ問題への対策フラグ 2025/05/13 execHintも含めるためオブジェクト化
 
 	#svgImagesProps;
 	#svgImages;
@@ -434,7 +437,6 @@ class LayerManager {
 	// レイヤー番号(root svg container内での順番)、レイヤーID(svg文書のiid = htmlのid = selectのvalue)、タイトル名(不確実-同じ名前があるかもしれない。最初に当たったものを選択)
 	// 変化があるとtrueが返却される。ない・もしくは不合理の場合はfalseが返却される
 	// この時classで設定されているレイヤーグループの特性(switch)に基づいた制御がかかる
-	setRootLayersPropsPostprocessed = false; // add 2021/10/14 updateLayerListUIint();必須し忘れ問題への対策フラグ
 	/**
 	 *
 	 * @param {String} layerID_Numb_Title
@@ -442,6 +444,7 @@ class LayerManager {
 	 * @param {Boolean} editing
 	 * @param {String} hashOption //queryStringとしてURLに付与されるようです。
 	 * @param {Boolean} removeLayer //子要素を削除するオプション
+	 * @param {String} execOption // レイヤwebAppがある場合の実行オプション( appearOnLayerLoad||hiddenOnLayerLoad||onClick )
 	 * @returns
 	 */
 	setRootLayersProps(
@@ -449,9 +452,10 @@ class LayerManager {
 		visible,
 		editing,
 		hashOption,
-		removeLayer
+		removeLayer,
+		execOption
 	) {
-		this.setRootLayersPropsPostprocessed = false;
+		this.setRootLayersPropsPostprocessed.processed = false; // refreshScreen()によるレンダリングループで、updateLayerListUIintが起きるようにする
 		var layer = this.getLayer(layerID_Numb_Title);
 		if (!layer) {
 			return false;
@@ -541,17 +545,48 @@ class LayerManager {
 			this.#svgImagesProps[layerId].editing = editing; // 編集中のレイヤがあるとレジューム直後エラーが出る・・ 2016/12/27
 		}
 
+		//console.log("this.#svgImagesProps,this.#svgImagesProps[layerId]:",this.#svgImagesProps,layerId,this.#svgImagesProps[layerId]);
+		// 2025/05/13 setRootLayersPropsやsetLayerVisibilityで、webApp起動のヒントを設定できるようにする
+		if (
+			execOption &&
+			(execOption == "appearOnLayerLoad" ||
+				execOption == "hiddenOnLayerLoad" ||
+				execOption == "onClick")
+		) {
+			this.setRootLayersPropsPostprocessed.execHint[layerId] = execOption;
+		} else {
+			delete this.setRootLayersPropsPostprocessed.execHint[layerId];
+		}
+
 		return true;
 	}
 
 	// setRootLayersPropsの簡単版　ただし、layerListUIのアップデートも行ってくれる
 	/**
 	 *
-	 * @param {String} layerID_Numb_Title
-	 * @param {*} visible //型が不明(Boolean or String)
+	 * @param {String} layerID_Numb_Title // レイヤIDもしくは名称で指定
+	 * @param {Boolean} visible // 表示非表示の指示
+	 * @param {Object} options // .exec {String} webApp起動ヒント( appearOnLayerLoad||hiddenOnLayerLoad||onClick ), .hash {String} レイヤのURLにhash文字列を追加
 	 */
-	setLayerVisibility(layerID_Numb_Title, visible) {
-		this.setRootLayersProps(layerID_Numb_Title, visible, false);
+	setLayerVisibility(layerID_Numb_Title, visible, options) {
+		let execOption = null;
+		let hashOption = null;
+		if (options) {
+			if (options.exec) {
+				execOption = options.exec;
+			}
+			if (options.hash) {
+				hashOption = options.hash;
+			}
+		}
+		this.setRootLayersProps(
+			layerID_Numb_Title,
+			visible,
+			false,
+			hashOption,
+			null,
+			execOption
+		);
 		/** refreshScreen側で実行するように改修 2021/10/14
 		if ( typeof updateLayerListUIint == "function" ){
 			updateLayerListUIint();
