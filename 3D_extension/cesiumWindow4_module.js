@@ -25,7 +25,7 @@
 //var testData="ddd";
 
 import { CesiumProviderViewModels } from "./getProviderViewModels_module.js";
-import { InterWindowMessaging } from "./InterWindowMessaging.js";
+import { InterWindowMessaging } from "../InterWindowMessaging.js";
 
 class CesiumWindow {
 	constructor(cesiumObj, svgMapOpenerWindow, accessTokens) {
