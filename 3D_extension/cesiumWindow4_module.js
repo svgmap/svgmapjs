@@ -28,8 +28,13 @@ import { CesiumProviderViewModels } from "./getProviderViewModels_module.js";
 import { InterWindowMessaging } from "../InterWindowMessaging.js";
 
 class CesiumWindow {
-	constructor(cesiumObj, svgMapOpenerWindow, accessTokens) {
-		this.#initCesiumWindow(cesiumObj, svgMapOpenerWindow, accessTokens);
+	constructor(cesiumObj, svgMapOpenerWindow, accessTokens, options) {
+		this.#initCesiumWindow(
+			cesiumObj,
+			svgMapOpenerWindow,
+			accessTokens,
+			options
+		);
 	}
 
 	#reldir2imageUrl; // このSVGMapコンテンツのルートコンテナのあるディレクトリへ相対パス　（なので、本来は呼び元から提供すべきだが・・）
@@ -40,7 +45,7 @@ class CesiumWindow {
 	#iwmsg;
 	#Cesium;
 
-	#initCesiumWindow(cesiumObj, svgMapOpenerWindow, accessTokens) {
+	#initCesiumWindow(cesiumObj, svgMapOpenerWindow, accessTokens, options) {
 		// 初期化関数
 		// 引数：accessTokens: 特定の地図サービスを使う場合のアクセストークンの連想配列
 		// "bing"と "ion"が使える
@@ -64,9 +69,9 @@ class CesiumWindow {
 
 		this.#Cesium = cesiumObj;
 
-		console.log("initCesiumWindow  ");
+		console.log("initCesiumWindow ");
 
-		var srcs = new CesiumProviderViewModels(cesiumObj, accessTokens);
+		var srcs = new CesiumProviderViewModels(cesiumObj, accessTokens, options);
 
 		console.log(
 			"imagerySources:",

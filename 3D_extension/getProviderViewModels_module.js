@@ -14,18 +14,18 @@ class CesiumProviderViewModels {
 	defaultTerrianIndex;
 	defaultImageryIndex;
 
-	constructor(cesiumObj, tokens) {
+	constructor(cesiumObj, tokens, options) {
 		if (!cesiumObj) {
 			console.warn("NO Cesium exit.");
 			return;
 		}
 		this.#Cesium = cesiumObj;
-		this.#initSources(tokens);
+		this.#initSources(tokens, options);
 	}
 
 	#Cesium; // window.Cesiumを入れる
 
-	#initSources(tokens) {
+	#initSources(tokens, options) {
 		var ionKey, bingKey;
 		if (tokens) {
 			if (tokens.ion) {
@@ -44,6 +44,17 @@ class CesiumProviderViewModels {
 		var terrainSources = this.#Cesium.createDefaultTerrainProviderViewModels();
 		if (!ionKey) {
 			terrainSources = this.#noIonMapBox(terrainSources);
+		}
+
+		if (options?.disableLayers) {
+			terrainSources = this.#disableLayers(
+				terrainSources,
+				options.disableLayers
+			);
+			imagerySources = this.#disableLayers(
+				imagerySources,
+				options.disableLayers
+			);
 		}
 
 		/** This Provider is about to obsolute...
@@ -238,6 +249,9 @@ class CesiumProviderViewModels {
 			if (imagerySources[i].name.indexOf("ESRI World Imagery") >= 0) {
 				defaultImageryIndex = i;
 			}
+			if (imagerySources[i].name.indexOf("シームレスオルソ") >= 0) {
+				defaultImageryIndex = i;
+			}
 		}
 
 		(this.terrainSources = terrainSources),
@@ -251,6 +265,29 @@ class CesiumProviderViewModels {
 		for (var msrc of sources) {
 			if (msrc._category == "Cesium ion" || msrc.name.indexOf("Mapbox") >= 0) {
 			} else {
+				ans.push(msrc);
+			}
+		}
+		return ans;
+	}
+
+	// 2025/6 デフォルトで出てくるレイヤーのレイヤー名を指定して削除するオプションに対応
+	#disableLayers(sources, layerKeys) {
+		var ans = [];
+		for (var msrc of sources) {
+			let thisLayerIsOK = true;
+			for (let layerKey of layerKeys) {
+				layerKey = layerKey.toLowerCase();
+				if (
+					msrc.name.toLowerCase().indexOf(layerKey) >= 0 ||
+					msrc._category.toLowerCase().indexOf(layerKey) >= 0
+				) {
+					// 少なくともこのレイヤーはダメ
+					thisLayerIsOK = false;
+					break;
+				}
+			}
+			if (thisLayerIsOK) {
 				ans.push(msrc);
 			}
 		}
