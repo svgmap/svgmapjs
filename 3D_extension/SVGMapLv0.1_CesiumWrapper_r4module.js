@@ -23,7 +23,7 @@
 // 棒グラフ以外の表現
 //
 
-import { InterWindowMessaging } from "./InterWindowMessaging.js";
+import { InterWindowMessaging } from "../InterWindowMessaging.js";
 
 class SvgMapCesiumWrapper {
 	constructor(svgMap) {

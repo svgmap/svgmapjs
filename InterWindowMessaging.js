@@ -1,5 +1,4 @@
-//  window間で、メッセージングによってデータのやり取りをする。
-// 2022/08/10
+// Description:  window間で、メッセージングによってデータのやり取りをする。
 // Programmed by Satoru Takagi
 //
 // License: (MPL v2)
@@ -7,6 +6,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 //
+// History:
+// 2022/08/10 1st rel.
 
 class InterWindowMessaging {
 	constructor(functionSet, targetWindow_or_itsGetter, responseReady) {
