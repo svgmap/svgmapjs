@@ -73,7 +73,7 @@ class SvgMapAuthoringTool {
 		this.#mapViewerProps = mapViewerProps;
 		this.#svgMapGIStool = new SvgMapGIS(svgMapObject, window.jsts);
 
-		console.log("construct SvgMapAuthoringTool: svgMapObject: ", svgMapObject);
+		// console.log("construct SvgMapAuthoringTool: svgMapObject: ", svgMapObject);
 	}
 
 	//var editLayerTitle = ""; // 編集対象のレイヤーのtitle属性（もしくは

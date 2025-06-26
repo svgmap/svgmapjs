@@ -11,12 +11,14 @@
 
 class InterWindowMessaging {
 	constructor(functionSet, targetWindow_or_itsGetter, responseReady) {
+		/**
 		console.log(
 			"InterWindowMessaging:functionSet, targetWindow, responseReady",
 			functionSet,
 			targetWindow_or_itsGetter,
 			responseReady
 		);
+		**/
 		if (!targetWindow_or_itsGetter) {
 			console.warn("No targetWindow_or_itsGetter Exit.");
 			console.warn("targetWindow_or_itsGetter is not Window instance");

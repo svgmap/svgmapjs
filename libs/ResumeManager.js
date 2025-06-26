@@ -96,7 +96,7 @@ class ResumeManager {
 			console.log("setInitialCustomLayers Check OK!");
 			return true;
 		}
-		console.log(initialCustomLayersObj);
+		// console.log(initialCustomLayersObj);
 		if (!initialCustomLayersObj || typeof initialCustomLayersObj != "object") {
 			console.warn(
 				"setInitialCustomLayers: initialCustomLayersObj is not object exit."

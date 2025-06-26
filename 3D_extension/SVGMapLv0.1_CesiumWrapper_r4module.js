@@ -464,11 +464,13 @@ class SvgMapCesiumWrapper {
 		this.#btnDiv.setAttribute("style", this.#btnDivStyle);
 
 		// シンプルな3D化ボタン
+		/**
 		console.log(
 			"buildUI : style1,2:",
 			this.#svg2cesiumBtn1style,
 			this.#svg2cesiumBtn2style
 		);
+		**/
 		var cButton1 = document.createElement("input");
 		cButton1.id = "svg2cesiumBtn1";
 		cButton1.type = "button";

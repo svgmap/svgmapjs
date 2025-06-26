@@ -249,6 +249,7 @@ class LayerSpecificWebAppHandler {
 						}
 						**/
 						//						console.log("Find #exec=appearOnLayerLoad,hiddenOnLayerLoad Auto load LayerUI : pseudo Event:", psEvt);
+						/**
 						console.log(
 							"Find #exec=appearOnLayerLoad,hiddenOnLayerLoad Auto load LayerUI : layerId,ctrUrl,hiddenOnLaunch,cbf:",
 							layerId,
@@ -256,6 +257,7 @@ class LayerSpecificWebAppHandler {
 							hiddenOnLaunch,
 							cbf
 						);
+						**/
 						//						this.#showLayerSpecificUI(psEvt); // showLayerSpecificUIを強制起動 ただしUIは非表示にしたいケースある(hiddenOnLayerLoad)
 						this.#showLayerSpecificUI(layerId, ctrUrl, hiddenOnLaunch, cbf); // showLayerSpecificUIを強制起動 ただしUIは非表示にしたいケースある(hiddenOnLayerLoad)
 					}
@@ -647,12 +649,14 @@ class LayerSpecificWebAppHandler {
 
 	#initIframe(lid, controllerURL, reqSize, hiddenOnLaunch, cbf) {
 		// controllerURLの仕様:checkController参照
+		/**
 		console.log(
 			"initIframe:",
 			controllerURL,
 			"  hiddenOnLaunch?:",
 			hiddenOnLaunch
 		);
+		**/
 		//	var layerSpecificUIbody = document.getElementById("layerSpecificUIbody");
 		var layerSpecificUIbody = this.#lsUIbdy;
 		var lsuiDoc = this.#layerSpecificUI.ownerDocument;
@@ -662,7 +666,7 @@ class LayerSpecificWebAppHandler {
 		iframe.id = iframeId;
 
 		if (hiddenOnLaunch) {
-			console.log("iframe:", iframe, " display:", iframe.style.display);
+			// console.log("iframe:", iframe, " display:", iframe.style.display);
 			iframe.style.display = "none";
 		}
 
@@ -694,7 +698,7 @@ class LayerSpecificWebAppHandler {
 
 		var bySrcdoc = false;
 		var legendImage = this.#isLegendImage(controllerURL);
-		console.log("initIframe: legendImage:", legendImage);
+		// console.log("initIframe: legendImage:", legendImage);
 		if (controllerURL.charAt(0) != ":" && legendImage == false) {
 			// controllerにレイヤUIのhtmlのパスが書かれているケース(通常ケース)
 			if (
@@ -703,7 +707,7 @@ class LayerSpecificWebAppHandler {
 			) {
 				// startsWithaがIEでは・・・
 				// CORS設定されてる別サイトのiframeでもdata-controllerでURL表現状態でも起動可能にする 2019/11/26
-				console.log("Get controller by XHR");
+				// console.log("Get controller by XHR");
 				var httpObj = new XMLHttpRequest();
 				var that = this;
 				httpObj.onreadystatechange = function () {
@@ -786,12 +790,14 @@ class LayerSpecificWebAppHandler {
 		// DOMContentLoadedはiframeでは発行されない。が、力技で解決する手法を作った人がいる。 >iFrameReady
 		// https://stackoverflow.com/questions/24603580/how-can-i-access-the-dom-elements-within-an-iframe/24603642#comment38157462_24603642
 		var iframeId = iframe.id;
+		/**
 		console.log(
 			"initIframe load eventListen : controllerURL:",
 			controllerURL,
 			"  svgMapAuthoringTool:",
 			this.#svgMapAuthoringTool
 		);
+		**/
 		this.#dispatchCutomIframeEvent(
 			LayerSpecificWebAppHandler.#openFrame,
 			iframeId
@@ -848,11 +854,13 @@ class LayerSpecificWebAppHandler {
 		} else {
 			this.#transferCustomEvent2iframe[lid] =
 				this.#transferCustomEvent4layerUi(lid);
+			/**
 			console.log(
 				"build transferCustomEvent2iframe for ",
 				lid,
 				this.#transferCustomEvent2iframe[lid]
 			);
+			**/
 		}
 		if (sip.svgScript) {
 			// 2022/03/08 svgScriptをlayerUIで動かす大改修
@@ -860,7 +868,7 @@ class LayerSpecificWebAppHandler {
 		}
 		if (typeof iframe.contentWindow.preRenderFunction == "function") {
 			// 2020/6/8 再描画の前に実行される関数を登録(これで、svg文書のscriptの中のonzoom, onscroll関数のような挙動がだせるかと・・)
-			console.log("Register preRenderControllerFunction for layerID:", lid);
+			// console.log("Register preRenderControllerFunction for layerID:", lid);
 			this.#svgMap.getSvgImagesProps()[lid].preRenderControllerFunction =
 				iframe.contentWindow.preRenderFunction;
 		}
@@ -1235,7 +1243,7 @@ class LayerSpecificWebAppHandler {
 			console.log("csvXHR2 : File get failed");
 			return;
 		}
-		console.log("initIframePh2(byXHR): httpRes: ", httpRes, "   lid:", lid);
+		// console.log("initIframePh2(byXHR): httpRes: ", httpRes, "   lid:", lid);
 		var sourceDoc = httpRes.responseText;
 		var baseHtml = `<base href='${httpRes.responseURL}'>`; // 2023/07/26 できるだけ互換を保てるようにbase要素を設定する
 
@@ -1318,7 +1326,7 @@ class LayerSpecificWebAppHandler {
 	}
 
 	#testIframeSize(iframe, reqSize) {
-		console.log("testIframeSize:", iframe, iframe.style);
+		// console.log("testIframeSize:", iframe, iframe.style);
 		if (iframe.style.display == "none") {
 			// 2021/12/03 非表示のものはサイジングしない
 			return;

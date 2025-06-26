@@ -61,7 +61,7 @@ class PathRenderer {
 				this.defaultHilightStyle.fill.lineColor = style.fill.lineColor;
 			}
 		}
-		console.log("Set defaultHilightStyle:", this.defaultHilightStyle);
+		// console.log("Set defaultHilightStyle:", this.defaultHilightStyle);
 	}
 
 	setSVGcirclePoints(

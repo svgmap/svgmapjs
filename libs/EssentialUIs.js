@@ -126,12 +126,14 @@ class EssentialUIs {
 				// hash customLayersがなくて、customLayersRootプロパティだけあり、.jsonとなっている場合
 				this.#customLayersPath = new URL(customLayersRootPath, location).href;
 			}
+			/**
 			console.log(
 				"Found customLayersRoot Property:",
 				customLayersRootPath,
 				"  customLayersPath:",
 				this.#customLayersPath
 			);
+			**/
 		}
 
 		return rootSVGpath;
