@@ -1238,16 +1238,20 @@ class LayerSpecificWebAppHandler {
 		console.log("initIframePh2(byXHR): httpRes: ", httpRes, "   lid:", lid);
 		var sourceDoc = httpRes.responseText;
 		var baseHtml = `<base href='${httpRes.responseURL}'>`; // 2023/07/26 できるだけ互換を保てるようにbase要素を設定する
-		if (sourceDoc.indexOf("<script") > 0) {
-			if (sourceDoc.indexOf("</head>") > 0) {
-				sourceDoc = sourceDoc.replace("</head>", `${baseHtml}</head>`);
-			} else {
-				sourceDoc = sourceDoc.replace(
-					/<html[^>]*>/,
-					"$&" + `<head>${baseHtml}</head>`
-				);
-			}
+
+		// baseタグ 挿入位置を改善し互換性を向上させる。またscript有無にかかわらず実施する 2025/06/26
+		if (sourceDoc.indexOf("<head>") > -1) {
+			// <head>タグの閉じ括弧の直後 (つまり<head>の中の先頭) にbaseHtmlを挿入
+			sourceDoc = sourceDoc.replace("<head>", `<head>${baseHtml}`);
+		} else {
+			// <head>タグが存在しない場合、<html>タグの直後に<head>を作成し、その中にbaseHtmlを挿入
+			// この場合も、極力<head>の最初に入れる形にする
+			sourceDoc = sourceDoc.replace(
+				/<html[^>]*>/,
+				"$&" + `<head>${baseHtml}</head>`
+			);
 		}
+
 		iframe.srcdoc = sourceDoc;
 		//	layerSpecificUIbody.appendChild(iframe);
 		//lsUIbdy.appendChild(iframe);
