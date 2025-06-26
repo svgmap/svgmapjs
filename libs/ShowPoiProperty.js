@@ -355,7 +355,7 @@ class ShowPoiProperty {
 	/**
 	 * モーダルではなく、実際はモードレスダイアログです。maxW,maxHがない場合、渡したコンテンツから適当なサイズでつくります
 	 * @param {string|HTMLElement} htm UIなどを含むHTMLをStringもしくはElement型にて受け渡します
-	 * @param {Number} [maxW] 
+	 * @param {Number} [maxW]
 	 * @param {Number} [maxH]
 	 * @returns {Document} UIのDocumentObjectが返却
 	 */

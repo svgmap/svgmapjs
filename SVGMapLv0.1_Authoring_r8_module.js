@@ -100,13 +100,15 @@ class SvgMapAuthoringTool {
 	#uiMapping = {};
 
 	#uiMappingG = {}; //  uiMapping[layerID]:uiMapping  layerID毎にuiMappingを入れる 2021/6/23
-	#defaultShapeStyle = { // 編集が確定した段階での図形のスタイル
+	#defaultShapeStyle = {
+		// 編集が確定した段階での図形のスタイル
 		strokeWidth: 3,
 		opacity: 1,
 		fill: "skyblue",
 		stroke: "blue",
 	};
-	#defaultEditingStyle = { // 編集中の図形のスタイル
+	#defaultEditingStyle = {
+		// 編集中の図形のスタイル
 		strokeWidth: 3,
 		opacity: 1,
 		fill: "yellow",
@@ -632,7 +634,7 @@ class SvgMapAuthoringTool {
 									toolsCbFunc: this.#uiMapping.toolsCbFunc,
 									toolsCbFuncParam: this.#uiMapping.toolsCbFuncParam,
 								},
-								{position:e.target}
+								{ position: e.target }
 							);
 							/**
 				confStat = "Delete";

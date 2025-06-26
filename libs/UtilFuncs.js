@@ -9,7 +9,6 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-
 import { SvgMapElementType } from "./SvgMapElementType.js";
 
 class UtilFuncs {
@@ -690,7 +689,10 @@ class UtilFuncs {
 				pixelated = true;
 			}
 
-			if (category == SvgMapElementType.BITIMAGE || category == SvgMapElementType.EMBEDSVG) {
+			if (
+				category == SvgMapElementType.BITIMAGE ||
+				category == SvgMapElementType.EMBEDSVG
+			) {
 				if (
 					imgE.getAttribute("style") &&
 					imgE.getAttribute("style").indexOf("filter") >= 0
