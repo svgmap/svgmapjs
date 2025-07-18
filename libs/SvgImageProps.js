@@ -30,7 +30,7 @@ class SvgImageProps {
 		if (!val || val == "") {
 			// hashを消した場合・・
 			this.#hashChangedByAppLayer = true;
-			this.Path = new URL(this.Path, location).pathname;
+			this.Path = this.#getPath(this.Path);
 		} else {
 			if (!val.startsWith("#")) {
 				console.warn("hash should be startd with #");
@@ -42,8 +42,24 @@ class SvgImageProps {
 				return;
 			}
 			this.#hashChangedByAppLayer = val;
-			this.Path = new URL(this.Path, location).pathname + val;
+			this.Path = this.#getPath(this.Path) + val;
 		}
+	}
+
+	/**
+	 * @description pathWithFragmentから、パス部分だけを取り出します
+	 * @param {string} pathWithFragment -フラグメントを含んでいるかもしれない文字列・プロトコルも存在している絶対URLでも相対パスwithフラグメントでもいい
+	 */
+	#getPath(pathWithFragment) {
+		let path;
+		const fidx = pathWithFragment.indexOf("#");
+		if (fidx > -1) {
+			// フラグメントが存在するかどうかを確認
+			path = pathWithFragment.substring(0, fidx);
+		} else {
+			path = pathWithFragment; // フラグメントがない場合はそのままの文字列
+		}
+		return path;
 	}
 }
 
