@@ -55,7 +55,7 @@ class MatrixUtil {
 					var pt = this.transform(
 						inBox.x + (ix * inBox.width) / iPart,
 						inBox.y + (iy * inBox.height) / iPart,
-						matrix
+						matrix,
 					);
 					ptx.push(pt.x);
 					pty.push(pt.y);
@@ -164,22 +164,27 @@ class MatrixUtil {
 
 		if (nonScaling) {
 			// vector Effect 2014.5.12
+			// 2025/07/11 DPRの変更に対応
+			let dpr = 1;
+			if (nonScaling.docDPR) {
+				dpr = nonScaling.docDPR;
+			}
 			if (mat) {
 				if (mat.transform) {
 					var ans = mat.transform({ x: nonScaling.x, y: nonScaling.y });
-					ans.x = ans.x + x;
-					ans.y = ans.y + y;
+					ans.x = ans.x + x * dpr;
+					ans.y = ans.y + y * dpr;
 					return ans;
 				} else {
 					return {
-						x: mat.a * nonScaling.x + mat.c * nonScaling.y + mat.e + x,
-						y: mat.b * nonScaling.x + mat.d * nonScaling.y + mat.f + y,
+						x: mat.a * nonScaling.x + mat.c * nonScaling.y + mat.e + x * dpr,
+						y: mat.b * nonScaling.x + mat.d * nonScaling.y + mat.f + y * dpr,
 					};
 				}
 			} else {
 				return {
-					x: nonScaling.x + x,
-					y: nonScaling.y + y,
+					x: nonScaling.x + x * dpr,
+					y: nonScaling.y + y * dpr,
 				};
 			}
 		}

@@ -36,7 +36,7 @@ class ZoomPanManager {
 		getIntValueFunc,
 		getRootSvg2CanvasFunc,
 		mapViewerProps,
-		svgMapObj
+		svgMapObj,
 	) {
 		// Set Func
 		this.#hideTicker = hideTickerFunc;
@@ -62,7 +62,7 @@ class ZoomPanManager {
 					" : " +
 					evt.touches[1].pageX +
 					"," +
-					evt.touches[1].pageY
+					evt.touches[1].pageY,
 			);
 			//				zoomingTransitionFactor = 1;
 		}
@@ -147,7 +147,7 @@ class ZoomPanManager {
 			} else {
 				this.#timerID = setTimeout(
 					this.#shiftZoomingAnim,
-					this.#smoothZoomInterval
+					this.#smoothZoomInterval,
 				); // not use string param ( eval )
 			}
 		} else {
@@ -187,7 +187,7 @@ class ZoomPanManager {
 					gxy0.lat,
 					gxy0.lng,
 					gxy1.lat - gxy0.lat,
-					gxy1.lng - gxy0.lng
+					gxy1.lng - gxy0.lng,
 				);
 			} else if (this.#difX != 0 || this.#difY != 0) {
 				// 変化分があるときはpan/zoom処理
@@ -274,7 +274,7 @@ class ZoomPanManager {
 				if (this.#initialTouchDisance == 0) {
 					this.#zoomingTransitionFactor =
 						Math.exp(
-							this.#difY / (this.#mapViewerProps.mapCanvasSize.height / 2)
+							this.#difY / (this.#mapViewerProps.mapCanvasSize.height / 2),
 						) / Math.exp(0);
 				}
 				if (this.#zoomingTransitionFactor < 0.1) {
@@ -323,7 +323,7 @@ class ZoomPanManager {
 			} else {
 				this.#timerID = setTimeout(
 					this.#shiftZoomingAnim,
-					this.#smoothZoomInterval
+					this.#smoothZoomInterval,
 				);
 			}
 		}
@@ -482,7 +482,7 @@ class ZoomPanManager {
 					requestAnimationFrame(
 						function () {
 							that.#smoothZoom(zoomFactor, startDate, false, startZoom);
-						}.bind(this)
+						}.bind(this),
 					);
 				} else {
 					setTimeout(
@@ -493,7 +493,7 @@ class ZoomPanManager {
 						zoomFactor,
 						startDate,
 						false,
-						startZoom
+						startZoom,
 					);
 				}
 			} else {
@@ -503,7 +503,7 @@ class ZoomPanManager {
 					requestAnimationFrame(
 						function () {
 							that.#smoothZoom(zoomFactor, startDate, true, startZoom);
-						}.bind(this)
+						}.bind(this),
 					);
 				} else {
 					setTimeout(
@@ -514,7 +514,7 @@ class ZoomPanManager {
 						zoomFactor,
 						startDate,
 						true,
-						startZoom
+						startZoom,
 					); //フィニッシュ処理へ
 				}
 			}
@@ -536,7 +536,7 @@ class ZoomPanManager {
 						azf,
 						new Date(),
 						false,
-						zoomFactor
+						zoomFactor,
 					);
 				}
 				this.#additionalZoom = 0;
@@ -559,43 +559,47 @@ class ZoomPanManager {
 		}
 	}
 
-	// ズームパン操作を完了した後、dynamicLoadを掛ける前にzoom/pan後のイメージを一瞬だけ表示する機能？
-	// 不要な機能な気がするのは気のせいなのだろうか？ 2014/5/27確認中
+	// ズームパン操作を完了した後、dynamicLoadを掛ける前にzoom/pan後のイメージを一瞬だけ表示しちらつきを抑止する機能
 	// このルーチンが、canvasのことを考慮していないので画像が乱れていた
+	// textへの処理が抜けていたのを追加 2025/09/29
 	#tempolaryZoomPanImages(zoomFactor, sftX, sftY) {
 		// zoom後のpanということで考えてください。
-		var mapImgs = this.#mapViewerProps.mapCanvas.getElementsByTagName("img");
+		//		var mapElements = this.#mapViewerProps.mapCanvas.getElementsByTagName("img");
+		var mapElements =
+			this.#mapViewerProps.mapCanvas.querySelectorAll("img, span"); // 2025/09/29
 		var mapCanvasSize = this.#mapViewerProps.mapCanvasSize;
 
 		if (this.#mapViewerProps.uaProps.IE) {
 			// 下の再利用処理はIE11でかなりのボトルネック化している・・・
-			for (var i = mapImgs.length - 1; i >= 0; i--) {
-				mapImgs.item(i).parentNode.removeChild(mapImgs.item(i)); // 何の工夫もせず単に全部消す。これが一番早い感じで表示もまずまず・・・
+			for (var i = mapElements.length - 1; i >= 0; i--) {
+				mapElements.item(i).parentNode.removeChild(mapElements.item(i)); // 何の工夫もせず単に全部消す。これが一番早い感じで表示もまずまず・・・
 			}
 		} else {
 			// リフロー多発を抑制 2023/4/3
 			// https://ui.appleple.blog/entry-109.html
 			var xds = [];
 			var yds = [];
-			for (var i = mapImgs.length - 1; i >= 0; i--) {
-				var il = Number(mapImgs.item(i).style.left.replace("px", ""));
-				var it = Number(mapImgs.item(i).style.top.replace("px", ""));
-				var iw = Number(mapImgs.item(i).width);
-				var ih = Number(mapImgs.item(i).height);
+			for (var i = mapElements.length - 1; i >= 0; i--) {
+				const el = mapElements.item(i);
+				var il = Number(el.style.left.replace("px", ""));
+				var it = Number(el.style.top.replace("px", ""));
+				var iw = Number(el.width);
+				var ih = Number(el.height);
 				xds[i] = this.#getIntValue(
 					(il - mapCanvasSize.width * 0.5) * zoomFactor +
 						mapCanvasSize.width * 0.5 +
 						sftX,
-					iw * zoomFactor
+					iw * zoomFactor,
 				);
 				yds[i] = this.#getIntValue(
 					(it - mapCanvasSize.height * 0.5) * zoomFactor +
 						mapCanvasSize.height * 0.5 +
 						sftY,
-					ih * zoomFactor
+					ih * zoomFactor,
 				);
 			}
-			for (var i = mapImgs.length - 1; i >= 0; i--) {
+			for (var i = mapElements.length - 1; i >= 0; i--) {
+				const el = mapElements.item(i);
 				var xd = xds[i];
 				var yd = yds[i];
 				var imgRect = new Object();
@@ -605,40 +609,44 @@ class ZoomPanManager {
 				imgRect.height = yd.span;
 
 				// Simply rewrite image position
-				mapImgs.item(i).style.left = xd.p0 + "px";
-				mapImgs.item(i).style.top = yd.p0 + "px";
+				el.style.left = xd.p0 + "px";
+				el.style.top = yd.p0 + "px";
 
-				mapImgs.item(i).width = xd.span;
-				mapImgs.item(i).height = yd.span;
-				mapImgs.item(i).style.width = xd.span + "px";
-				mapImgs.item(i).style.height = yd.span + "px";
+				if (el.tagName === "IMG") {
+					// 2025/09/29
+					el.width = xd.span;
+					el.height = yd.span;
+					el.style.width = xd.span + "px";
+					el.style.height = yd.span + "px";
+				}
 			}
 		}
 		// canvas用の処理
-		mapImgs = this.#mapViewerProps.mapCanvas.getElementsByTagName("canvas");
-		for (var i = mapImgs.length - 1; i >= 0; i--) {
+		mapElements = this.#mapViewerProps.mapCanvas.getElementsByTagName("canvas");
+		for (var i = mapElements.length - 1; i >= 0; i--) {
+			const el = mapElements.item(i);
 			var il = 0; // 今後 canvasのサイズをコンテンツ依存にする場合には注意してね
 			var it = 0;
-			var iw = Number(mapImgs.item(i).width);
-			var ih = Number(mapImgs.item(i).height);
+			var iw = Number(el.width);
+			var ih = Number(el.height);
 
 			var xd = this.#getIntValue(
 				(il - mapCanvasSize.width * 0.5) * zoomFactor +
 					mapCanvasSize.width * 0.5 +
 					sftX,
-				iw * zoomFactor
+				iw * zoomFactor,
 			);
 			var yd = this.#getIntValue(
 				(it - mapCanvasSize.height * 0.5) * zoomFactor +
 					mapCanvasSize.height * 0.5 +
 					sftY,
-				ih * zoomFactor
+				ih * zoomFactor,
 			);
-			mapImgs.item(i).style.left = xd.p0 + "px";
-			mapImgs.item(i).style.top = yd.p0 + "px";
+			el.style.left = xd.p0 + "px";
+			el.style.top = yd.p0 + "px";
 
-			mapImgs.item(i).width = xd.span;
-			mapImgs.item(i).height = yd.span;
+			el.width = xd.span;
+			el.height = yd.span;
 		}
 	}
 

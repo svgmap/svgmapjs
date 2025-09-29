@@ -32,7 +32,7 @@ class ImgRenderer {
 		mapViewerProps,
 		matUtil,
 		checkLoadCompletedFunc,
-		loadErrorStatistics
+		loadErrorStatistics,
 	) {
 		this.#svgMapObj = svgMapObj;
 		this.#loadingImgs = loadingImgs;
@@ -64,7 +64,7 @@ class ImgRenderer {
 		nocache,
 		crossoriginProp,
 		svgimageInfo,
-		commonQuery
+		commonQuery,
 	) {
 		var img = document.createElement("img");
 
@@ -97,9 +97,9 @@ class ImgRenderer {
 			href,
 			this.#needsNonLinearImageTransformation(
 				this.#svgImagesProps[svgimageInfo.docId].CRS,
-				svgimageInfo.svgNode
+				svgimageInfo.svgNode,
 			),
-			crossoriginProp
+			crossoriginProp,
 		);
 		this.#setLoadingImagePostProcessing(
 			img,
@@ -108,7 +108,7 @@ class ImgRenderer {
 			false,
 			svgimageInfo,
 			imgAinf.crossOriginFlag,
-			imgAinf.hasNonLinearImageTransformation
+			imgAinf.hasNonLinearImageTransformation,
 		);
 
 		if (opacity) {
@@ -202,7 +202,7 @@ class ImgRenderer {
 		id,
 		opacity,
 		crossoriginProp,
-		svgimageInfo
+		svgimageInfo,
 	) {
 		if (!cdx) {
 			cdx = 0;
@@ -216,14 +216,8 @@ class ImgRenderer {
 			if (!txtNonScaling) {
 				img.style.fontSize = height + "px";
 			}
-			if (!this.#mapViewerProps.uaProps.MS) {
-				img.style.bottom =
-					this.#mapViewerProps.mapCanvasSize.height - (cdy + y) + "px";
-			} else {
-				var fontS = parseInt(img.style.fontSize);
-				//console.log(fontS, img.innerHTML,img);
-				img.style.top = y + cdy - fontS + "px";
-			}
+			var fontS = parseInt(img.style.fontSize);
+			img.style.top = y + cdy - fontS + "px"; // 2025/9/26 topに統一(filterで不具合が生じるため)
 		} else {
 			img.style.top = cdy + y + "px";
 		}
@@ -265,9 +259,9 @@ class ImgRenderer {
 			href,
 			this.#needsNonLinearImageTransformation(
 				this.#svgImagesProps[svgimageInfo.docId].CRS,
-				svgimageInfo.svgNode
+				svgimageInfo.svgNode,
 			),
-			crossoriginProp
+			crossoriginProp,
 		);
 
 		var imgSrc = img.getAttribute("data-preTransformedHref");
@@ -290,7 +284,7 @@ class ImgRenderer {
 				true,
 				svgimageInfo,
 				imgAinf.crossOriginFlag,
-				imgAinf.hasNonLinearImageTransformation
+				imgAinf.hasNonLinearImageTransformation,
 			);
 		}
 		if (transform) {
@@ -342,7 +336,7 @@ class ImgRenderer {
 		forceSrcIE,
 		svgimageInfo,
 		crossOriginFlag,
-		hasNonLinearImageTransformation
+		hasNonLinearImageTransformation,
 	) {
 		var timeout = this.#loadingTransitionTimeout;
 		var that = this;
@@ -509,16 +503,16 @@ class ImgRenderer {
 
 		var rs2cs = this.#matUtil.getConversionMatrixViaGCS(
 			this.#mapViewerProps.rootCrs,
-			crs
+			crs,
 		); // ルートSVG->ソース(個々のコンテンツ)SVG変換
 		var cs2rs = this.#matUtil.getConversionMatrixViaGCS(
 			crs,
-			this.#mapViewerProps.rootCrs
+			this.#mapViewerProps.rootCrs,
 		); // ソース(個々のコンテンツ)SVG->ルートSVG変換
 
 		var cib = this.#matUtil.transformRect(
 			{ x: 0, y: 0, width: ciw, height: cih },
-			ci2cs
+			ci2cs,
 		); // ソースSVGにおける画像領域
 
 		/**
@@ -605,7 +599,7 @@ class ImgRenderer {
 		var iuri = sc.toDataURL("image/png");
 		imgElem.setAttribute(
 			"data-preTransformedHref",
-			imgElem.getAttribute("src")
+			imgElem.getAttribute("src"),
 		);
 		imgElem.setAttribute("src", iuri);
 	}
@@ -677,7 +671,7 @@ class ImgRenderer {
 						imgs[i].id,
 						"  style:",
 						imgs[i].style.top,
-						imgs[i].style.left
+						imgs[i].style.left,
 					);
 					imgs[i].style.visibility = "hidden";
 					var canvas = document.createElement("canvas");
