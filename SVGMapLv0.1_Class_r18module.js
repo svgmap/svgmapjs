@@ -3358,6 +3358,22 @@ class SvgMap {
 	}
 
 	/**
+	 * アクティブなレイヤーに設定されているShowPoiProperyのバックアップを全て取得する
+	 * @returns {void} 戻り値なし
+	 */
+	backupShowPoiProperty() {
+		this.#mapTicker.showPoiProperty.backupShowPoiProperty();
+	}
+
+	/**
+	 * アクティブなレイヤーのShowPoiProperyをバックアップから復元する
+	 * @returns {void} 戻り値なし
+	 */
+	restoreShowPoiProperty() {
+		this.#mapTicker.showPoiProperty.restoreShowPoiProperty();
+	}
+
+	/**
 	 * ズームイン／アウト後のタイル読み込み開始タイマー
 	 * @param  {String} zoomInterval // msec
 	 * @returns
