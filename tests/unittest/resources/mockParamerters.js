@@ -18,6 +18,7 @@ const mock_svgmapObj = {
 		i5: {
 			Path: { location: { href: "layer.svg" } },
 			CRS: "",
+			rootLayer: "root"
 		},
 	}),
 	setRootViewBox: mock_setRootViewBox,
