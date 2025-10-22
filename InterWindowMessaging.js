@@ -8,9 +8,15 @@
 //
 // History:
 // 2022/08/10 1st rel.
+// 2025/07/02 ホワイトリストで別オリジンからのメッセージを受け取りも可能にする
 
 class InterWindowMessaging {
-	constructor(functionSet, targetWindow_or_itsGetter, responseReady) {
+	constructor(
+		functionSet,
+		targetWindow_or_itsGetter,
+		responseReady,
+		allowedOrigins = [],
+	) {
 		/**
 		console.log(
 			"InterWindowMessaging:functionSet, targetWindow, responseReady",
@@ -47,11 +53,19 @@ class InterWindowMessaging {
 			this.#submitReady();
 			this.#readyState = true;
 		}
+
+		// コンストラクタでホワイトリストを受け取る
+		if (Array.isArray(allowedOrigins)) {
+			this.#allowedOrigins = allowedOrigins;
+		} else {
+			console.warn("InterWindowMessaging: allowedOrigins must be an array.");
+		}
 	}
 
 	#targetWindow = null; // イベント受信先の同定用、下のgetterかこちらのどちらかが設定されている
 	#targetWindowGetter = null;
 	#readyState = false;
+	#allowedOrigins;
 
 	#functionSet_int;
 	// functionSetは、インスタンス生成時に指定する。
@@ -61,7 +75,15 @@ class InterWindowMessaging {
 		window.addEventListener(
 			"message",
 			async function (event) {
-				if (event.origin != window.location.origin) return;
+				const isOriginAllowed =
+					this.#allowedOrigins.includes(event.origin) ||
+					event.origin === window.location.origin;
+				if (!isOriginAllowed) {
+					console.warn(
+						`InterWindowMessaging: Message blocked from untrusted origin: ${event.origin}`,
+					);
+					return;
+				}
 				var targetWin = this.#getTargetWindow();
 				if (
 					!targetWin ||
@@ -74,13 +96,13 @@ class InterWindowMessaging {
 					" srcWin:",
 					event.source,
 					" srcPath:",
-					event.source.location.pathname
+					event.source.location.pathname,
 				);
 				var msg = JSON.parse(event.data);
 				if (msg.command) {
 					if (this.#functionSet_int[msg.command]) {
 						var ans = await this.#functionSet_int[msg.command](
-							...msg.parameter
+							...msg.parameter,
 						);
 						var resp = {
 							response: msg.command,
@@ -95,7 +117,7 @@ class InterWindowMessaging {
 						console.log(
 							"========\ncmd:",
 							msg.command,
-							" is not exists within commandSet"
+							" is not exists within commandSet",
 						);
 						var messageJson = JSON.stringify({ response: "error" });
 						targetWin.postMessage(messageJson, targetWin.origin);
@@ -110,7 +132,7 @@ class InterWindowMessaging {
 					this.#messageCallbackObj = null;
 				}
 			}.bind(this),
-			false
+			false,
 		);
 	}
 
@@ -136,7 +158,7 @@ class InterWindowMessaging {
 					if (rc > this.#retryMax) {
 						ngCallback(
 							"postMessagePromise: Now waiting message. skip.  command:" +
-								JSON.parse(messageJson).command
+								JSON.parse(messageJson).command,
 						);
 						return;
 					}
@@ -146,7 +168,7 @@ class InterWindowMessaging {
 				this.#messageCallbackObj = okCallback;
 				var targetWin = this.#getTargetWindow();
 				targetWin.postMessage(messageJson, targetWin.origin);
-			}.bind(this)
+			}.bind(this),
 		);
 	}
 
