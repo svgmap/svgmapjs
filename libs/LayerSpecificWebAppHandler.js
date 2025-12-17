@@ -1001,6 +1001,14 @@ class LayerSpecificWebAppHandler {
 				controllerWindow.svgImageProps.CRS.transformFunctionName +
 				",";
 			console.log("transformRetStr set:", transformRetStr);
+			setTimeout(
+				// 2025/12/17 LaWAの初期化が非同期のため、再描画後にCRSが設定されると表示されないケースがあるのを防ぐ(根本解決ではないが・・・・99%ぐらい回避できている)
+				function () {
+					console.log("Has CRS transform function force refreshScreen.");
+					this.#svgMap.refreshScreen();
+				}.bind(this),
+				1000
+			);
 		}
 
 		controllerWindow.svgScript = controllerWindow.Function(`

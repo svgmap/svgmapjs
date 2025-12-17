@@ -37,6 +37,8 @@ class MapTicker {
 	#matUtil;
 	#svgMapAuthoringTool;
 
+	#centerHitTestEnabled = true;
+
 	constructor(
 		svgMapObject,
 		matUtil,
@@ -205,7 +207,7 @@ class MapTicker {
 				px,
 				py
 			); // 2022/05
-		} else {
+		} else if (this.#centerHitTestEnabled) {
 			hittedObjects = this.pathHitTester.getHittedObjects(); // 2018.1.18 setCentralVectorObjectsGetterと組み合わせ、getVectorObjectsAtPointを代替して効率化 : ベクタでヒットしたモノ
 			var mapCanvasSize = this.#svgMapObject.getMapCanvasSize();
 			hittedPoiObjects = this.poiHitTester.getPoiObjectsAtPoint(
@@ -217,6 +219,11 @@ class MapTicker {
 				mapCanvasSize.height / 2,
 				true
 			); // 2022/05 , 2022/09 中心ヒットテスト判別可能にする
+		} else {
+			// 2025/11/13 (!this.#centerHitTestEnabled)のときはhideTicker()もせずに単に終わらせる(return)でもいいのかも？
+			hittedPoiObjects = [];
+			hittedPoiObjects = [];
+			hittedLayerHitTests = [];
 		}
 
 		if (
@@ -644,6 +651,14 @@ class MapTicker {
 		target.removeAttribute("data-title");
 		target.removeAttribute("lat");
 		target.removeAttribute("lng");
+	}
+
+	setCenterHitTest(enable) {
+		if (enable === true) {
+			this.#centerHitTestEnabled = true;
+		} else {
+			this.#centerHitTestEnabled = false;
+		}
 	}
 }
 
