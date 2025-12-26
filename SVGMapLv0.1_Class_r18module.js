@@ -327,7 +327,7 @@ class SvgMap {
 			"load",
 			function () {
 				that.#initLoad();
-			}.bind(this)
+			}.bind(this),
 		);
 		UtilFuncs.addEvent(
 			window,
@@ -341,46 +341,46 @@ class SvgMap {
 						function () {
 							this.#updateLayerListUIint();
 						}.bind(this),
-						300
+						300,
 					);
 				}
-			}.bind(this)
+			}.bind(this),
 		);
 
 		this.#matUtil = new MatrixUtil();
 		this.#proxyManager = new ProxyManager();
 		this.#svgMapAuthoringTool = new SvgMapAuthoringTool(
 			this,
-			this.#mapViewerProps
+			this.#mapViewerProps,
 		);
 		this.#layerSpecificWebAppHandler = new LayerSpecificWebAppHandler(
 			this,
 			this.#svgMapAuthoringTool,
-			this.#getLayerStatus
+			this.#getLayerStatus,
 		);
 		this.#svgMapLayerUI = new SvgMapLayerUI(
 			this,
-			this.#layerSpecificWebAppHandler
+			this.#layerSpecificWebAppHandler,
 		);
 		this.#layerSpecificWebAppHandler.setLayerUIobject(this.#svgMapLayerUI);
 
 		this.#svgMapCustomLayersManager = new SvgMapCustomLayersManager(
 			this,
-			this.#svgMapLayerUI.getLayersCustomizer
+			this.#svgMapLayerUI.getLayersCustomizer,
 		);
 		this.#resourceLoadingObserver = new ResourceLoadingObserver(
 			this.#mapViewerProps,
 			this.#svgImagesProps,
 			this.#svgImages,
 			this.#refreshScreen,
-			this.#viewBoxChanged
+			this.#viewBoxChanged,
 		);
 
 		this.#layerManager = new LayerManager(
 			this.#svgImagesProps,
 			this.#svgImages,
 			this.#resourceLoadingObserver.loadingImgs,
-			this.#refreshScreen
+			this.#refreshScreen,
 		);
 		this.#mapTicker = new MapTicker(
 			this,
@@ -388,7 +388,7 @@ class SvgMap {
 			this.#layerManager.isEditingLayer,
 			this.#layerManager.getLayerName,
 			this.#resourceLoadingObserver.setLoadCompleted,
-			this.#svgMapAuthoringTool
+			this.#svgMapAuthoringTool,
 		); // 照準があるときは、Ticker機能をONにする 2013/1/11
 		this.#customModal = new CustomModal(this.#mapTicker);
 
@@ -398,7 +398,7 @@ class SvgMap {
 			this.#geometryCapturer,
 			this.#matUtil,
 			this.#mapTicker,
-			this.#mapViewerProps
+			this.#mapViewerProps,
 		);
 		this.#imgRenderer = new ImgRenderer(
 			this,
@@ -408,12 +408,12 @@ class SvgMap {
 			this.#mapViewerProps,
 			this.#matUtil,
 			this.#resourceLoadingObserver.checkLoadCompleted,
-			this.#loadErrorStatistics
+			this.#loadErrorStatistics,
 		);
 		this.#resourceLoadingObserver.init(
 			this.#imgRenderer,
 			this.#mapTicker,
-			this.#geometryCapturer
+			this.#geometryCapturer,
 		); //resourceLoadingObserverの第二初期化・・
 		this.#resumeManager = new ResumeManager(
 			this,
@@ -427,9 +427,9 @@ class SvgMap {
 					symbols,
 					null,
 					null,
-					true
+					true,
 				);
-			}.bind(this)
+			}.bind(this),
 		);
 		this.#linkedDocOp = new LinkedDocOp(this);
 		this.#svgStyle = new SvgStyle(UtilFuncs.getNonScalingOffset);
@@ -449,7 +449,7 @@ class SvgMap {
 			this.#getIntValue,
 			this.#getRootSvg2Canvas,
 			this.#mapViewerProps,
-			this
+			this,
 		);
 		this.#essentialUIs = new EssentialUIs(
 			this,
@@ -458,7 +458,7 @@ class SvgMap {
 			this.#mapTicker,
 			this.#matUtil,
 			this.#hideAllTileImgs,
-			this.#getRootSvg2Canvas
+			this.#getRootSvg2Canvas,
 		);
 
 		var rootSVGpath = this.#essentialUIs.initMapCanvas();
@@ -481,7 +481,7 @@ class SvgMap {
 				function () {
 					this.#initLoad();
 				}.bind(this),
-				50
+				50,
 			);
 			return; // どうもwindow.openで作ったときに時々失敗するので、少し(30ms)ディレイさせ再挑戦する
 		}
@@ -493,8 +493,8 @@ class SvgMap {
 				0,
 				0,
 				this.#mapViewerProps.mapCanvasSize.width,
-				this.#mapViewerProps.mapCanvasSize.height
-			)
+				this.#mapViewerProps.mapCanvasSize.height,
+			),
 		);
 
 		// この辺の初期化は、上記initMapCanvasも含め、#essentialUIs.init()で一発設定したほうが良いと思われる
@@ -504,7 +504,7 @@ class SvgMap {
 		this.#essentialUIs.initNavigationUIs(this.#mapViewerProps.uaProps.isSP);
 		this.#resumeManager.setInitialCustomLayers(
 			await this.#essentialUIs.prepareInitialCustomLayers(),
-			rootSVGpath
+			rootSVGpath,
 		); // 2024/8/6 カスタムレイヤー設定読み込み
 
 		this.#loadSVG(rootSVGpath, "root", this.#mapViewerProps.mapCanvas);
@@ -527,7 +527,7 @@ class SvgMap {
 					this.#svgImagesProps[parentSvgDocId].rootLayer;
 				parentElem.setAttribute(
 					"class",
-					"rootLayer:" + this.#svgImagesProps[parentSvgDocId].rootLayer
+					"rootLayer:" + this.#svgImagesProps[parentSvgDocId].rootLayer,
 				);
 			}
 		}
@@ -559,7 +559,7 @@ class SvgMap {
 				},
 				function () {
 					that.#handleErrorResult(id, path, this, true);
-				}
+				},
 			);
 
 			if (httpObj) {
@@ -622,7 +622,7 @@ class SvgMap {
 			" Path:",
 			docPath,
 			" id:",
-			docId
+			docId,
 		);
 		if (this.#svgImagesProps[docId]) {
 			// 2020/2/13 removeUnusedDocs() により恐らく以下の処理は不要 じゃなかった(2021/2/17)
@@ -656,7 +656,7 @@ class SvgMap {
 				console.log(
 					"NO svgImagesProps[docId] : docId:",
 					docId,
-					"  skip processing"
+					"  skip processing",
 				);
 				delete this.#resourceLoadingObserver.loadingImgs[docId];
 				this.#resourceLoadingObserver.checkLoadCompleted();
@@ -675,14 +675,14 @@ class SvgMap {
 				// 2014.1.23 path以外もいろいろIEでは不具合が出るため、すべて対象に
 				var resTxt = httpRes.responseText.replace(
 					'xmlns="http://www.w3.org/2000/svg"',
-					'xmlns="http://www.w3.org/"'
+					'xmlns="http://www.w3.org/"',
 				); // ネームスペースを変えるだけにとどめてもOKの模様
 
 				// 2017.2.21 data-controller-srcを探し、あれば.controller設定＆除去
 				if (resTxt.match(/data-controller-src([\s\S]*)"/)) {
 					resTxt = UtilFuncs.getControllerSrc(
 						resTxt,
-						this.#svgImagesProps[docId]
+						this.#svgImagesProps[docId],
 					);
 				}
 				if (resTxt.match(/<script>([\s\S]*)<\/script>/)) {
@@ -693,13 +693,13 @@ class SvgMap {
 				//				resTxt = resTxt.replace(/.*<!DOCTYPE html>.*</,'<'); // 2014.4.25 IE11 で怪しい挙動 <script>があると勝手にDOCTYPE htmlをつけているかんじがするぞ！！！
 				this.#svgImages[docId] = new DOMParser().parseFromString(
 					resTxt,
-					"application/xml"
+					"application/xml",
 				);
 			} else {
 				// このケースはなくすべき
 				this.#svgImages[docId] = new DOMParser().parseFromString(
 					httpRes.responseText,
-					"application/xml"
+					"application/xml",
 				);
 			}
 
@@ -715,10 +715,10 @@ class SvgMap {
 			this.#svgImagesProps[docId].Path = docPath;
 			this.#svgImagesProps[docId].CRS = this.#getCrs(
 				this.#svgImages[docId],
-				docId
+				docId,
 			);
 			this.#svgImagesProps[docId].refresh = UtilFuncs.getRefresh(
-				this.#svgImages[docId]
+				this.#svgImages[docId],
 			);
 
 			// 2023/4/18 ベクタ描画性能向上策
@@ -734,9 +734,9 @@ class SvgMap {
 								this.#svgImagesProps[docId].styleMap.delete(mutation.target);
 								this.#svgImagesProps[docId].altdMap.delete(mutation.target);
 							}
-						}.bind(this)
+						}.bind(this),
 					);
-				}.bind(this)
+				}.bind(this),
 			);
 			mutationObs.observe(this.#svgImages[docId].documentElement, {
 				subtree: true,
@@ -762,21 +762,21 @@ class SvgMap {
 			this.#setController(
 				this.#svgImages[docId],
 				docPath,
-				this.#svgImagesProps[docId]
+				this.#svgImagesProps[docId],
 			); // 2016.10.14
 			// ルートコンテナSVGのロード時専用の処理です・・・ 以下は基本的に起動直後一回しか通らないでしょう
 			if (docId == "root") {
 				this.#mapViewerProps.rootCrs = this.#svgImagesProps[docId].CRS;
 				this.#mapViewerProps.root2Geo = this.#matUtil.getInverseMatrix(
-					this.#mapViewerProps.rootCrs
+					this.#mapViewerProps.rootCrs,
 				);
 				var viewBox = this.#getViewBox(this.#svgImages["root"]);
 				this.#mapViewerProps.setRootViewBox(
 					UtilFuncs.getrootViewBoxFromRootSVG(
 						viewBox,
 						this.#mapViewerProps.mapCanvasSize,
-						this.#essentialUIs.ignoreMapAspect
-					)
+						this.#essentialUIs.ignoreMapAspect,
+					),
 				);
 			} else {
 				if (this.#layerManager.isEditableLayer(docId)) {
@@ -828,8 +828,8 @@ class SvgMap {
 			this.#essentialUIs.setGeoViewBox(
 				this.#matUtil.getTransformedBox(
 					this.#mapViewerProps.rootViewBox,
-					this.#mapViewerProps.root2Geo
-				)
+					this.#mapViewerProps.root2Geo,
+				),
 			);
 			if (!this.#mapTicker.pathHitTester.enable) {
 				this.#existNodes = new Object();
@@ -851,7 +851,7 @@ class SvgMap {
 			false,
 			symbols,
 			null,
-			null
+			null,
 		);
 		delete this.#resourceLoadingObserver.loadingImgs[docId];
 
@@ -883,13 +883,13 @@ class SvgMap {
 
 	#handleScript(docId, zoom, child2root) {
 		this.#svgImagesProps[docId].script.location = UtilFuncs.getSvgLocation(
-			this.#svgImagesProps[docId].Path
+			this.#svgImagesProps[docId].Path,
 		); // added 2017.9.5 ハッシュが書き換わる可能性を加味
 		this.#svgImagesProps[docId].script.scale = zoom * child2root.scale;
 		this.#svgImagesProps[docId].script.actualViewBox =
 			this.#matUtil.getTransformedBox(
 				this.#mapViewerProps.rootViewBox,
-				this.#matUtil.getInverseMatrix(child2root)
+				this.#matUtil.getInverseMatrix(child2root),
 			); // *ViewBoxは間違い・viewportが正しい・・互換のために残す・・・
 		this.#svgImagesProps[docId].script.geoViewBox =
 			this.#essentialUIs.geoViewBox;
@@ -936,7 +936,7 @@ class SvgMap {
 					"Error in handlePreRenderControllerScript: docId:",
 					docId,
 					"  Exception:",
-					e
+					e,
 				);
 			}
 		}
@@ -948,11 +948,11 @@ class SvgMap {
 			var crs = this.#svgImagesProps[docId].CRS;
 			child2root = this.#matUtil.getConversionMatrixViaGCS(
 				crs,
-				this.#mapViewerProps.rootCrs
+				this.#mapViewerProps.rootCrs,
 			);
 			var s2c = this.#getRootSvg2Canvas(
 				this.#mapViewerProps.rootViewBox,
-				this.#mapViewerProps.mapCanvasSize
+				this.#mapViewerProps.mapCanvasSize,
 			);
 			zoom = this.#getZoom(s2c, docId)[0];
 		}
@@ -966,7 +966,7 @@ class SvgMap {
 			c2rScale: child2root.scale,
 			actualViewBox: this.#matUtil.getTransformedBox(
 				this.#mapViewerProps.rootViewBox,
-				this.#matUtil.getInverseMatrix(child2root)
+				this.#matUtil.getInverseMatrix(child2root),
 			),
 			geoViewBox: this.#essentialUIs.geoViewBox,
 			viewChanged: vc,
@@ -1040,7 +1040,7 @@ class SvgMap {
 		symbols,
 		inCanvas,
 		pStyle,
-		dontChildResLoading
+		dontChildResLoading,
 	) {
 		//	console.log( "parseSVG:", svgImages[docId] );
 		// Symbols: poi シンボルの配列 bug改修(2012/12)
@@ -1061,7 +1061,7 @@ class SvgMap {
 		var beforeElem = null;
 		var s2c = this.#getRootSvg2Canvas(
 			this.#mapViewerProps.rootViewBox,
-			this.#mapViewerProps.mapCanvasSize
+			this.#mapViewerProps.mapCanvasSize,
 		); // ルートSVG⇒画面変換マトリクス
 		const [zoom, docDPR] = this.#getZoom(s2c, docId); // ルートSVGの、画面に対するズーム率 (docIdはレイヤーごとにdevicePixelRatioを変化させるための(副次的な)もの)
 		//	console.log("S2C.a:" + s2c.a + " S2C.d:" + s2c.d);
@@ -1078,7 +1078,7 @@ class SvgMap {
 			//		console.log("Retry unresolved CRS resolution.");
 			this.#svgImagesProps[docId].CRS = this.#getCrs(
 				this.#svgImages[docId],
-				docId
+				docId,
 			);
 			if (this.#svgImagesProps[docId].CRS.unresolved) {
 				console.warn("docId:", docId, "'s CRS is not resolved skip.");
@@ -1089,7 +1089,7 @@ class SvgMap {
 		var isSVG2 = this.#svgImagesProps[docId].isSVG2;
 		var child2root = this.#matUtil.getConversionMatrixViaGCS(
 			crs,
-			this.#mapViewerProps.rootCrs
+			this.#mapViewerProps.rootCrs,
 		);
 		this.#svgImagesProps[docId].scale = zoom * child2root.scale; // この値、多くのケースで必要だと思う 2020.5.18
 		this.#svgImagesProps[docId].geoViewBox = this.#essentialUIs.geoViewBox; // この値、多くのケースで必要だと思う 2022/3/4
@@ -1219,7 +1219,7 @@ class SvgMap {
 					childCategory,
 					childSubCategory,
 					svgNode,
-					this.#geometryCapturer.GISgeometriesCaptureOptions
+					this.#geometryCapturer.GISgeometriesCaptureOptions,
 				);
 				//				GISgeometry = SVGMapGISgeometry.createSVGMapGISgeometry( childCategory, childSubCategory , svgNode , this.#geometryCapturer.GISgeometriesCaptureOptions );
 			}
@@ -1257,7 +1257,7 @@ class SvgMap {
 					childCategory,
 					pStyle,
 					childSubCategory,
-					GISgeometry
+					GISgeometry,
 				); // x,y,w,h,href等読み込み
 				var imageRect = this.#matUtil.transformRect(ip, child2root); // root座標系における、図形のbbox
 				//			console.log("imageRect:",imageRect,  "  Elem:",svgNode,"  child2root:",child2root, "  geomProps:",ip,"  crs,rootCrs:",crs, rootCrs );
@@ -1273,7 +1273,7 @@ class SvgMap {
 					console.warn(
 						"This embedding element don't have width/height property. Never renders... imageId:",
 						imageId,
-						svgNode
+						svgNode,
 					);
 				}
 
@@ -1311,7 +1311,7 @@ class SvgMap {
 							var p2 = this.#matUtil.transform(
 								ip.x + ip.width,
 								ip.y + ip.height,
-								cm
+								cm,
 							);
 							var tMat =
 								TernarySimultaneousEquationsSolution.getLinearTransformMatrix(
@@ -1326,7 +1326,7 @@ class SvgMap {
 									p1.x,
 									p1.y,
 									p2.x,
-									p2.y
+									p2.y,
 								);
 							cm = tMat;
 						}
@@ -1411,7 +1411,7 @@ class SvgMap {
 								{ docId: docId, svgNode: svgNode },
 								ip.commonQuery ||
 									this.#svgImagesProps[this.#svgImagesProps[docId].rootLayer]
-										?.commonQuery
+										?.commonQuery,
 							);
 						} else if (childCategory == SvgMapElementType.TEXT) {
 							// text要素の場合(2014.7.22)
@@ -1419,7 +1419,7 @@ class SvgMap {
 								svgNode,
 								pStyle,
 								null,
-								this.#svgImagesProps[docId].styleMap
+								this.#svgImagesProps[docId].styleMap,
 							);
 							img = this.#imgRenderer.getSpanTextElement(
 								xd.p0,
@@ -1432,7 +1432,7 @@ class SvgMap {
 								elmTransform,
 								cStyle,
 								yd.span,
-								ip.nonScaling
+								ip.nonScaling,
 							);
 						} else {
 							// animation|iframe要素の場合
@@ -1458,7 +1458,7 @@ class SvgMap {
 												ip.opacity * 100 +
 												");opacity:" +
 												ip.opacity +
-												";"
+												";",
 										); // IE8以前ではこれでは設定できない？
 									}
 									img.style.filter = "alpha(opacity=" + ip.opacity * 100 + ")"; // IEではこれだけでは効かない
@@ -1565,7 +1565,7 @@ class SvgMap {
 								imageId,
 								ip.opacity,
 								ip.crossorigin,
-								{ docId: docId, svgNode: svgNode }
+								{ docId: docId, svgNode: svgNode },
 							); // 2015.7.8 本来ip.cdxyは入れるべきだと思うが、どこかでダブルカウントされるバグがある
 						} else if (childCategory == SvgMapElementType.TEXT) {
 							// 2014.7.22
@@ -1588,7 +1588,7 @@ class SvgMap {
 								imageId,
 								ip.opacity,
 								null,
-								{ docId: docId, svgNode: svgNode }
+								{ docId: docId, svgNode: svgNode },
 							);
 						} else {
 							// animation|iframe要素の場合(svgTile/Layer)
@@ -1597,7 +1597,7 @@ class SvgMap {
 								this.#svgImages,
 								imageId,
 								imgElem,
-								0
+								0,
 							);
 							// documentElemの生成(読み込み)が完了してないとエラーになる。生成を待つ必要があるため
 						}
@@ -1611,7 +1611,7 @@ class SvgMap {
 							xd.p0,
 							yd.p0,
 							xd.span,
-							yd.span
+							yd.span,
 						);
 					}
 					onViewport = true;
@@ -1622,7 +1622,7 @@ class SvgMap {
 						// 消す
 						this.#resourceLoadingObserver.requestRemoveTransition(
 							imgElem,
-							parentElem
+							parentElem,
 						); //遅延消去処理 2013.6
 						if (childCategory == SvgMapElementType.EMBEDSVG) {
 							// animation|iframe要素の場合
@@ -1648,7 +1648,7 @@ class SvgMap {
 						svgNode,
 						pStyle,
 						hasHyperLink,
-						this.#svgImagesProps[docId].styleMap
+						this.#svgImagesProps[docId].styleMap,
 					);
 
 					if (childSubCategory == SvgMapElementType.SYMBOL) {
@@ -1664,7 +1664,7 @@ class SvgMap {
 						symbols,
 						inCanvas,
 						cStyle,
-						dontChildResLoading
+						dontChildResLoading,
 					);
 				}
 			} else if (childCategory == SvgMapElementType.VECTOR2D) {
@@ -1682,7 +1682,7 @@ class SvgMap {
 					} else {
 						// summarizeCanvas=true rootLayer毎のcanvasとりまとめ高速化/省メモリモード 2014.5.27
 						var inCanvasElement = document.getElementById(
-							this.#svgImagesProps[docId].rootLayer + "_canvas"
+							this.#svgImagesProps[docId].rootLayer + "_canvas",
 						);
 						if (!inCanvasElement) {
 							inCanvasElement = document.createElement("canvas");
@@ -1712,7 +1712,7 @@ class SvgMap {
 					svgNode,
 					pStyle,
 					null,
-					this.#svgImagesProps[docId].styleMap
+					this.#svgImagesProps[docId].styleMap,
 				);
 				cStyle.docDPR = docDPR;
 				//			console.log("thisObj's style:",cStyle, "   parent's style:",pStyle);
@@ -1742,7 +1742,7 @@ class SvgMap {
 							clickable,
 							null,
 							cStyle,
-							GISgeometry
+							GISgeometry,
 						);
 					} else if (childSubCategory == SvgMapElementType.RECT) {
 						bbox = this.#pathRenderer.setSVGrectPoints(
@@ -1751,7 +1751,7 @@ class SvgMap {
 							child2canvas,
 							clickable,
 							cStyle,
-							GISgeometry
+							GISgeometry,
 						);
 					} else if (
 						childSubCategory == SvgMapElementType.CIRCLE ||
@@ -1764,7 +1764,7 @@ class SvgMap {
 							clickable,
 							childSubCategory,
 							cStyle,
-							GISgeometry
+							GISgeometry,
 						);
 					} else if (
 						childSubCategory == SvgMapElementType.POLYLINE ||
@@ -1777,7 +1777,7 @@ class SvgMap {
 							clickable,
 							childSubCategory,
 							cStyle,
-							GISgeometry
+							GISgeometry,
 						);
 					} else {
 						// これら以外 -- 未実装　～　だいぶなくなったけれど
@@ -1807,7 +1807,7 @@ class SvgMap {
 								markMat,
 								clickable,
 								markPath,
-								cStyle
+								cStyle,
 							);
 						}
 						if (
@@ -1818,7 +1818,7 @@ class SvgMap {
 							this.#mapTicker.pathHitTester.setHittedObjects(
 								svgNode,
 								bbox,
-								cStyle.usedParent
+								cStyle.usedParent,
 							);
 						}
 						if (
@@ -1849,7 +1849,7 @@ class SvgMap {
 		) {
 			const pch = UtilFuncs.urlChanged(
 				this.#svgImagesProps[imageId].Path,
-				childSVGPath
+				childSVGPath,
 			);
 			const appHash = this.#svgImagesProps[imageId].clearHashChangedFlag();
 			console.log("change SVG's path:", pch, appHash);
@@ -1859,12 +1859,12 @@ class SvgMap {
 					// ハッシュが消えた場合
 					svgNode.setAttribute(
 						"xlink:href",
-						UtilFuncs.getPathWithoutHash(ip.href)
+						UtilFuncs.getPathWithoutHash(ip.href),
 					);
 				} else {
 					svgNode.setAttribute(
 						"xlink:href",
-						UtilFuncs.getPathWithoutHash(ip.href) + appHash
+						UtilFuncs.getPathWithoutHash(ip.href) + appHash,
 					);
 				}
 			} else {
@@ -1897,7 +1897,7 @@ class SvgMap {
 				false,
 				symbols,
 				null,
-				null
+				null,
 			);
 			delete this.#resourceLoadingObserver.loadingImgs[imageId];
 		} else {
@@ -1911,7 +1911,7 @@ class SvgMap {
 					svgImages,
 					imageId,
 					imgElem,
-					ct
+					ct,
 				);
 			} else {
 				console.log("FAIL: document load : imageId:", imageId);
@@ -1953,7 +1953,7 @@ class SvgMap {
 			// debug 2013.8.21
 			this.#resourceLoadingObserver.requestRemoveTransition(
 				toBeDelNodes[i],
-				parentNode
+				parentNode,
 			);
 		}
 	}
@@ -2030,6 +2030,7 @@ class SvgMap {
 	}.bind(this);
 
 	#getCrs(svgDoc, docId) {
+		console.log("getCrs:", new Error().stack);
 		var isSVG2 = false;
 		var crs = null;
 		var globalView = UtilFuncs.getElementByIdNoNS(svgDoc, "globe");
@@ -2110,7 +2111,7 @@ class SvgMap {
 			if (genericCRS.unresolved) {
 				console.warn(
 					"This document don't have CRS. Never renders. docId:",
-					docId
+					docId,
 				);
 			}
 			return genericCRS;
@@ -2143,7 +2144,7 @@ class SvgMap {
 			if (cntPath) {
 				var scurl = UtilFuncs.getImageURL(
 					cntPath,
-					UtilFuncs.getDocDir(docPath)
+					UtilFuncs.getDocDir(docPath),
 				);
 				svgImageProps.controller = new String(scurl);
 				svgImageProps.controller.url = scurl;
@@ -2157,7 +2158,7 @@ class SvgMap {
 					if (!(cntPath === null || cntPath === undefined || cntPath === "")) {
 						var scurl = UtilFuncs.getImageURL(
 							cntPath,
-							UtilFuncs.getDocDir(docPath)
+							UtilFuncs.getDocDir(docPath),
 						);
 						svgImageProps.controller = new String(scurl);
 						svgImageProps.controller.url = scurl;
@@ -2189,7 +2190,7 @@ class SvgMap {
 				};
 				var rVB = this.#matUtil.getTransformedBox(
 					globalVB,
-					this.#mapViewerProps.rootCrs
+					this.#mapViewerProps.rootCrs,
 				);
 				console.log("getViewBox:global,root:", globalVB, rVB, vb);
 				return rVB;
@@ -2347,7 +2348,7 @@ class SvgMap {
 		}
 		var ans = UtilFuncs.getElementByImgIdNoNS(
 			this.#svgImages[svgDocId],
-			htmlImg.getAttribute("id")
+			htmlImg.getAttribute("id"),
 		);
 		return {
 			element: ans,
@@ -2367,7 +2368,7 @@ class SvgMap {
 		noRetry,
 		parentCaller,
 		isRetryCall,
-		withinContext
+		withinContext,
 	) {
 		// MutationObserverとの不整合を回避するため、refreshScreenはマイクロタスクに積む
 		// https://zenn.dev/canalun/articles/js_async_and_company_summary
@@ -2377,13 +2378,13 @@ class SvgMap {
 				noRetry,
 				parentCaller,
 				isRetryCall,
-				withinContext
+				withinContext,
 			);
 		} else {
 			queueMicrotask(
 				function () {
 					this.#refreshScreenSync(noRetry, parentCaller, isRetryCall);
-				}.bind(this)
+				}.bind(this),
 			);
 		}
 	}.bind(this);
@@ -2428,7 +2429,7 @@ class SvgMap {
 					function () {
 						that.#refreshScreen(noRetry, rsCaller, true);
 					}.bind(this),
-					10
+					10,
 				); // 何度でもリトライし必ず実行することにする・・(問題起きるかも？)
 				this.#retryingRefreshScreen = true;
 			} else {
@@ -2534,7 +2535,7 @@ class SvgMap {
 		BitImageGeometriesCaptureFlg,
 		TreatRectAsPolygonFlg,
 		SkipVectorRenderingFlg,
-		captureAlsoAsBitImage
+		captureAlsoAsBitImage,
 	) {
 		// 2018.2.26
 		// TBD : ロードできてないイメージは外すかどうか, onViewportのもののみにするかどうか のオプションもね
@@ -2754,7 +2755,7 @@ class SvgMap {
 	 */
 	getLinearTransformMatrix(...params) {
 		return TernarySimultaneousEquationsSolution.getLinearTransformMatrix(
-			...params
+			...params,
 		);
 	}
 	/**
@@ -3078,6 +3079,21 @@ class SvgMap {
 
 	/**
 	 *
+	 * @param  {Number} x : x値
+	 * @param  {Number} y : y値
+	 * @param  {Object} options : パン量指定オプション
+	 *   optionsのunit
+	 *     無指定ではピクセル量(0,0で移動なし)
+	 *     "%"|"percent"が指定されていると画面サイズに対する相対量でパン
+	 *     "canvas"が指定されていると画面上の指定座標を画面中心に持ってくるようにパン
+	 * @returns {undefined}
+	 */
+	panMap(x, y, options) {
+		return this.#zoomPanManager.panMap(x, y, options);
+	}
+
+	/**
+	 *
 	 * @param  {String} csv
 	 * @returns {Array}
 	 */
@@ -3148,7 +3164,7 @@ class SvgMap {
 	/**
 	 * 自動中心ヒットテストの設定を変更する
 	 * @param {Boolean} enable
-	 * @returns {undefined}
+	 * @returns {undefined} lat/lngのキーを含むhashを戻す
 	 */
 	setCenterHitTest(enable) {
 		this.#mapTicker.setCenterHitTest(enable);
