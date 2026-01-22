@@ -1421,7 +1421,7 @@ class SvgMap {
 								null,
 								this.#svgImagesProps[docId].styleMap,
 							);
-							img = this.#getSpanTextElement(
+							img = this.#imgRenderer.getSpanTextElement(
 								xd.p0,
 								yd.p0,
 								ip.cdx,
@@ -2018,51 +2018,6 @@ class SvgMap {
 			p0: p1,
 			span: p2 - p1 + 0.02, // この整数化処理をしても継ぎ目が見える時がたまにあるのは、多分devicePixelRatioが整数でない為? そこで、spabにごくわずかな値をプラスする。(0.005とかだと効かず、0.01だとごくたまに。0.02だとほぼなくなる様子。) 2023/05/26
 		};
-	}
-
-	#getSpanTextElement(
-		x,
-		y,
-		cdx,
-		cdy,
-		text,
-		id,
-		opacity,
-		transform,
-		style,
-		areaHeight,
-		nonScaling,
-	) {
-		// この関数はImgRendererに移すべき
-		// 2014.7.22
-		var img = document.createElement("span"); // spanで良い？ divだと挙動がおかしくなるので・・
-		if (opacity) {
-			//		img.setAttribute("style" , "Filter: Alpha(Opacity=" + opacity * 100 + ");opacity:" + opacity + ";");
-			img.style.opacity = opacity;
-		}
-		if (style.fill) {
-			img.style.color = style.fill;
-		}
-		var fontS = 0;
-		if (style["font-size"] && nonScaling) {
-			fontS = Number(style["font-size"]);
-		} else if (nonScaling) {
-			fontS = 16; // default size but not set..?
-			// do nothing?
-		} else {
-			fontS = areaHeight;
-		}
-		img.style.fontSize = fontS + "px";
-
-		img.innerHTML = text;
-		img.style.left = x + cdx + "px";
-		img.style.top = y + cdy - fontS + "px"; // 2025/9/26 topに統一(filterで不具合が生じるため)
-		img.style.position = "absolute";
-		//	img.width = width;
-		//	img.height = height;
-		img.id = id;
-		img.setAttribute("title", "");
-		return img;
 	}
 
 	#hideAllTileImgs = function () {

@@ -217,7 +217,13 @@ class ImgRenderer {
 				img.style.fontSize = height + "px";
 			}
 			var fontS = parseInt(img.style.fontSize);
-			img.style.top = y + cdy - fontS + "px"; // 2025/9/26 topに統一(filterで不具合が生じるため)
+
+			const txtHeight = this.#getTextHeight(
+				svgimageInfo.svgNode.textContent,
+				fontS,
+			);
+
+			img.style.top = y + cdy - txtHeight + "px"; // 2025/9/26 topに統一(filterで不具合が生じるため)
 		} else {
 			img.style.top = cdy + y + "px";
 		}
@@ -691,6 +697,203 @@ class ImgRenderer {
 				}
 			}
 		}
+	}
+
+	getSpanTextElement(
+		x,
+		y,
+		cdx,
+		cdy,
+		text,
+		id,
+		opacity,
+		transform,
+		style,
+		areaHeight,
+		nonScaling,
+	) {
+		// この関数はメインクラスからImgRendererに移した2025/10/09
+		// 2014.7.22
+		var img = document.createElement("span"); // spanで良い？ divだと挙動がおかしくなるので・・
+		if (opacity) {
+			//		img.setAttribute("style" , "Filter: Alpha(Opacity=" + opacity * 100 + ");opacity:" + opacity + ";");
+			img.style.opacity = opacity;
+		}
+		if (style.fill) {
+			img.style.color = style.fill;
+		}
+		var fontS = 0;
+		if (style["font-size"] && nonScaling) {
+			fontS = Number(style["font-size"]);
+		} else if (nonScaling) {
+			fontS = 16; // default size but not set..?
+			// do nothing?
+		} else {
+			fontS = areaHeight;
+		}
+
+		const txtHeight = this.#getTextHeight(text, fontS);
+
+		img.style.fontSize = fontS + "px";
+
+		img.innerHTML = text;
+		img.style.left = x + cdx + "px";
+		img.style.top = y + cdy - txtHeight + "px"; // 2025/9/26 topに統一(filterで不具合が生じるため)
+		img.style.position = "absolute";
+		//	img.width = width;
+		//	img.height = height;
+		img.id = id;
+		img.setAttribute("title", "");
+		return img;
+	}
+
+	// テキストの高さを計算する関数群
+	// 2025/10/16
+	// font familyはデフォルトだけ、this.#fontSizesにキャッシュ貯める
+	#fontSizes = { height: { 0: 0 } }; // キーを文字列として初期化
+	#MAX_FONTSIZECACHE = 64; // キャッシュ上限を定義
+
+	/**
+	 * テキストの高さを計算するメイン関数
+	 * @param {string} htmlContent - テキスト内容（<br>を含む可能性あり）
+	 * @param {number} fontSize - 文字サイズ（数値）
+	 * @returns {number} - 最終的な高さ
+	 */
+	#getTextHeight(htmlContent, fontSize) {
+		const txtHeight = this.#getFontHeight(fontSize);
+		const brs = this.#countBr(htmlContent);
+
+		const finalHeight = txtHeight * (brs + 1);
+		// console.log("getTextHeight:",htmlContent,fontSize,finalHeight,this.#fontSizes);
+		return finalHeight;
+	}
+
+	/**
+	 * 指定されたサイズの高さを取得または計算します。
+	 * @param {number} fontSize - 文字サイズ
+	 * @returns {number} - 対応する高さ
+	 */
+	#getFontHeight(fontSize) {
+		const sizeStr = String(fontSize); // キーを文字列化
+		let txtHeight = this.#fontSizes.height[sizeStr];
+
+		if (txtHeight === undefined || txtHeight === null) {
+			// 補間・外挿の計算中に sizeStr が 0 以外で txtHeight が 0 になる可能性は低いが、
+			// 念のため、0の場合は再計算を試みるロジックも組み込む場合はこの if 文を調整する
+			// サイズ上限のチェックと格納
+			const currentLength = Object.keys(this.#fontSizes.height).length;
+			if (currentLength < this.#MAX_FONTSIZECACHE) {
+				const txtSize = this.#measureTextSize("TEXT", fontSize + "px");
+				//console.log({fontSize,txtSize});
+				txtHeight = txtSize.height;
+				this.#fontSizes.height[sizeStr] = txtHeight;
+			} else {
+				// サイズ上限を超えた場合、推定
+				txtHeight = this.#textSizeLinearInterpolate(fontSize);
+				// console.log("Calc by textSizeLinearInterpolate:",fontSize,"=>",txtHeight,);
+			}
+		}
+		return txtHeight;
+	}
+
+	/**
+	 * 線形補間または外挿により高さを推定します。
+	 * @param {number} size - 求めたい文字サイズ
+	 * @returns {number} - 推定された高さ
+	 */
+	#textSizeLinearInterpolate(size) {
+		// キャッシュされたソート済み配列が存在しない場合のみ作成
+		if (
+			!this.#fontSizes.fsArray ||
+			this.#fontSizes.fsArray.length !==
+				Object.keys(this.#fontSizes.height).length
+		) {
+			this.#fontSizes.fsArray = Object.keys(this.#fontSizes.height)
+				.map((key) => parseFloat(key)) // キーを数値に変換
+				.filter((key) => key !== 0) // 0:0 の初期値を除外するほうが安定しやすい
+				.sort((a, b) => a - b); // 昇順ソート
+		}
+		const dataPoints = this.#fontSizes.fsArray;
+		if (dataPoints.length < 2) {
+			// データが2点未満の場合（0:0だけの場合など）
+			const refSize = dataPoints[0] || 1; // 参照サイズを0以外にする
+			const refHeight = this.#fontSizes.height[String(refSize)] || 1;
+			return refHeight * (size / refSize); // 比例計算で代替
+		}
+		// ソートされたサイズを基に、x1とx2を特定
+		let x1 = null; // size未満で最大の点
+		let x2 = null; // sizeより大きく最小の点
+		for (let i = 0; i < dataPoints.length; i++) {
+			const currentX = dataPoints[i];
+			if (currentX < size) {
+				x1 = currentX;
+			} else if (currentX > size) {
+				x2 = currentX;
+				break; // x2が見つかったら終了
+			}
+		}
+		// x1, x2に対応するy1, y2を取得
+		let x_min, y_min, x_max, y_max;
+		if (x1 !== null && x2 !== null) {
+			// 補間 (Interpolation): x1 < size < x2 の場合
+			x_min = x1;
+			x_max = x2;
+			// console.log(`  - 補間対象: (${x_min}, ${this.#fontSizes.height[String(x_min)]}) と (${x_max}, ${this.#fontSizes.height[String(x_max)]})`,);
+		} else if (x1 === null && x2 !== null) {
+			// 外挿 (Extrapolation) - 最小値より小さい場合 (size < x_min)
+			// 最小の2点を使用
+			x_min = dataPoints[0];
+			x_max = dataPoints[1];
+			// console.log(`  - 外挿対象(下限): (${x_min}, ${this.#fontSizes.height[String(x_min)]}) と (${x_max}, ${this.#fontSizes.height[String(x_max)]})`,);
+		} else if (x1 !== null && x2 === null) {
+			// 外挿 (Extrapolation) - 最大値より大きい場合 (size > x_max)
+			// 最大の2点を使用
+			const len = dataPoints.length;
+			x_min = dataPoints[len - 2];
+			x_max = dataPoints[len - 1];
+			// console.log(`  - 外挿対象(上限): (${x_min}, ${this.#fontSizes.height[String(x_min)]}) と (${x_max}, ${this.#fontSizes.height[String(x_max)]})`,);
+		} else {
+			// x1=null, x2=null: 全てのデータが同じ値、またはデータが1点以下
+			// 上部の dataPoints.length < 2 で処理されるはずだが、念のため。
+			return 0;
+		}
+		// y_min, y_max を取得
+		y_min = this.#fontSizes.height[String(x_min)];
+		y_max = this.#fontSizes.height[String(x_max)];
+		// 線形補間/外挿の計算
+		const result = y_min + (y_max - y_min) * ((size - x_min) / (x_max - x_min));
+		return result;
+	}
+
+	#measureTextSize(htmlContent, fontSize, fontFamily = "sans-serif") {
+		// 一時的な要素を作成
+		const tempElement = document.createElement("span");
+		tempElement.style.visibility = "hidden";
+		tempElement.style.position = "absolute";
+		tempElement.style.whiteSpace = "pre-wrap"; // 改行を考慮するために設定
+		tempElement.style.fontSize = fontSize;
+		tempElement.style.fontFamily = fontFamily;
+		tempElement.innerHTML = htmlContent;
+
+		// DOMに追加
+		document.body.appendChild(tempElement);
+
+		// サイズを取得
+		const rect = tempElement.getBoundingClientRect();
+		const width = rect.width;
+		const height = rect.height;
+
+		// DOMから削除
+		document.body.removeChild(tempElement);
+
+		//console.log("measureTextSize:",htmlContent, fontSize, fontFamily);
+
+		return { width, height };
+	}
+
+	#countBr(str) {
+		const matches = str.match(/<br>/gi); // iフラグを追加して大文字小文字を区別しない
+		return matches ? matches.length : 0;
 	}
 }
 export { ImgRenderer };
