@@ -82,33 +82,42 @@ class LayerSpecificWebAppHandler {
 	#globalMessageDisplay;
 
 	#iframeOnLoadProcessQueue = {};
+	#popupWindows = new Map();
 
-	constructor(svgMapObj, svgMapAuthoringToolObj, getLayerStatusFunc) {
-		this.#svgMap = svgMapObj;
-		this.#svgMapAuthoringTool = svgMapAuthoringToolObj;
-		/**
-		svgMapObj.registLayerUiSetter( 
-			function(opt){
-				this.#initLayerList(opt);
-			}.bind(this) , 
-			function(){
-				this.#updateLayerTable();
-			}.bind(this)
-		);
-		**/
-		this.#iframeOnLoadProcessQueue = {};
-		this.#svgMapGIStool = new SvgMapGIS(svgMapObj, window.jsts);
-		this.#getLayerStatus = getLayerStatusFunc.bind(this.#svgMap);
-		this.#globalMessageDisplay = new GlobalMessageDisplay();
-		console.log(
-			"construct layerUI: svgMapGIStool:",
-			this.#svgMapGIStool,
-			" svgMapAuthoringTool:",
-			this.#svgMapAuthoringTool
-		);
-		window.initSvgMapWebAppLayer = this.initSvgMapWebAppLayer; // 2024/07/23
-	}
-
+		constructor(svgMapObj, svgMapAuthoringToolObj, getLayerStatusFunc) {
+			this.#svgMap = svgMapObj;
+			this.#svgMapAuthoringTool = svgMapAuthoringToolObj;
+			/**
+			svgMapObj.registLayerUiSetter( 
+				function(opt){
+					this.#initLayerList(opt);
+				}.bind(this) ,
+				function(){
+					this.#updateLayerTable();
+				}.bind(this)
+			);
+			**/
+			this.#iframeOnLoadProcessQueue = {};
+			this.#popupWindows = {};
+			this.#svgMapGIStool = new SvgMapGIS(svgMapObj, window.jsts);
+			this.#getLayerStatus = getLayerStatusFunc.bind(this.#svgMap);
+			this.#globalMessageDisplay = new GlobalMessageDisplay();
+			console.log(
+				"construct layerUI: svgMapGIStool:",
+				this.#svgMapGIStool,
+				" svgMapAuthoringTool:",
+				this.#svgMapAuthoringTool
+			);
+			window.initSvgMapWebAppLayer = this.initSvgMapWebAppLayer; // 2024/07/23
+	
+			window.addEventListener("unload", () => {
+				for (var lid in this.#popupWindows) {
+					if (this.#popupWindows[lid] && !this.#popupWindows[lid].closed) {
+						this.#popupWindows[lid].close();
+					}
+				}
+			});
+		}
 	#syncLayerSpecificUi() {
 		//	console.log("CALLED updateLayerTable : caller:",updateLayerTable.caller);
 		var lps = this.#svgMap.getRootLayersProps();
@@ -410,13 +419,12 @@ class LayerSpecificWebAppHandler {
 		var lsuiDoc = this.#layerSpecificUI.ownerDocument;
 		//	console.log("showLayerSpecificUI: catch event ",e,"    e.target.hiddenOnLaunch:",e.target.hiddenOnLaunch);
 		//	var layerId = this.#getLayerId(e);
-		//	var lprops = svgMap.getRootLayersProps();
+		var lprops = this.#svgMap.getRootLayersProps();
 		//	var controllerURL = lprops[layerId].svgImageProps.controller;
 		//	console.log(lprops[layerId],controllerURL,e.target.dataset.url);
 		//	var controllerURL = e.target.dataset.url;
 
 		if (!controllerURL) {
-			const lprops = svgMap.getRootLayersProps();
 			controllerURL = lprops[layerId].svgImageProps.controller;
 		}
 
@@ -439,6 +447,18 @@ class LayerSpecificWebAppHandler {
 			if (lhash.requiredWidth) {
 				reqSize.width = Number(lhash.requiredWidth);
 			}
+		}
+
+		// Check for target attribute
+		if (lprops[layerId] && lprops[layerId].target === "_blank") {
+			this.#initPopup(
+				layerId,
+				controllerURL,
+				reqSize,
+				hiddenOnLaunch,
+				callBackFunction
+			);
+			return;
 		}
 
 		if (!hiddenOnLaunch) {
@@ -781,60 +801,30 @@ class LayerSpecificWebAppHandler {
 		return "<!doctype html><html><body>" + addSrc + "</body></html>";
 	}
 
-	#iframeOnLoadProcess(iframe, lid, reqSize, controllerURL, cbf) {
-		// srcdocだと、xxmsぐらい待たないと、contentWindowへの設定がwindowに保持されないので、初期化されるまでリトライすることに。
-		// xxmsの時間もなんかまちまち・・(on chrome) 2019/11/26
-		// DOMContentLoaded イベントで動作させれば良いんじゃないかな とも思ったがどうだろう
-		// 参考: https://ja.javascript.info/onload-ondomcontentloaded 2019/12/05
-		// https://stackoverflow.com/questions/16960829/detect-domcontentloaded-in-iframe
-		// DOMContentLoadedはiframeでは発行されない。が、力技で解決する手法を作った人がいる。 >iFrameReady
-		// https://stackoverflow.com/questions/24603580/how-can-i-access-the-dom-elements-within-an-iframe/24603642#comment38157462_24603642
-		var iframeId = iframe.id;
-		/**
-		console.log(
-			"initIframe load eventListen : controllerURL:",
-			controllerURL,
-			"  svgMapAuthoringTool:",
-			this.#svgMapAuthoringTool
-		);
-		**/
-		this.#dispatchCutomIframeEvent(
-			LayerSpecificWebAppHandler.#openFrame,
-			iframeId
-		);
-		if (this.#layerSpecificUiMaxHeight == 0) {
-			this.#layerSpecificUiMaxHeight = this.#layerSpecificUI.offsetHeight;
-		}
-		iframe.contentWindow.layerID = lid;
+	#initializeTargetWindow(targetWin, lid, controllerURL, cbf) {
+		targetWin.layerID = lid;
+		targetWin.controllerSrc = controllerURL;
+		targetWin.svgMap = this.#svgMap;
 
-		iframe.contentWindow.controllerSrc = controllerURL; // Add 2019/11/26 srcdocでロードしたケースでdocPath知りたいとき
-		//	iframe.contentWindow.controllerDir = controllerURL.substring(0,controllerURL.lastIndexOf("/")); // #や?があるのでもちょっとしっかりやった方が良いので後回し 2019
-
-		iframe.contentWindow.svgMap = this.#svgMap;
-		//	console.log("iframe.contentWindow:",iframe.contentWindow);
 		if (typeof this.#svgMapGIStool != "undefined") {
-			//			console.log("add svgMapGIStool to iframe");
-			iframe.contentWindow.svgMapGIStool = this.#svgMapGIStool;
+			targetWin.svgMapGIStool = this.#svgMapGIStool;
 		}
 		if (typeof this.#svgMapAuthoringTool != "undefined") {
-			// added 2016.12.19 AuthoringTools
-			//			console.log("add svgMapAuthoringTool to iframe");
-			iframe.contentWindow.svgMapAuthoringTool = this.#svgMapAuthoringTool;
+			targetWin.svgMapAuthoringTool = this.#svgMapAuthoringTool;
 		}
 		if (typeof svgMapPWA != "undefined") {
-			// 2020/5/14
-			//			console.log("add svgMapPWA to iframe");
-			iframe.contentWindow.svgMapPWA = svgMapPWA;
+			targetWin.svgMapPWA = svgMapPWA;
 		}
 
-		iframe.contentWindow.svgMapLayerUI = this.#svgMapLayerUI;
-		iframe.contentWindow.putGlobalMessage =
-			this.#globalMessageDisplay.putGlobalMessageForLayer(lid); // added 2019/12/05 今後、この種の"そのレイヤーに対するAPI"が増えると思うが、もう少しきれいにまとめたい。(TBD)
+		targetWin.svgMapLayerUI = this.#svgMapLayerUI;
+		targetWin.putGlobalMessage =
+			this.#globalMessageDisplay.putGlobalMessageForLayer(lid);
+
 		var sip = this.#svgMap.getSvgImagesProps()[lid];
-		iframe.contentWindow.svgImageProps = sip;
-		sip.controllerWindow = iframe.contentWindow; // 2020/10/13 svgImagesPropにcontrollerWindowを追加
-		iframe.contentWindow.svgImage = this.#svgMap.getSvgImages()[lid];
-		//		iframe.contentWindow.testIframe("hellow from parent");
+		targetWin.svgImageProps = sip;
+		sip.controllerWindow = targetWin;
+		targetWin.svgImage = this.#svgMap.getSvgImages()[lid];
+
 		if (this.#transferCustomEvent2iframe[lid]) {
 			document.removeEventListener(
 				"zoomPanMap",
@@ -854,35 +844,25 @@ class LayerSpecificWebAppHandler {
 		} else {
 			this.#transferCustomEvent2iframe[lid] =
 				this.#transferCustomEvent4layerUi(lid);
-			/**
-			console.log(
-				"build transferCustomEvent2iframe for ",
-				lid,
-				this.#transferCustomEvent2iframe[lid]
-			);
-			**/
 		}
+
 		if (sip.svgScript) {
-			// 2022/03/08 svgScriptをlayerUIで動かす大改修
-			this.#arrangeHtmlEmbedScript(sip.svgScript, iframe.contentWindow);
+			this.#arrangeHtmlEmbedScript(sip.svgScript, targetWin);
 		}
-		if (typeof iframe.contentWindow.preRenderFunction == "function") {
-			// 2020/6/8 再描画の前に実行される関数を登録(これで、svg文書のscriptの中のonzoom, onscroll関数のような挙動がだせるかと・・)
-			// console.log("Register preRenderControllerFunction for layerID:", lid);
+		if (typeof targetWin.preRenderFunction == "function") {
 			this.#svgMap.getSvgImagesProps()[lid].preRenderControllerFunction =
-				iframe.contentWindow.preRenderFunction;
+				targetWin.preRenderFunction;
 		}
-		this.#setXHRhooks(iframe.contentWindow); // 2021/06/17
-		iframe.contentWindow.setLoadingFlag = function (stat) {
-			// 2021/09/22 XHR以外でもこれをセットすると同じように動かせる
+		this.#setXHRhooks(targetWin);
+		targetWin.setLoadingFlag = function (stat) {
 			var sipf = this.#svgMap.getSvgImagesProps();
-			console.log("registLoadingFlag:", sipf[lid]);
 			if (stat == true) {
 				this.#registLoadingFlag(lid, sipf);
 			} else if (stat == false) {
 				this.#releaseLoadingFlag(lid, sipf);
 			}
-		};
+		}.bind(this);
+
 		document.addEventListener(
 			"zoomPanMap",
 			this.#transferCustomEvent2iframe[lid],
@@ -899,17 +879,105 @@ class LayerSpecificWebAppHandler {
 			false
 		);
 
-		setTimeout(
-			function (iframe, reqSize) {
-				this.#testIframeSize(iframe, reqSize);
-			}.bind(this),
-			1000,
-			iframe,
-			reqSize
-		);
 		if (cbf) {
-			cbf(iframe.contentWindow);
+			cbf(targetWin);
 		}
+	}
+
+	#initPopup(lid, controllerURL, reqSize, hiddenOnLaunch, cbf) {
+		if (this.#popupWindows[lid] && !this.#popupWindows[lid].closed) {
+			this.#popupWindows[lid].focus();
+			return;
+		}
+
+		var width = reqSize.width > 0 ? reqSize.width : 400;
+		var height = reqSize.height > 0 ? reqSize.height : 400;
+		var features = `width=${width},height=${height},menubar=no,toolbar=no,location=no,status=no`;
+
+		var popup = window.open("", `svgMapLayerUI_${lid}`, features);
+		if (!popup) {
+			console.error("Popup blocked! Falling back to inline iframe.");
+			this.#initIframe(lid, controllerURL, reqSize, hiddenOnLaunch, cbf);
+			return;
+		}
+
+		this.#popupWindows[lid] = popup;
+
+		// Initializing content based on controllerURL
+		var legendImage = this.#isLegendImage(controllerURL);
+		if (controllerURL.charAt(0) != ":" && !legendImage) {
+			if (
+				controllerURL.substr(0, 7) == "http://" ||
+				controllerURL.substr(0, 8) == "https://"
+			) {
+				var httpObj = new XMLHttpRequest();
+				var that = this;
+				httpObj.onreadystatechange = function () {
+					if (this.readyState == 4 && this.status == 200) {
+						var sourceDoc = this.responseText;
+						popup.document.write(sourceDoc);
+						popup.document.close();
+					}
+				};
+				httpObj.open("GET", controllerURL, true);
+				httpObj.send(null);
+			} else {
+				popup.location.href = this.#addCacheDisabledQuery(controllerURL);
+			}
+		} else {
+			var sourceDoc;
+			if (legendImage) {
+				sourceDoc = this.#getEmptyHtmlSrc('<img src="' + controllerURL + '">');
+			} else if (this.#svgMap.getSvgImagesProps()[lid].controller) {
+				sourceDoc = this.#svgMap.getSvgImagesProps()[lid].controller.src;
+			} else {
+				sourceDoc = this.#getEmptyHtmlSrc(
+					"<h4>svgScript only layerUI</h4>LayerID:" + lid
+				);
+			}
+			popup.document.write(sourceDoc);
+			popup.document.close();
+		}
+
+		// Use a simplified ready check for popup
+		var checkLoaded = () => {
+			if (popup.document.readyState === "complete") {
+				this.#initializeTargetWindow(popup, lid, controllerURL, cbf);
+			} else {
+				setTimeout(checkLoaded, 10);
+			}
+		};
+		checkLoaded();
+	}
+
+	#iframeOnLoadProcess(iframe, lid, reqSize, controllerURL, cbf) {
+		var iframeId = iframe.id;
+		this.#dispatchCutomIframeEvent(
+			LayerSpecificWebAppHandler.#openFrame,
+			iframeId
+		);
+		if (this.#layerSpecificUiMaxHeight == 0) {
+			this.#layerSpecificUiMaxHeight = this.#layerSpecificUI.offsetHeight;
+		}
+
+		this.#initializeTargetWindow(
+			iframe.contentWindow,
+			lid,
+			controllerURL,
+			(win) => {
+				setTimeout(
+					function (iframe, reqSize) {
+						this.#testIframeSize(iframe, reqSize);
+					}.bind(this),
+					1000,
+					iframe,
+					reqSize
+				);
+				if (cbf) {
+					cbf(win);
+				}
+			}
+		);
 	}
 
 	#iFrameReady(iFrame, fn, backupLoadEventEnable) {
@@ -1425,6 +1493,14 @@ class LayerSpecificWebAppHandler {
 				//		} else if ( transferCustomEvent2iframe[layerId] ){
 				//			document.removeEventListener("zoomPanMap", transferCustomEvent2iframe[layerId], false);
 			}
+
+			// ポップアップウィンドウへの転送 2026/01/23
+			if (this.#popupWindows[layerId] && !this.#popupWindows[layerId].closed) {
+				var popupDoc = this.#popupWindows[layerId].document;
+				var customEvent = popupDoc.createEvent("HTMLEvents");
+				customEvent.initEvent(ev.type, true, false);
+				popupDoc.dispatchEvent(customEvent);
+			}
 		}.bind(this);
 	}
 
@@ -1456,6 +1532,15 @@ class LayerSpecificWebAppHandler {
 		var lsuiDoc = this.#layerSpecificUI.ownerDocument;
 		var visibleIframeId = this.#getVisibleLayerSpecificUIid();
 		var targetIframeId = this.#getIframeId(layerId);
+
+		// ポップアップウィンドウのクローズ 2026/01/23
+		if (visivility == false && this.#popupWindows[layerId]) {
+			if (!this.#popupWindows[layerId].closed) {
+				this.#popupWindows[layerId].close();
+			}
+			delete this.#popupWindows[layerId];
+		}
+
 		if (visivility == false && lsuiDoc.getElementById(targetIframeId)) {
 			if (visibleIframeId == targetIframeId) {
 				this.#layerSpecificUIhide();
