@@ -602,8 +602,7 @@ class LayerManager {
 			ans = layer.getAttribute("title");
 		} else {
 			ans = layer.getAttribute("xlink:href");
-			if (!optText) {
-				// optTextは存在しないと思う・・・ 2022/05/24
+			if (!ans) {
 				ans = layer.getAttribute("src");
 			}
 		}
