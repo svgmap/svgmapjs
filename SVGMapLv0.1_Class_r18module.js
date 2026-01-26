@@ -1530,16 +1530,22 @@ class SvgMap {
 									docDir
 								);
 								this.#setLayerDivProps(imageId, img, docId);
-								this.#svgImagesProps[imageId].CRS = this.#getCrs(
-									this.#svgImages[imageId],
-									imageId
-								);
+								this.#svgImagesProps[imageId].CRS = {
+									a: 100.0,
+									b: 0,
+									c: 0,
+									d: -100.0,
+									e: 0,
+									f: 0,
+									isSVG2: false,
+								};
 
-								// data-controller がある場合は新規ウィンドウで開く 2026/01/23
+								// data-controller がある場合は情報を登録し、ハンドラ側に委譲する 2026/01/24
 								var cntPath = svgNode.getAttribute("data-controller");
 								if (cntPath) {
 									var url = UtilFuncs.getImageURL(cntPath, docDir);
-									window.open(url, "_blank");
+									this.#svgImagesProps[imageId].controller = new String(url);
+									this.#svgImagesProps[imageId].controller.url = url;
 								}
 
 								this.#dynamicLoad(imageId, img);

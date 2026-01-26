@@ -82,7 +82,7 @@ class LayerSpecificWebAppHandler {
 	#globalMessageDisplay;
 
 	#iframeOnLoadProcessQueue = {};
-	#popupWindows = new Map();
+	#popupWindows = {};
 
 		constructor(svgMapObj, svgMapAuthoringToolObj, getLayerStatusFunc) {
 			this.#svgMap = svgMapObj;
@@ -115,6 +115,7 @@ class LayerSpecificWebAppHandler {
 					if (this.#popupWindows[lid] && !this.#popupWindows[lid].closed) {
 						this.#popupWindows[lid].close();
 					}
+					this.#cleanupTargetWindow(lid);
 				}
 			});
 		}
@@ -338,22 +339,26 @@ class LayerSpecificWebAppHandler {
 		) {
 			// 基本的にpreDefinedTargetUiが設定されていたら閉じる機能は動かさない ただし、inlineにするなら消せるようにする　2020/12/08
 			this.#lsUIbtn = document.createElement("input");
-			this.#lsUIbtn.type = "button";
-			this.#lsUIbtn.value = "x";
-			this.#lsUIbtn.style.webkitTransform = "translateZ(10)";
-			this.#lsUIbtn.style.zIndex = "3";
-			this.#lsUIbtn.id = "layerSpecificUIclose";
-			this.#lsUIbtn.style.position = "absolute";
-			this.#lsUIbtn.style.right = "0px";
-			this.#lsUIbtn.style.top = "0px";
-			this.#layerSpecificUI.appendChild(this.#lsUIbtn);
-			this.#lsUIbtn.addEventListener(
-				"click",
-				function (event) {
-					this.#layerSpecificUIhide(event);
-				}.bind(this),
-				false
-			);
+			if (this.#lsUIbtn) {
+				this.#lsUIbtn.type = "button";
+				this.#lsUIbtn.value = "x";
+				this.#lsUIbtn.style.webkitTransform = "translateZ(10)";
+				this.#lsUIbtn.style.zIndex = "3";
+				this.#lsUIbtn.id = "layerSpecificUIclose";
+				this.#lsUIbtn.style.position = "absolute";
+				this.#lsUIbtn.style.right = "0px";
+				this.#lsUIbtn.style.top = "0px";
+				this.#layerSpecificUI.appendChild(this.#lsUIbtn);
+				if (typeof this.#lsUIbtn.addEventListener === "function") {
+					this.#lsUIbtn.addEventListener(
+						"click",
+						function (event) {
+							this.#layerSpecificUIhide(event);
+						}.bind(this),
+						false
+					);
+				}
+			}
 		}
 
 		this.#startLayerLoadingMonitor();
@@ -427,6 +432,8 @@ class LayerSpecificWebAppHandler {
 		if (!controllerURL) {
 			controllerURL = lprops[layerId].svgImageProps.controller;
 		}
+		// 互換性のためオブジェクトまたはStringオブジェクトからURL文字列を抽出 2026/01/24
+		controllerURL = UtilFuncs.getControllerURL(controllerURL);
 
 		/**
 		var loadButHide = false;
@@ -446,6 +453,16 @@ class LayerSpecificWebAppHandler {
 			}
 			if (lhash.requiredWidth) {
 				reqSize.width = Number(lhash.requiredWidth);
+			}
+			if (lhash.target == "_blank") {
+				this.#initPopup(
+					layerId,
+					controllerURL,
+					reqSize,
+					hiddenOnLaunch,
+					callBackFunction
+				);
+				return;
 			}
 		}
 
@@ -884,10 +901,44 @@ class LayerSpecificWebAppHandler {
 		}
 	}
 
+	#cleanupTargetWindow(lid) {
+		console.log("Cleanup target window for:", lid);
+		if (this.#transferCustomEvent2iframe[lid]) {
+			document.removeEventListener(
+				"zoomPanMap",
+				this.#transferCustomEvent2iframe[lid],
+				false
+			);
+			document.removeEventListener(
+				"screenRefreshed",
+				this.#transferCustomEvent2iframe[lid],
+				false
+			);
+			document.removeEventListener(
+				"zoomPanMapCompleted",
+				this.#transferCustomEvent2iframe[lid],
+				false
+			);
+			delete this.#transferCustomEvent2iframe[lid];
+		}
+		this.#globalMessageDisplay.clearGlobalMessage(lid);
+		var sip = this.#svgMap.getSvgImagesProps()[lid];
+		if (sip) {
+			delete sip.controllerWindow;
+			delete sip.preRenderControllerFunction;
+		}
+	}
+
 	#initPopup(lid, controllerURL, reqSize, hiddenOnLaunch, cbf) {
-		if (this.#popupWindows[lid] && !this.#popupWindows[lid].closed) {
-			this.#popupWindows[lid].focus();
-			return;
+		if (this.#popupWindows[lid]) {
+			if (!this.#popupWindows[lid].closed) {
+				this.#popupWindows[lid].focus();
+				return;
+			} else {
+				// ウィンドウが閉じられている場合はエントリを削除
+				this.#cleanupTargetWindow(lid);
+				delete this.#popupWindows[lid];
+			}
 		}
 
 		var width = reqSize.width > 0 ? reqSize.width : 400;
@@ -902,6 +953,21 @@ class LayerSpecificWebAppHandler {
 		}
 
 		this.#popupWindows[lid] = popup;
+
+		// ウィンドウクローズ監視 2026/01/24
+		var closeMonitor = setInterval(() => {
+			if (popup.closed) {
+				clearInterval(closeMonitor);
+				console.log("Detect window closed via monitor loop:", lid);
+				if (this.#popupWindows[lid] === popup) {
+					this.#cleanupTargetWindow(lid);
+					delete this.#popupWindows[lid];
+				}
+				if (this.#svgMapLayerUI && typeof this.#svgMapLayerUI.updateLayerTable == "function") {
+					this.#svgMapLayerUI.updateLayerTable();
+				}
+			}
+		}, 500);
 
 		// Initializing content based on controllerURL
 		var legendImage = this.#isLegendImage(controllerURL);
@@ -922,7 +988,9 @@ class LayerSpecificWebAppHandler {
 				httpObj.open("GET", controllerURL, true);
 				httpObj.send(null);
 			} else {
-				popup.location.href = this.#addCacheDisabledQuery(controllerURL);
+				if (popup.location) {
+					popup.location.href = this.#addCacheDisabledQuery(controllerURL);
+				}
 			}
 		} else {
 			var sourceDoc;
@@ -941,10 +1009,13 @@ class LayerSpecificWebAppHandler {
 
 		// Use a simplified ready check for popup
 		var checkLoaded = () => {
-			if (popup.document.readyState === "complete") {
+			if (popup.document && popup.document.readyState === "complete") {
 				this.#initializeTargetWindow(popup, lid, controllerURL, cbf);
-			} else {
+			} else if (popup.document) {
 				setTimeout(checkLoaded, 10);
+			} else {
+				// documentがない場合は初期化をスキップ（JSDOM等の制限された環境用） 2026/01/24
+				console.warn("Popup document not found, skipping initialization.");
 			}
 		};
 		checkLoaded();
@@ -1538,6 +1609,7 @@ class LayerSpecificWebAppHandler {
 			if (!this.#popupWindows[layerId].closed) {
 				this.#popupWindows[layerId].close();
 			}
+			this.#cleanupTargetWindow(layerId);
 			delete this.#popupWindows[layerId];
 		}
 
@@ -1570,7 +1642,9 @@ class LayerSpecificWebAppHandler {
 			this.#globalMessageDisplay.clearGlobalMessage(layerId);
 			setTimeout(function () {
 				console.log("remove iframe:", targetIframe.id);
-				targetIframe.parentNode.removeChild(targetIframe);
+				if (targetIframe.parentNode) {
+					targetIframe.parentNode.removeChild(targetIframe);
+				}
 			}, 100);
 		}
 	}

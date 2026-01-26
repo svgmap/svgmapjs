@@ -192,11 +192,15 @@ class SvgMapLayerUI {
 			if (this.#layerListOptions.hiddenFilter && !lps[i].visible) {
 				continue;
 			}
+			var hasController = false;
+			if (lps[i].svgImageProps && lps[i].svgImageProps.controller) {
+				hasController = true;
+			}
 			var tr = this.#getLayerTR(
 				lps[i].title,
 				lps[i].id,
 				lps[i].visible,
-				false,
+				hasController,
 				lps[i].groupName
 			);
 			if (lps[i].groupName) {
@@ -361,13 +365,12 @@ class SvgMapLayerUI {
 			}.bind(this),
 			false
 		);
-		if (visible) {
+		if (visible && hasLayerList) {
+			btn.style.visibility = "visible";
 			btn.disabled = false;
 		} else {
-			btn.disabled = true;
-		}
-		if (!hasLayerList) {
 			btn.style.visibility = "hidden";
+			btn.disabled = true;
 		}
 
 		td.appendChild(btn);
@@ -406,10 +409,11 @@ class SvgMapLayerUI {
 			lscBtn.style.backgroundColor = "";
 		});
 		if (visible) {
+			lscBtn.style.visibility = "visible";
 			lscBtn.disabled = false;
 		} else {
-			lscBtn.disabled = true;
 			lscBtn.style.visibility = "hidden";
+			lscBtn.disabled = true;
 		}
 		td.appendChild(lscBtn);
 	}
@@ -419,7 +423,14 @@ class SvgMapLayerUI {
 		var ctbtn = document.getElementById("bt_" + layerId);
 		if (ctbtn) {
 			// グループが閉じられている場合などにはボタンがないので
-			ctbtn.style.visibility = "visible";
+			// レイヤーの可視性に同期させる 2026/01/24
+			var lp = this.#svgMap.getRootLayersProps()[layerId];
+			if (lp && lp.visible) {
+				ctbtn.style.visibility = "visible";
+				ctbtn.disabled = false;
+			} else {
+				ctbtn.style.visibility = "hidden";
+			}
 		} else {
 			console.log(
 				"Could not find launcher button: setLayerSpecificWebAppLaunchUiEnable:",
@@ -547,7 +558,8 @@ class SvgMapLayerUI {
 		// console.log("call toggle Layer",e.target.id,e.target.checked,lid);
 		this.#svgMap.setRootLayersProps(lid, e.target.checked, false);
 
-		// 後でアイテム消さないように効率化したい・・ (refreshLayerTable..)
+		// 即座にボタン状態へ反映させる 2026/01/24
+		this.#updateLayerTable();
 		this.#svgMap.refreshScreen();
 	}
 

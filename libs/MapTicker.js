@@ -51,38 +51,40 @@ class MapTicker {
 		this.#centerSight = document.getElementById("centerSight"); // ISSUE centerSightがないとtickerができないのはまずすぎる
 		if (!this.#ticker) {
 			var parentElem = this.#centerSight.parentNode;
-			this.#ticker = document.createElement("span");
-			parentElem.insertBefore(this.#ticker, this.#centerSight);
-			this.#ticker.style.position = "absolute";
-			this.#ticker.style.backgroundColor = "yellow";
-			this.#ticker.style.color = "black";
-			this.#ticker.style.display = "none";
-			this.#ticker.style.opacity = "0.5";
-			this.#ticker.id = "ticker";
-			this.#ticker.style.cursor = "pointer";
-			this.#ticker.style.overflowX = "hidden";
-			this.#ticker.style.overflowY = "auto";
-			this.#ticker.addEventListener(
-				"wheel",
-				UtilFuncs.MouseWheelListenerFunc,
-				false
-			);
-			this.#ticker.addEventListener(
-				"mousewheel",
-				UtilFuncs.MouseWheelListenerFunc,
-				false
-			);
-			this.#ticker.addEventListener(
-				"DOMMouseScroll",
-				UtilFuncs.MouseWheelListenerFunc,
-				false
-			);
+			if (parentElem) {
+				this.#ticker = document.createElement("span");
+				parentElem.insertBefore(this.#ticker, this.#centerSight);
+				this.#ticker.style.position = "absolute";
+				this.#ticker.style.backgroundColor = "yellow";
+				this.#ticker.style.color = "black";
+				this.#ticker.style.display = "none";
+				this.#ticker.style.opacity = "0.5";
+				this.#ticker.id = "ticker";
+				this.#ticker.style.cursor = "pointer";
+				this.#ticker.style.overflowX = "hidden";
+				this.#ticker.style.overflowY = "auto";
+				this.#ticker.addEventListener(
+					"wheel",
+					UtilFuncs.MouseWheelListenerFunc,
+					false
+				);
+				this.#ticker.addEventListener(
+					"mousewheel",
+					UtilFuncs.MouseWheelListenerFunc,
+					false
+				);
+				this.#ticker.addEventListener(
+					"DOMMouseScroll",
+					UtilFuncs.MouseWheelListenerFunc,
+					false
+				);
 
-			this.#tickerTable = document.createElement("table");
-			this.#tickerTable.style.borderCollapse = "collapse";
-			this.#tickerTable.style.border = "solid 1px black";
-			this.#tickerTable.setAttribute("border", "1");
-			this.#ticker.appendChild(this.#tickerTable);
+				this.#tickerTable = document.createElement("table");
+				this.#tickerTable.style.borderCollapse = "collapse";
+				this.#tickerTable.style.border = "solid 1px black";
+				this.#tickerTable.setAttribute("border", "1");
+				this.#ticker.appendChild(this.#tickerTable);
+			}
 
 			this.#svgImagesProps = this.#svgMapObject.getSvgImagesProps();
 			this.#matUtil = matUtil;
@@ -113,8 +115,10 @@ class MapTicker {
 
 	updateTicker() {
 		this.#setTickerPosition();
-		this.#ticker.style.fontSize = "110%";
-		this.#ticker.style.fontWeight = "bolder";
+		if (this.#ticker) {
+			this.#ticker.style.fontSize = "110%";
+			this.#ticker.style.fontWeight = "bolder";
+		}
 	}
 
 	isEnabled() {

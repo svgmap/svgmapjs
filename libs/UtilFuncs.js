@@ -952,6 +952,23 @@ class UtilFuncs {
 			return href.substring(0, hashPos);
 		}
 	}
+
+	/**
+	 * controllerプロパティ（String, Stringオブジェクト, または {url: string} オブジェクト）から
+	 * URL文字列を抽出する
+	 * @param {String|Object} controller
+	 * @returns {String}
+	 */
+	static getControllerURL(controller) {
+		if (typeof controller === "string") {
+			return controller;
+		} else if (controller && typeof controller.url === "string") {
+			return controller.url;
+		} else if (controller instanceof String && controller.url) {
+			return controller.url;
+		}
+		return controller;
+	}
 	/** Obsoluted funcs
 	#repairScript( resTxt ){
 		var resScript = (resTxt.match(/<script>([\s\S]*)<\/script>/ ))[1];
