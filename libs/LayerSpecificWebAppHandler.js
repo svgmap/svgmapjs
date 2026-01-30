@@ -208,10 +208,23 @@ class LayerSpecificWebAppHandler {
 			// 通信確立後の初期化処理 2026/01/30
 			// クロスドメインポップアップの場合でもイベント転送が行われるようリスナーを登録
 			if (!this.#transferCustomEvent2iframe[lid]) {
-				this.#transferCustomEvent2iframe[lid] = this.#transferCustomEvent4layerUi(lid);
-				document.addEventListener("zoomPanMap", this.#transferCustomEvent2iframe[lid], false);
-				document.addEventListener("screenRefreshed", this.#transferCustomEvent2iframe[lid], false);
-				document.addEventListener("zoomPanMapCompleted", this.#transferCustomEvent2iframe[lid], false);
+				this.#transferCustomEvent2iframe[lid] =
+					this.#transferCustomEvent4layerUi(lid);
+				document.addEventListener(
+					"zoomPanMap",
+					this.#transferCustomEvent2iframe[lid],
+					false
+				);
+				document.addEventListener(
+					"screenRefreshed",
+					this.#transferCustomEvent2iframe[lid],
+					false
+				);
+				document.addEventListener(
+					"zoomPanMapCompleted",
+					this.#transferCustomEvent2iframe[lid],
+					false
+				);
 			}
 
 			return true;
@@ -1133,7 +1146,9 @@ class LayerSpecificWebAppHandler {
 			pollingCount++;
 			if (popup.closed || pollingCount > maxPolling) {
 				if (pollingCount > maxPolling) {
-					console.warn(`Handshake timeout for layer: ${lid}. Stopped polling after 5 seconds.`);
+					console.warn(
+						`Handshake timeout for layer: ${lid}. Stopped polling after 5 seconds.`
+					);
 				}
 				this.#stopPolling(lid);
 				return;
@@ -1748,7 +1763,9 @@ class LayerSpecificWebAppHandler {
 
 			// ポップアップウィンドウへの転送 2026/01/23
 			if (this.#popupWindows[layerId] && !this.#popupWindows[layerId].closed) {
-				console.log(`Attempting to transfer event ${ev.type} to popup for layer ${layerId}`);
+				console.log(
+					`Attempting to transfer event ${ev.type} to popup for layer ${layerId}`
+				);
 				try {
 					// 同一ドメインの場合は直接ディスパッチ
 					var popupDoc = this.#popupWindows[layerId].document;
@@ -1759,7 +1776,9 @@ class LayerSpecificWebAppHandler {
 				} catch (e) {
 					// 他ドメインの場合は postMessage を使用して転送 2026/01/28
 					// 最新の svgImageProps を同封して Sandbox 側のキャッシュを更新させる 2026/01/30
-					console.log(`Direct dispatch failed, using postMessage for layer ${layerId}. Error: ${e.message}`);
+					console.log(
+						`Direct dispatch failed, using postMessage for layer ${layerId}. Error: ${e.message}`
+					);
 					if (this.#iwmsg) {
 						const currentProps = this.#svgMap.getSvgImagesProps()[layerId];
 						this.#iwmsg.postMessageTo(this.#popupWindows[layerId], {
