@@ -74,6 +74,71 @@ class InterWindowMessaging {
 	// functionSetは、インスタンス生成時に指定する。
 	// 連想配列、Key: 関数名、Val: 関数（bindはたいてい必要だと思います。）
 
+	/**
+	 * オブジェクトを安全に文字列化する。Windowオブジェクトや循環参照を除外する。
+	 * JSON.stringify が Window オブジェクトの toJSON プロパティにアクセスしてクラッシュするのを防ぐため、
+	 * 事前にオブジェクトを走査してサニタイズする。
+	 * @param {Object} obj 文字列化するオブジェクト
+	 * @returns {string} JSON文字列
+	 */
+	#safeStringify(obj) {
+		const seen = new WeakSet();
+
+		const sanitize = (val) => {
+			if (val === null || typeof val !== "object") {
+				return val;
+			}
+
+			// 循環参照チェック
+			if (seen.has(val)) {
+				return undefined;
+			}
+
+			// Window オブジェクトおよびアクセス拒否オブジェクトの判定
+			try {
+				if (val.window === val) {
+					return undefined;
+				}
+				// 正常にアクセスできれば seen に追加
+				seen.add(val);
+			} catch (e) {
+				// クロスドメインWindow等のプロパティアクセスで例外が出るオブジェクトは除外
+				return undefined;
+			}
+
+			// 配列の処理
+			if (Array.isArray(val)) {
+				return val.map(sanitize).filter((v) => v !== undefined);
+			}
+
+			// 一般オブジェクトの処理
+			const sanitizedObj = {};
+			for (const key in val) {
+				try {
+					// プロパティへのアクセス自体を保護
+					const sanitizedValue = sanitize(val[key]);
+					if (sanitizedValue !== undefined) {
+						sanitizedObj[key] = sanitizedValue;
+					}
+				} catch (e) {
+					// アクセスできないプロパティ（クロスドメインのWindow参照等）はスキップ
+				}
+			}
+			return sanitizedObj;
+		};
+
+		try {
+			const cleanObj = sanitize(obj);
+			return JSON.stringify(cleanObj);
+		} catch (e) {
+			console.error("InterWindowMessaging: Serialization failed:", e);
+			return JSON.stringify({
+				error: "serialization failed",
+				detail: e.message,
+			});
+		}
+	}
+
 	#setMessageListener() {
 		window.addEventListener(
 			"message",
@@ -125,8 +190,8 @@ class InterWindowMessaging {
 						console.log("========\ncmd:", msg.command);
 						console.log("parameter:", msg.parameter);
 						console.log("ans:", ans);
-						var messageJson = JSON.stringify(resp);
-						// 返信先のオリジンを確定。targetOrigin が '*' の場合は受信した origin を使用して安全性を高める。
+						var messageJson = this.#safeStringify(resp);
+						// 返信先のオリジンを確定。targetOrigin が '*' の場 合は受信した origin を使用して安全性を高める。
 						const replyOrigin =
 							this.#targetOrigin === "*" ? event.origin : this.#targetOrigin;
 						event.source.postMessage(messageJson, replyOrigin);
@@ -136,7 +201,7 @@ class InterWindowMessaging {
 							msg.command,
 							" is not exists within commandSet"
 						);
-						var messageJson = JSON.stringify({ response: "error" });
+						var messageJson = this.#safeStringify({ response: "error" });
 						const replyOrigin =
 							this.#targetOrigin === "*" ? event.origin : this.#targetOrigin;
 						event.source.postMessage(messageJson, replyOrigin);
@@ -202,14 +267,14 @@ class InterWindowMessaging {
 	postMessageTo(targetWin, message) {
 		if (!targetWin) return;
 		const messageJson =
-			typeof message === "string" ? message : JSON.stringify(message);
+			typeof message === "string" ? message : this.#safeStringify(message);
 		targetWin.postMessage(messageJson, this.#targetOrigin);
 	}
 
 	async callRemoteFunc(fName, paramArray) {
 		console.log("callRemoteFunc:", fName);
 		var messageObj = { command: fName, parameter: paramArray };
-		var messageJson = JSON.stringify(messageObj);
+		var messageJson = this.#safeStringify(messageObj);
 		var ret = await this.#postMessagePromise(messageJson);
 		ret = JSON.parse(ret);
 		if (ret.response == fName) {
@@ -224,7 +289,7 @@ class InterWindowMessaging {
 		console.log("submitReady:", targetWin);
 		if (targetWin) {
 			targetWin.postMessage(
-				JSON.stringify({ ready: true }),
+				this.#safeStringify({ ready: true }),
 				this.#targetOrigin
 			);
 		} else {

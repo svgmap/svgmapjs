@@ -53,6 +53,7 @@
 import { SvgMapGIS } from "../SVGMapLv0.1_GIS_r4_module.js";
 import { UtilFuncs } from "../libs/UtilFuncs.js";
 import { GlobalMessageDisplay } from "./GlobalMessageDisplay.js";
+import { InterWindowMessaging } from "../InterWindowMessaging.js";
 
 class LayerSpecificWebAppHandler {
 	static #totalLoadCompletedGuardTime = 20; // XHRでの非同期読み込みを含め読み込み完了検知のためのガードタイム 2021/6/18
@@ -83,42 +84,153 @@ class LayerSpecificWebAppHandler {
 
 	#iframeOnLoadProcessQueue = {};
 	#popupWindows = {};
+	#handshakeTokens = new Map(); // layerID -> token
+	#pollingIntervals = new Map(); // layerID -> intervalID
+	#iwmsg = null; // 別ウィンドウ/他ドメイン通信用メッセージングインスタンス 2026/01/28
+	#permittedOrigins = new Set(); // ユーザーが許可したドメインを記憶 2026/01/28
 
-		constructor(svgMapObj, svgMapAuthoringToolObj, getLayerStatusFunc) {
-			this.#svgMap = svgMapObj;
-			this.#svgMapAuthoringTool = svgMapAuthoringToolObj;
-			/**
-			svgMapObj.registLayerUiSetter( 
-				function(opt){
-					this.#initLayerList(opt);
-				}.bind(this) ,
-				function(){
-					this.#updateLayerTable();
-				}.bind(this)
-			);
-			**/
-			this.#iframeOnLoadProcessQueue = {};
-			this.#popupWindows = {};
-			this.#svgMapGIStool = new SvgMapGIS(svgMapObj, window.jsts);
-			this.#getLayerStatus = getLayerStatusFunc.bind(this.#svgMap);
-			this.#globalMessageDisplay = new GlobalMessageDisplay();
-			console.log(
-				"construct layerUI: svgMapGIStool:",
-				this.#svgMapGIStool,
-				" svgMapAuthoringTool:",
-				this.#svgMapAuthoringTool
-			);
-			window.initSvgMapWebAppLayer = this.initSvgMapWebAppLayer; // 2024/07/23
-	
-			window.addEventListener("unload", () => {
-				for (var lid in this.#popupWindows) {
-					if (this.#popupWindows[lid] && !this.#popupWindows[lid].closed) {
-						this.#popupWindows[lid].close();
-					}
-					this.#cleanupTargetWindow(lid);
+	constructor(svgMapObj, svgMapAuthoringToolObj, getLayerStatusFunc) {
+		this.#svgMap = svgMapObj;
+		this.#svgMapAuthoringTool = svgMapAuthoringToolObj;
+		/**
+		svgMapObj.registLayerUiSetter( 
+			function(opt){
+				this.#initLayerList(opt);
+			}.bind(this) ,
+			function(){
+				this.#updateLayerTable();
+			}.bind(this)
+		);
+		**/
+		this.#iframeOnLoadProcessQueue = {};
+		this.#popupWindows = {};
+		this.#svgMapGIStool = new SvgMapGIS(svgMapObj, window.jsts);
+		this.#getLayerStatus = getLayerStatusFunc.bind(this.#svgMap);
+		this.#globalMessageDisplay = new GlobalMessageDisplay();
+
+		// クロスドメイン通信用のメッセージングサービスを初期化 2026/01/28
+		this.#iwmsg = new InterWindowMessaging(
+			this.#getExposedFunctions(),
+			() => {
+				// ターゲットウィンドウは動的に特定されるため getter は null を返すか、
+				// InterWindowMessaging 側で event.source を優先するよう設計。
+				return null;
+			},
+			{
+				submitReady: true,
+				alwaysAllowCommands: ["handshakeAck"], // ハンドシェイクACKは常に許可 2026/01/29
+			},
+			[] // 初期許可リスト
+		);
+
+		console.log(
+			"construct layerUI: svgMapGIStool:",
+			this.#svgMapGIStool,
+			" svgMapAuthoringTool:",
+			this.#svgMapAuthoringTool
+		);
+		window.initSvgMapWebAppLayer = this.initSvgMapWebAppLayer; // 2024/07/23
+
+		window.addEventListener("unload", () => {
+			for (var lid in this.#popupWindows) {
+				if (this.#popupWindows[lid] && !this.#popupWindows[lid].closed) {
+					this.#popupWindows[lid].close();
 				}
-			});
+				this.#cleanupTargetWindow(lid);
+			}
+		});
+	}
+
+	/**
+	 * 他ドメインのレイヤーUIに露出させる svgMap のメソッド群を定義する
+	 * @returns {Object} 公開関数セット
+	 */
+	#getExposedFunctions() {
+		const self = this;
+		return {
+			refreshScreen: (...args) => this.#svgMap.refreshScreen(...args),
+			getSvgImageProps: (layerid) => {
+				const props = this.#svgMap.getSvgImagesProps();
+				console.log("getSvgImageProps called for layerid:", layerid);
+				if (!layerid) {
+					console.warn("getSvgImageProps: layerid is undefined or null");
+				}
+				const res = props[layerid];
+				if (res === undefined) {
+					console.warn(
+						`getSvgImageProps: No properties found for layerid: ${layerid}. Available keys:`,
+						Object.keys(props)
+					);
+				}
+				return res;
+			},
+			getSvgImage: (layerid) => {
+				const svg = this.#svgMap.getSvgImages()[layerid];
+				if (svg instanceof XMLDocument || svg instanceof Document) {
+					return new XMLSerializer().serializeToString(svg);
+				}
+				return svg;
+			},
+			transform: (...args) => this.#svgMap.transform(...args),
+			getCanvasSize: () => this.#svgMap.getCanvasSize(),
+			getCORSURL: (...args) => this.#svgMap.getCORSURL(...args),
+			putGlobalMessage: (lid, msg) =>
+				this.#globalMessageDisplay.putGlobalMessageForLayer(lid)(msg),
+			// ハンドシェイクACKを受理するためのコマンドを追加 2026/01/29
+			// InterWindowMessaging から渡される context (this.origin) を受け取るため通常の関数を使用
+			handshakeAck: function (lid, token) {
+				return self.#handleHandshakeAck(lid, token, this.origin);
+			},
+		};
+	}
+
+	/**
+	 * 子ウィンドウからのハンドシェイクACKを検証する
+	 * @param {string} lid レイヤーID
+	 * @param {string} token 受信したトークン
+	 * @param {string} origin 送信元オリジン
+	 */
+	#handleHandshakeAck(lid, token, origin) {
+		const expectedToken = this.#handshakeTokens.get(lid);
+		if (expectedToken && token === expectedToken) {
+			console.log(`Handshake established for layer: ${lid}. Origin: ${origin}`);
+			this.#stopPolling(lid);
+			this.#handshakeTokens.delete(lid);
+			console.log("Handshake successful for layer & origin:", lid, origin);
+			// 送信元オリジンを信頼リストに追加 2026/01/29
+			if (origin && origin !== "null") {
+				this.#permittedOrigins.add(origin);
+				if (this.#iwmsg) {
+					this.#iwmsg.addAllowedOrigin(origin);
+				}
+			}
+
+			// 通信確立後の初期化処理 2026/01/30
+			// クロスドメインポップアップの場合でもイベント転送が行われるようリスナーを登録
+			if (!this.#transferCustomEvent2iframe[lid]) {
+				this.#transferCustomEvent2iframe[lid] = this.#transferCustomEvent4layerUi(lid);
+				document.addEventListener("zoomPanMap", this.#transferCustomEvent2iframe[lid], false);
+				document.addEventListener("screenRefreshed", this.#transferCustomEvent2iframe[lid], false);
+				document.addEventListener("zoomPanMapCompleted", this.#transferCustomEvent2iframe[lid], false);
+			}
+
+			return true;
 		}
+		console.warn(`Invalid handshake token for layer: ${lid}`);
+		return false;
+	}
+
+	/**
+	 * 子ウィンドウへのポーリングを停止する
+	 * @param {string} lid レイヤーID
+	 */
+	#stopPolling(lid) {
+		if (this.#pollingIntervals.has(lid)) {
+			clearInterval(this.#pollingIntervals.get(lid));
+			this.#pollingIntervals.delete(lid);
+		}
+	}
+
 	#syncLayerSpecificUi() {
 		//	console.log("CALLED updateLayerTable : caller:",updateLayerTable.caller);
 		var lps = this.#svgMap.getRootLayersProps();
@@ -442,6 +554,43 @@ class LayerSpecificWebAppHandler {
 		}
 		**/
 		//	console.log(controllerURL);
+
+		// 分散型レイヤー提供元へのアクセスに対するユーザー同意確保のため、ドメイン検証と確認ダイアログを追加 2026/01/28
+		if (
+			controllerURL &&
+			(controllerURL.startsWith("http://") ||
+				controllerURL.startsWith("https://"))
+		) {
+			try {
+				const url = new URL(controllerURL, window.location.href);
+				if (url.origin !== window.location.origin) {
+					if (!this.#permittedOrigins.has(url.origin)) {
+						if (
+							!window.confirm(
+								`レイヤーの提供元ドメイン [${url.origin}] へのアクセスおよび通信を許可しますか？`
+							)
+						) {
+							console.log(
+								"Access to cross-domain controller denied by user:",
+								url.origin
+							);
+							return;
+						}
+						// ユーザーが許可したドメインを記憶 2026/01/28
+						this.#permittedOrigins.add(url.origin);
+						// ユーザーが許可したドメインを Messaging サービスに動的に追加 2026/01/28
+						if (
+							this.#iwmsg &&
+							typeof this.#iwmsg.addAllowedOrigin === "function"
+						) {
+							this.#iwmsg.addAllowedOrigin(url.origin);
+						}
+					}
+				}
+			} catch (e) {
+				console.warn("Invalid controller URL for domain check:", controllerURL);
+			}
+		}
 
 		var reqSize = { height: -1, width: -1 };
 		// console.log("showLayerSpecificUI:",controllerURL);
@@ -945,7 +1094,29 @@ class LayerSpecificWebAppHandler {
 		var height = reqSize.height > 0 ? reqSize.height : 400;
 		var features = `width=${width},height=${height},menubar=no,toolbar=no,location=no,status=no`;
 
-		var popup = window.open("", `svgMapLayerUI_${lid}`, features);
+		var legendImage = this.#isLegendImage(controllerURL);
+		var popup;
+		var isDirectURL = controllerURL.charAt(0) != ":" && !legendImage;
+
+		// ハンドシェイク用のトークンを生成 2026/01/29
+		const token = Math.random().toString(36).substring(2, 15);
+		this.#handshakeTokens.set(lid, token);
+
+		// target=_blank が指定されたレイヤでは、ブラウザに正しいオリジンを認識させるため
+		// 直接URLを指定して window.open を呼ぶ 2026/01/28
+		if (isDirectURL) {
+			var finalURL = this.#addCacheDisabledQuery(controllerURL);
+			// トークンとオリジンをパラメータとして付与
+			const urlObj = new URL(finalURL, window.location.href);
+			urlObj.searchParams.set("svgMapHandshakeToken", token);
+			urlObj.searchParams.set("svgMapParentOrigin", window.location.origin);
+			finalURL = urlObj.toString();
+
+			popup = window.open(finalURL, `svgMapLayerUI_${lid}`, features);
+		} else {
+			popup = window.open("", `svgMapLayerUI_${lid}`, features);
+		}
+
 		if (!popup) {
 			console.error("Popup blocked! Falling back to inline iframe.");
 			this.#initIframe(lid, controllerURL, reqSize, hiddenOnLaunch, cbf);
@@ -953,6 +1124,29 @@ class LayerSpecificWebAppHandler {
 		}
 
 		this.#popupWindows[lid] = popup;
+
+		// 親主導のポーリング・ハンドシェイクを開始 2026/01/29
+		// 100ms間隔、最大50回（合計5秒）に制限 2026/01/30
+		let pollingCount = 0;
+		const maxPolling = 50;
+		const pollingId = setInterval(() => {
+			pollingCount++;
+			if (popup.closed || pollingCount > maxPolling) {
+				if (pollingCount > maxPolling) {
+					console.warn(`Handshake timeout for layer: ${lid}. Stopped polling after 5 seconds.`);
+				}
+				this.#stopPolling(lid);
+				return;
+			}
+			console.log(`Polling layer: ${lid} (HELO) - Attempt ${pollingCount}`);
+			if (this.#iwmsg) {
+				this.#iwmsg.postMessageTo(popup, {
+					command: "HELO",
+					lid: lid,
+				});
+			}
+		}, 100);
+		this.#pollingIntervals.set(lid, pollingId);
 
 		// ウィンドウクローズ監視 2026/01/24
 		var closeMonitor = setInterval(() => {
@@ -963,36 +1157,16 @@ class LayerSpecificWebAppHandler {
 					this.#cleanupTargetWindow(lid);
 					delete this.#popupWindows[lid];
 				}
-				if (this.#svgMapLayerUI && typeof this.#svgMapLayerUI.updateLayerTable == "function") {
+				if (
+					this.#svgMapLayerUI &&
+					typeof this.#svgMapLayerUI.updateLayerTable == "function"
+				) {
 					this.#svgMapLayerUI.updateLayerTable();
 				}
 			}
 		}, 500);
 
-		// Initializing content based on controllerURL
-		var legendImage = this.#isLegendImage(controllerURL);
-		if (controllerURL.charAt(0) != ":" && !legendImage) {
-			if (
-				controllerURL.substr(0, 7) == "http://" ||
-				controllerURL.substr(0, 8) == "https://"
-			) {
-				var httpObj = new XMLHttpRequest();
-				var that = this;
-				httpObj.onreadystatechange = function () {
-					if (this.readyState == 4 && this.status == 200) {
-						var sourceDoc = this.responseText;
-						popup.document.write(sourceDoc);
-						popup.document.close();
-					}
-				};
-				httpObj.open("GET", controllerURL, true);
-				httpObj.send(null);
-			} else {
-				if (popup.location) {
-					popup.location.href = this.#addCacheDisabledQuery(controllerURL);
-				}
-			}
-		} else {
+		if (!isDirectURL) {
 			var sourceDoc;
 			if (legendImage) {
 				sourceDoc = this.#getEmptyHtmlSrc('<img src="' + controllerURL + '">');
@@ -1007,15 +1181,22 @@ class LayerSpecificWebAppHandler {
 			popup.document.close();
 		}
 
-		// Use a simplified ready check for popup
+		// 初期化処理。他ドメインの場合は popup.document にアクセスできないため、
+		// ポップアップ側からのメッセージ（svgMapLayerLib.js経由）を待つ。
 		var checkLoaded = () => {
-			if (popup.document && popup.document.readyState === "complete") {
-				this.#initializeTargetWindow(popup, lid, controllerURL, cbf);
-			} else if (popup.document) {
-				setTimeout(checkLoaded, 10);
-			} else {
-				// documentがない場合は初期化をスキップ（JSDOM等の制限された環境用） 2026/01/24
-				console.warn("Popup document not found, skipping initialization.");
+			try {
+				if (popup.document && popup.document.readyState === "complete") {
+					this.#initializeTargetWindow(popup, lid, controllerURL, cbf);
+				} else if (popup.document) {
+					setTimeout(checkLoaded, 10);
+				}
+			} catch (e) {
+				// Cross-origin: popup.document にアクセスできない。
+				// svgMapLayerLib.js からの handshake を待つため、ここでの初期化は不要。
+				console.log(
+					"Cross-origin popup detected, waiting for messaging handshake:",
+					lid
+				);
 			}
 		};
 		checkLoaded();
@@ -1567,10 +1748,27 @@ class LayerSpecificWebAppHandler {
 
 			// ポップアップウィンドウへの転送 2026/01/23
 			if (this.#popupWindows[layerId] && !this.#popupWindows[layerId].closed) {
-				var popupDoc = this.#popupWindows[layerId].document;
-				var customEvent = popupDoc.createEvent("HTMLEvents");
-				customEvent.initEvent(ev.type, true, false);
-				popupDoc.dispatchEvent(customEvent);
+				console.log(`Attempting to transfer event ${ev.type} to popup for layer ${layerId}`);
+				try {
+					// 同一ドメインの場合は直接ディスパッチ
+					var popupDoc = this.#popupWindows[layerId].document;
+					var customEvent = popupDoc.createEvent("HTMLEvents");
+					customEvent.initEvent(ev.type, true, false);
+					popupDoc.dispatchEvent(customEvent);
+					console.log(`Direct dispatch successful for layer ${layerId}`);
+				} catch (e) {
+					// 他ドメインの場合は postMessage を使用して転送 2026/01/28
+					// 最新の svgImageProps を同封して Sandbox 側のキャッシュを更新させる 2026/01/30
+					console.log(`Direct dispatch failed, using postMessage for layer ${layerId}. Error: ${e.message}`);
+					if (this.#iwmsg) {
+						const currentProps = this.#svgMap.getSvgImagesProps()[layerId];
+						this.#iwmsg.postMessageTo(this.#popupWindows[layerId], {
+							event: ev.type,
+							data: null,
+							svgImageProps: currentProps,
+						});
+					}
+				}
 			}
 		}.bind(this);
 	}
@@ -1684,21 +1882,21 @@ class LayerSpecificWebAppHandler {
 	}
 
 	#startLayerLoadingMonitor() {
-		addEventListener(
+		window.addEventListener(
 			"zoomPanMap",
 			function (event) {
 				this.#unloadedLayersUIupdate(event);
 			}.bind(this),
 			false
 		); // 2020/2/13
-		addEventListener(
+		window.addEventListener(
 			"zoomPanMap",
 			function (event) {
 				this.#zpm_checkLoadingFlag(event);
 			}.bind(this),
 			false
 		); // 2021/6/21
-		addEventListener(
+		window.addEventListener(
 			"screenRefreshed",
 			function (event) {
 				this.#unloadedLayersUIupdate(event);
@@ -1736,6 +1934,11 @@ class LayerSpecificWebAppHandler {
 	updateLayerSpecificWebAppHandler() {
 		this.#syncLayerSpecificUi(); // 非表示のレイヤーについて、レイヤーwebAppを終了させる
 		this.#checkLayerListAndRegistLayerUI(); // レイヤーの読み込み完了まで　レイヤーリストのチェックを行い、レイヤ固有UIを設置する
+	}
+
+	// テスト用のユーティリティメソッド
+	getHandshakeTokenForTesting(lid) {
+		return this.#handshakeTokens.get(lid);
 	}
 
 	//	checkLayerListAndRegistLayerUI(...params){ return (this.#checkLayerListAndRegistLayerUI(...params))};
