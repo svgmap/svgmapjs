@@ -35,9 +35,13 @@
 			"<rootDir>/tests/unittest/*.test.js",
 			"<rootDir>/tests/unittest/**.test.js"
 		],
-		"testPathIgnorePatterns": [
-			"<rootDir>/node_modules/",
-			"<rootDir>/tests/e2e/"
-		]
-	}
-}
+		                "testPathIgnorePatterns": [
+		                        "<rootDir>/node_modules/",
+		                        "<rootDir>/tests/e2e/"
+		                ],
+		                "moduleNameMapper": {
+		                        "^https://localhost:5500/svgMapLv0.2/InterWindowMessaging.js$": "<rootDir>/InterWindowMessaging.js",
+		                        "^https://cdn.jsdelivr.net/gh/svgmap/svgmapjs@latest/libs/(.*)$": "<rootDir>/libs/$1"
+		                }
+		        }
+		}

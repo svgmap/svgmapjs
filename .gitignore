@@ -6,3 +6,9 @@ package-lock.json
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# For cc-sdd 
+GEMINI.md
+.gemini/
+.kiro/
+svgMapSandboxLayerLib.js
