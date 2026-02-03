@@ -1,64 +1,106 @@
-import { describe, test, expect, beforeEach, jest } from "@jest/globals";
+import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import { InterWindowMessaging } from "../../InterWindowMessaging.js";
 
 describe("InterWindowMessaging Auto-Handshake (Task 4.3)", () => {
 	let mockParentWindow;
-	
+	let functionSet;
+
 	beforeEach(() => {
 		mockParentWindow = {
 			postMessage: jest.fn(),
 			location: { origin: "http://parent.com" }
 		};
-		
-		// Mock window.opener and URLSearchParams
-		delete window.opener;
-		window.opener = mockParentWindow;
-		
-		// Mock location.search
-		delete window.location;
-		window.location = {
-			search: "?svgMapHandshakeToken=test-token&svgMapParentOrigin=http://parent.com",
-			origin: "http://client.com"
-		};
-	});
+		global.window.opener = mockParentWindow;
 
-	test("should automatically send handshakeAck if token is present in URL", () => {
-		const iwm = new InterWindowMessaging({}, window.opener, true);
-		
-		expect(mockParentWindow.postMessage).toHaveBeenCalled();
-		
-		// Depending on initialization order, either 'ready' or 'handshakeAck' might be first
-		const hasHandshakeAck = mockParentWindow.postMessage.mock.calls.some(call => {
-			const msg = JSON.parse(call[0]);
-			return msg.command === "handshakeAck" && msg.parameter[1] === "test-token";
-		});
-		
-		expect(hasHandshakeAck).toBe(true);
-	});
-
-	test("should automatically trust parent origin provided in URL", async () => {
-		const functionSet = {
+		functionSet = {
 			testCmd: jest.fn().mockResolvedValue("ok")
 		};
-		const iwm = new InterWindowMessaging(functionSet, window.opener, true);
-		
-		// Simulate a message from parent origin after initialization
-		const messageEvent = {
-			origin: "http://parent.com",
-			source: mockParentWindow,
-			data: JSON.stringify({
-				command: "testCmd",
-				parameter: ["hello"],
-				id: "req-1"
-			})
-		};
-		
-		window.dispatchEvent(new MessageEvent("message", messageEvent));
-		
-		// Wait for async processing
-		await new Promise(resolve => setTimeout(resolve, 50));
-		
-		// If origin was trusted, the function should have been called
-		expect(functionSet.testCmd).toHaveBeenCalledWith("hello");
+	});
+
+	it("should automatically send HELO if token is present in URL", async () => {
+		const testToken = "test-token-auto";
+		const parentOrigin = "http://parent.com";
+
+		// URLSearchParams をモック
+		const originalURLSearchParams = global.URLSearchParams;
+		global.URLSearchParams = jest.fn().mockImplementation(() => ({
+			get: (key) => {
+				if (key === 'svgMapHandshakeToken') return testToken;
+				if (key === 'svgMapParentOrigin') return parentOrigin;
+				return null;
+			}
+		}));
+
+		try {
+			const iwm = new InterWindowMessaging({}, () => mockParentWindow, true);
+
+			// HELO 送信を待機
+			await new Promise(resolve => setTimeout(resolve, 100));
+
+			expect(mockParentWindow.postMessage).toHaveBeenCalled();
+
+			const hasHelo = mockParentWindow.postMessage.mock.calls.some(call => {
+				try {
+					const data = JSON.parse(call[0]);
+					return data.command === "HELO" && data.parameter.includes(testToken);
+				} catch (e) {
+					return false;
+				}
+			});
+			expect(hasHelo).toBe(true);
+		} finally {
+			global.URLSearchParams = originalURLSearchParams;
+		}
+	});
+
+	it("should automatically trust parent origin provided in URL after successful Ack", async () => {
+		const testToken = "test-token-trust";
+		const parentOrigin = "http://parent.com";
+
+		// URLSearchParams をモック
+		const originalURLSearchParams = global.URLSearchParams;
+		global.URLSearchParams = jest.fn().mockImplementation(() => ({
+			get: (key) => {
+				if (key === 'svgMapHandshakeToken') return testToken;
+				if (key === 'svgMapParentOrigin') return parentOrigin;
+				return null;
+			}
+		}));
+
+		try {
+			const iwm = new InterWindowMessaging(functionSet, () => mockParentWindow, true);
+
+			// HELO 送信後の Ack をシミュレート
+			const ackEvent = new MessageEvent("message", {
+				origin: parentOrigin,
+				source: mockParentWindow,
+				data: JSON.stringify({
+					command: "handshakeAck",
+					parameter: [null, testToken]
+				})
+			});
+			window.dispatchEvent(ackEvent);
+
+			await new Promise(resolve => setTimeout(resolve, 100));
+
+			// Now send a command from parent
+			const cmdEvent = new MessageEvent("message", {
+				origin: parentOrigin,
+				source: mockParentWindow,
+				data: JSON.stringify({
+					command: "testCmd",
+					parameter: ["hello"],
+					id: "req-1"
+				})
+			});
+			window.dispatchEvent(cmdEvent);
+
+			await new Promise(resolve => setTimeout(resolve, 100));
+
+			// If origin was trusted, the function should have been called
+			expect(functionSet.testCmd).toHaveBeenCalledWith("hello");
+		} finally {
+			global.URLSearchParams = originalURLSearchParams;
+		}
 	});
 });

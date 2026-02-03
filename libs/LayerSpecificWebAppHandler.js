@@ -84,16 +84,16 @@ class LayerSpecificWebAppHandler {
 
 	#iframeOnLoadProcessQueue = {};
 	#popupWindows = {};
-	        #handshakeTokens = new Map(); // layerID -> token
-	        #pollingIntervals = new Map(); // layerID -> intervalID
-	        #iwmsg = null; // 別ウィンドウ/他ドメイン通信用メッセージングインスタンス 2026/01/28
-	        #iwmsgs = new Map(); // layerID -> InterWindowMessaging instance (マルチターゲット対応) 2026/02/01
-	        #permittedOrigins = new Set(); // ユーザーが許可したドメインを記憶 2026/01/28
-	
-	        constructor(svgMapObj, svgMapAuthoringToolObj, getLayerStatusFunc) {
-	                this.#svgMap = svgMapObj;
-	                this.#svgMapAuthoringTool = svgMapAuthoringToolObj;
-	                /**
+	#handshakeTokens = new Map(); // layerID -> token
+	#pollingIntervals = new Map(); // layerID -> intervalID
+	#iwmsg = null; // 別ウィンドウ/他ドメイン通信用メッセージングインスタンス 2026/01/28
+	#iwmsgs = new Map(); // layerID -> InterWindowMessaging instance (マルチターゲット対応) 2026/02/01
+	#permittedOrigins = new Set(); // ユーザーが許可したドメインを記憶 2026/01/28
+
+	constructor(svgMapObj, svgMapAuthoringToolObj, getLayerStatusFunc) {
+		this.#svgMap = svgMapObj;
+		this.#svgMapAuthoringTool = svgMapAuthoringToolObj;
+		/**
 	                svgMapObj.registLayerUiSetter( 
 	                        function(opt){
 	                                this.#initLayerList(opt);
@@ -103,153 +103,213 @@ class LayerSpecificWebAppHandler {
 	                        }.bind(this)
 	                );
 	                **/
-	                this.#iframeOnLoadProcessQueue = {};
-	                this.#popupWindows = {};
-	                this.#svgMapGIStool = new SvgMapGIS(svgMapObj, window.jsts);
-	                this.#getLayerStatus = getLayerStatusFunc.bind(this.#svgMap);
-	                this.#globalMessageDisplay = new GlobalMessageDisplay();
-	
-	                // クロスドメイン通信用のメッセージングサービスを初期化 2026/01/28
-	                this.#iwmsg = new InterWindowMessaging(
-	                        this.#getExposedFunctions(),
-	                        () => {
-	                                // ターゲットウィンドウは動的に特定されるため getter は null を返すか、
-	                                // InterWindowMessaging 側で event.source を優先するよう設計。
-	                                return null;
-	                        },
-	                        {
-	                                submitReady: true,
-	                                alwaysAllowCommands: ["handshakeAck"], // ハンドシェイクACKは常に許可 2026/01/29
-	                        },
-	                        [] // 初期許可リスト
-	                );
-	
-	                console.log(
-	                        "construct layerUI: svgMapGIStool:",
-	                        this.#svgMapGIStool,
-	                        " svgMapAuthoringTool:",
-	                        this.#svgMapAuthoringTool
-	                );
-	                window.initSvgMapWebAppLayer = this.initSvgMapWebAppLayer; // 2024/07/23
-	
-	                window.addEventListener("unload", () => {
-	                        for (var lid in this.#popupWindows) {
-	                                if (this.#popupWindows[lid] && !this.#popupWindows[lid].closed) {
-	                                        this.#popupWindows[lid].close();
-	                                }
-	                                this.#cleanupTargetWindow(lid);
-	                        }
-	                });
-	        }
-	
-	        /**
-	         * 他ドメインのレイヤーUIに露出させる svgMap のメソッド群を定義する
-	         * @returns {Object} 公開関数セット
-	         */
-	        #getExposedFunctions() {
-	                const self = this;
-	                return {
-	                        refreshScreen: (...args) => this.#svgMap.refreshScreen(...args),
-	                        getSvgImageProps: (layerid) => {
-	                                const props = this.#svgMap.getSvgImagesProps();
-	                                console.log("getSvgImageProps called for layerid:", layerid);
-	                                if (!layerid) {
-	                                        console.warn("getSvgImageProps: layerid is undefined or null");
-	                                }
-	                                const res = props[layerid];
-	                                if (res === undefined) {
-	                                        console.warn(
-	                                                `getSvgImageProps: No properties found for layerid: ${layerid}. Available keys:`,
-	                                                Object.keys(props)
-	                                        );
-	                                }
-	                                return res;
-	                        },
-	                        getSvgImage: (layerid) => {
-	                                const svg = this.#svgMap.getSvgImages()[layerid];
-	                                if (svg instanceof XMLDocument || svg instanceof Document) {
-	                                        return new XMLSerializer().serializeToString(svg);
-	                                }
-	                                return svg;
-	                        },
-	                        transform: (...args) => this.#svgMap.transform(...args),
-	                        getCanvasSize: () => this.#svgMap.getCanvasSize(),
-	                        getCORSURL: (...args) => this.#svgMap.getCORSURL(...args),
-	                        putGlobalMessage: (lid, msg) =>
-	                                this.#globalMessageDisplay.putGlobalMessageForLayer(lid)(msg),
-	                        // ハンドシェイクACKを受理するためのコマンドを追加 2026/01/29
-	                        // InterWindowMessaging から渡される context (this.origin, this.source) を受け取るため通常の関数を使用
-	                        handshakeAck: function (lid, token) {
-	                                return self.#handleHandshakeAck(lid, token, this.origin, this.source);
-	                        },
-	                };
-	        }
-	
-	        /**
-	         * 子ウィンドウからのハンドシェイクACKを検証する
-	         * @param {string} lid レイヤーID
-	         * @param {string} token 受信したトークン
-	         * @param {string} origin 送信元オリジン
-	         * @param {Window} source 送信元ウィンドウ
-	         */
-	        #handleHandshakeAck(lid, token, origin, source) {
-	                // lid が null の場合、source ウィンドウから lid を特定する 2026/02/01
-	                if (!lid && source) {
-	                        for (const [id, win] of Object.entries(this.#popupWindows)) {
-	                                if (win === source) {
-	                                        lid = id;
-	                                        break;
-	                                }
-	                        }
-	                }
-	
-	                if (!lid) {
-	                        console.warn("Handshake received but could not identify LayerID from source window.");
-	                        return false;
-	                }
-	
-	                const expectedToken = this.#handshakeTokens.get(lid);
-	                if (expectedToken && token === expectedToken) {
-	                        console.log(`Handshake established for layer: ${lid}. Origin: ${origin}`);
-	                        this.#stopPolling(lid);
-	                        this.#handshakeTokens.delete(lid);
-	                        console.log("Handshake successful for layer & origin:", lid, origin);
-	                        
-	                        // 送信元オリジンを信頼リストに追加
-	                        if (origin && origin !== "null") {
-	                                this.#permittedOrigins.add(origin);
-	                                if (this.#iwmsg) {
-	                                        this.#iwmsg.addAllowedOrigin(origin);
-	                                }
-	                        }
-	
-	                        // 通信確立後の初期化処理
-	                        if (!this.#transferCustomEvent2iframe[lid]) {
-	                                this.#transferCustomEvent2iframe[lid] =
-	                                        this.#transferCustomEvent4layerUi(lid);
-	                                document.addEventListener(
-	                                        "zoomPanMap",
-	                                        this.#transferCustomEvent2iframe[lid],
-	                                        false
-	                                );
-	                                document.addEventListener(
-	                                        "screenRefreshed",
-	                                        this.#transferCustomEvent2iframe[lid],
-	                                        false
-	                                );
-	                                document.addEventListener(
-	                                        "zoomPanMapCompleted",
-	                                        this.#transferCustomEvent2iframe[lid],
-	                                        false
-	                                );
-	                        }
-	
-	                        return true;
-	                }
-	                console.warn(`Invalid handshake token for layer: ${lid}. Expected: ${expectedToken}, Received: ${token}`);
-	                return false;
-	        }
-		/**
+		this.#iframeOnLoadProcessQueue = {};
+		this.#popupWindows = {};
+		this.#svgMapGIStool = new SvgMapGIS(svgMapObj, window.jsts);
+		this.#getLayerStatus = getLayerStatusFunc.bind(this.#svgMap);
+		this.#globalMessageDisplay = new GlobalMessageDisplay();
+
+		// クロスドメイン通信用のメッセージングサービスを初期化 2026/01/28
+		this.#iwmsg = new InterWindowMessaging(
+			this.#getExposedFunctions(),
+			() => {
+				// ターゲットウィンドウは動的に特定されるため getter は null を返すか、
+				// InterWindowMessaging 側で event.source を優先するよう設計。
+				return null;
+			},
+			true, // responseReady
+			[],   // allowedOrigins
+			{
+				alwaysAllowCommands: ["handshakeAck"], // ハンドシェイクACKは常に許可 2026/01/29
+			}
+		);
+
+		console.log(
+			"construct layerUI: svgMapGIStool:",
+			this.#svgMapGIStool,
+			" svgMapAuthoringTool:",
+			this.#svgMapAuthoringTool
+		);
+		window.initSvgMapWebAppLayer = this.initSvgMapWebAppLayer; // 2024/07/23
+
+		window.addEventListener("unload", () => {
+			for (var lid in this.#popupWindows) {
+				if (this.#popupWindows[lid] && !this.#popupWindows[lid].closed) {
+					this.#popupWindows[lid].close();
+				}
+				this.#cleanupTargetWindow(lid);
+			}
+		});
+	}
+
+	/**
+	 * 他ドメインのレイヤーUIに露出させる svgMap のメソッド群を定義する
+	 * @returns {Object} 公開関数セット
+	 */
+	#getExposedFunctions() {
+		const self = this;
+		return {
+			refreshScreen: (...args) => this.#svgMap.refreshScreen(...args),
+			getSvgImageProps: function (layerid) {
+				// layerid が指定されていない場合は source ウィンドウから特定を試みる (Task 2.2)
+				const lid = layerid || self.#getLayerIdFromSource(this.source);
+				const props = self.#svgMap.getSvgImagesProps();
+				console.log("getSvgImageProps called for layerid:", lid);
+				if (!lid) {
+					console.warn("getSvgImageProps: layerid could not be identified");
+					return null;
+				}
+				const res = props[lid];
+				if (res === undefined) {
+					console.warn(
+						`getSvgImageProps: No properties found for layerid: ${lid}. Available keys:`,
+						Object.keys(props)
+					);
+				}
+				return res;
+			},
+			getSvgImage: function (layerid) {
+				const lid = layerid || self.#getLayerIdFromSource(this.source);
+				if (!lid) return null;
+				const svg = self.#svgMap.getSvgImages()[lid];
+				if (svg instanceof XMLDocument || svg instanceof Document) {
+					return new XMLSerializer().serializeToString(svg);
+				}
+				return svg;
+			},
+			// 子からの解析結果を受け取って親の状態を更新する (Task 2.2)
+			updateFinalProps: function (props) {
+				const lid = self.#getLayerIdFromSource(this.source);
+				if (!lid) return false;
+				console.log("updateFinalProps received from layer:", lid, props);
+				const currentProps = self.#svgMap.getSvgImagesProps()[lid];
+				if (currentProps) {
+					Object.assign(currentProps, props);
+					return true;
+				}
+				return false;
+			},
+			// 子がフェッチ・構築した SVG XML を親側のデータに反映する (Task 2.2)
+			replaceSvgImage: function (svgXml) {
+				const lid = self.#getLayerIdFromSource(this.source);
+				if (!lid || !svgXml) return false;
+				console.log("replaceSvgImage received from layer:", lid);
+				try {
+					const parser = new DOMParser();
+					const svgDoc = parser.parseFromString(svgXml, "image/svg+xml");
+					self.#svgMap.getSvgImages()[lid] = svgDoc;
+					return true;
+				} catch (e) {
+					console.error("Failed to parse SVG XML from sandbox:", e);
+					return false;
+				}
+			},
+			// 同期完了後に画面を更新するトリガー (Task 2.2)
+			finalizeSync: function () {
+				const lid = self.#getLayerIdFromSource(this.source);
+				console.log("finalizeSync triggered by layer:", lid);
+				self.#svgMap.refreshScreen();
+				return true;
+			},
+			transform: (...args) => this.#svgMap.transform(...args),
+			getCanvasSize: () => this.#svgMap.getCanvasSize(),
+			getCORSURL: (...args) => this.#svgMap.getCORSURL(...args),
+			putGlobalMessage: (lid, msg) =>
+				this.#globalMessageDisplay.putGlobalMessageForLayer(lid)(msg),
+			// ハンドシェイクACKを受理するためのコマンドを追加 2026/01/29
+			// InterWindowMessaging から渡される context (this.origin, this.source) を受け取るため通常の関数を使用
+			handshakeAck: function (lid, token) {
+				return self.#handleHandshakeAck(lid, token, this.origin, this.source);
+			},
+		};
+	}
+
+	/**
+	 * 送信元ウィンドウからレイヤIDを特定する
+	 * @param {Window} source
+	 * @returns {string|null}
+	 */
+	#getLayerIdFromSource(source) {
+		if (!source) return null;
+		for (const [id, win] of Object.entries(this.#popupWindows)) {
+			if (win === source) return id;
+		}
+		// IFrameケースの確認
+		const lsuiDoc = this.#layerSpecificUI.ownerDocument;
+		const iframes = lsuiDoc.getElementsByTagName("iframe");
+		for (const ifr of iframes) {
+			if (ifr.contentWindow === source) {
+				// iframeId から layerId を逆引き
+				return ifr.id.replace("layerSpecificUIframe_", "");
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * 子ウィンドウからのハンドシェイクACKを検証する
+	 * @param {string} lid レイヤーID
+	 * @param {string} token 受信したトークン
+	 * @param {string} origin 送信元オリジン
+	 * @param {Window} source 送信元ウィンドウ
+	 */
+	#handleHandshakeAck(lid, token, origin, source) {
+		// lid が null の場合、source ウィンドウから lid を特定する 2026/02/01
+		if (!lid && source) {
+			lid = this.#getLayerIdFromSource(source);
+		}
+
+		if (!lid) {
+			console.warn(
+				"Handshake received but could not identify LayerID from source window."
+			);
+			return false;
+		}
+
+		const expectedToken = this.#handshakeTokens.get(lid);
+		if (expectedToken && token === expectedToken) {
+			console.log(`Handshake established for layer: ${lid}. Origin: ${origin}`);
+			this.#stopPolling(lid);
+			this.#handshakeTokens.delete(lid);
+			console.log("Handshake successful for layer & origin:", lid, origin);
+
+			// 送信元オリジンを信頼リストに追加
+			if (origin && origin !== "null") {
+				this.#permittedOrigins.add(origin);
+				if (this.#iwmsg) {
+					this.#iwmsg.addAllowedOrigin(origin);
+				}
+			}
+
+			// 通信確立後の初期化処理
+			if (!this.#transferCustomEvent2iframe[lid]) {
+				this.#transferCustomEvent2iframe[lid] =
+					this.#transferCustomEvent4layerUi(lid);
+				document.addEventListener(
+					"zoomPanMap",
+					this.#transferCustomEvent2iframe[lid],
+					false
+				);
+				document.addEventListener(
+					"screenRefreshed",
+					this.#transferCustomEvent2iframe[lid],
+					false
+				);
+				document.addEventListener(
+					"zoomPanMapCompleted",
+					this.#transferCustomEvent2iframe[lid],
+					false
+				);
+			}
+
+			return true;
+		}
+		console.warn(
+			`Invalid handshake token for layer: ${lid}. Expected: ${expectedToken}, Received: ${token}`
+		);
+		return false;
+	}
+	/**
 	 * 子ウィンドウへのポーリングを停止する
 	 * @param {string} lid レイヤーID
 	 */
@@ -1134,11 +1194,23 @@ class LayerSpecificWebAppHandler {
 		// target=_blank が指定されたレイヤでは、ブラウザに正しいオリジンを認識させるため
 		// 直接URLを指定して window.open を呼ぶ 2026/01/28
 		if (isDirectURL) {
+			try {
+				const url = new URL(controllerURL, window.location.href);
+				// ターゲットオリジンを InterWindowMessaging に事前登録 (Requirement 1.0)
+				if (this.#iwmsg && url.origin !== "null") {
+					this.#iwmsg.addAllowedOrigin(url.origin);
+				}
+			} catch (e) {
+				console.warn(
+					"Invalid controller URL for origin registration:",
+					controllerURL
+				);
+			}
+
 			var finalURL = this.#addCacheDisabledQuery(controllerURL);
-			// トークンとオリジンをパラメータとして付与
+			// トークンをパラメータとして付与（親オリジンは秘匿するため付与しない） 2026/02/02
 			const urlObj = new URL(finalURL, window.location.href);
 			urlObj.searchParams.set("svgMapHandshakeToken", token);
-			urlObj.searchParams.set("svgMapParentOrigin", window.location.origin);
 			finalURL = urlObj.toString();
 
 			popup = window.open(finalURL, `svgMapLayerUI_${lid}`, features);
@@ -1154,30 +1226,7 @@ class LayerSpecificWebAppHandler {
 
 		this.#popupWindows[lid] = popup;
 
-		// 親主導のポーリング・ハンドシェイクを開始 2026/01/29
-		// 100ms間隔、最大50回（合計5秒）に制限 2026/01/30
-		let pollingCount = 0;
-		const maxPolling = 50;
-		const pollingId = setInterval(() => {
-			pollingCount++;
-			if (popup.closed || pollingCount > maxPolling) {
-				if (pollingCount > maxPolling) {
-					console.warn(
-						`Handshake timeout for layer: ${lid}. Stopped polling after 5 seconds.`
-					);
-				}
-				this.#stopPolling(lid);
-				return;
-			}
-			console.log(`Polling layer: ${lid} (HELO) - Attempt ${pollingCount}`);
-			if (this.#iwmsg) {
-				this.#iwmsg.postMessageTo(popup, {
-					command: "HELO",
-					lid: lid,
-				});
-			}
-		}, 100);
-		this.#pollingIntervals.set(lid, pollingId);
+		// 親からのポーリング（HELO）は要件 1.2 により廃止 2026/02/02
 
 		// ウィンドウクローズ監視 2026/01/24
 		var closeMonitor = setInterval(() => {

@@ -544,6 +544,31 @@ class UtilFuncs {
 		return svgelement.ownerDocument.documentElement.getAttribute("about");
 	}
 
+	/**
+	 * SVG DOMからCRS(Coordinate Reference System)情報を抽出する (Task 4.1)
+	 * @param {Document} svgDoc
+	 * @returns {string|null} CRS文字列
+	 */
+	static getCRSFromSVG(svgDoc) {
+		if (!svgDoc || !svgDoc.documentElement) return null;
+		const root = svgDoc.documentElement;
+
+		// 1. 名前空間URIを用いた取得を試みる
+		let crs = root.getAttributeNS("http://www.purl.org/net/svgmap/ns/1.0", "crs");
+
+		// 2. プレフィックス付き属性を試みる (svgmap:crs)
+		if (!crs) {
+			crs = root.getAttribute("svgmap:crs");
+		}
+
+		// 3. 単純な crs 属性を試みる
+		if (!crs) {
+			crs = root.getAttribute("crs");
+		}
+
+		return crs ? crs.trim() : null;
+	}
+
 	// POI,タイル(use,image要素)のプロパティを得る DIRECTPOI,USEDPOIの処理に変更2018.3.2
 	static getImageProps = function (
 		imgE,

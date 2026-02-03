@@ -32,11 +32,19 @@ class InterWindowMessaging {
 	#handshakeTimeoutId = null;
 	#isHandshakeComplete = false;
 
+	/**
+	 * @param {Object} functionSet 露出させる関数セット
+	 * @param {Window|Function} targetWindow_or_itsGetter ターゲットウィンドウまたはそれを返す関数
+	 * @param {boolean} responseReady 準備完了を即座に通知するかどうかのフラグ
+	 * @param {string[]} allowedOrigins 許可するオリジンのリスト
+	 * @param {Object} options 詳細設定オブジェクト (timeout, handshake 等)
+	 */
 	constructor(
 		functionSet,
 		targetWindow_or_itsGetter,
-		responseReady,
-		allowedOrigins = []
+		responseReady = false,
+		allowedOrigins = [],
+		options = {}
 	) {
 		this.#readyPromise = new Promise((resolve) => {
 			this.#readyResolve = resolve;
@@ -51,31 +59,30 @@ class InterWindowMessaging {
 				try {
 					this.#targetOrigin = this.#targetWindow.location.origin;
 				} catch (e) {
-					this.#targetOrigin = allowedOrigins[0] || "*";
+					this.#targetOrigin = "*";
 				}
 			} else {
 				this.#targetWindowGetter = targetWindow_or_itsGetter;
 			}
 		}
 
-		if (responseReady === true) {
-			this.#submitReady();
-			this.#setReady();
-		} else if (typeof responseReady === "object") {
-			Object.assign(this.#options, responseReady);
-			if (this.#options.submitReady !== false) {
-				this.#submitReady();
-				this.#setReady();
-			}
-			if (this.#options.handshake) {
-				this.#startHandshake();
-			}
-		}
+		// オプションのマージ
+		Object.assign(this.#options, options);
 
+		// 許可オリジンの設定
 		if (Array.isArray(allowedOrigins)) {
 			this.#allowedOrigins = [...allowedOrigins];
-		} else {
-			console.warn("InterWindowMessaging: allowedOrigins must be an array.");
+		}
+
+		// ターゲットオリジンの解決
+		if (this.#targetOrigin === "*" && this.#allowedOrigins.length > 0) {
+			this.#targetOrigin = this.#allowedOrigins[0];
+		}
+
+		// 準備完了の通知
+		if (responseReady === true || this.#options.submitReady === true) {
+			this.#submitReady();
+			this.#setReady();
 		}
 
 		// 自動ハンドシェイク応答 (Task 4.3)
@@ -89,16 +96,58 @@ class InterWindowMessaging {
 			const parentOrigin = params.get("svgMapParentOrigin");
 			if (token) {
 				console.log(
-					"InterWindowMessaging: Handshake token found in URL. Responding..."
+					"InterWindowMessaging: Handshake token found in URL. Sending HELO..."
 				);
 				if (parentOrigin && parentOrigin !== "*") {
 					this.#targetOrigin = parentOrigin;
 					this.addAllowedOrigin(parentOrigin); // 親オリジンを信頼リストに追加 (Requirement 5.3)
 				}
-				this.#sendHandshakeAck(token);
+				this.#handshakeToken = token; // Ack検証用にトークンを保持
+				this.#sendHelo(token);
 			}
 		} catch (e) {
 			// location.search にアクセスできない環境（独自スキーマ等）はスキップ
+		}
+	}
+
+	/**
+	 * HELO メッセージを処理し、handshakeAck を返す (Task 1.1)
+	 * @param {Object} msg 受信メッセージ
+	 * @param {Window} source 送信元ウィンドウ
+	 * @param {string} origin 送信元オリジン
+	 */
+	#handleHelo(msg, source, origin) {
+		const [token] = msg.parameter || [];
+		// 自分が開いた（事前に登録された）オリジンからの HELO か確認 (Requirement 1.1)
+		if (token && this.#allowedOrigins.includes(origin)) {
+			console.log(
+				`InterWindowMessaging: HELO received from trusted origin: ${origin} with token: ${token}. Sending handshakeAck.`
+			);
+			const ackMsg = {
+				command: "handshakeAck",
+				parameter: [null, token],
+				id: msg.id,
+			};
+			source.postMessage(this.#safeStringify(ackMsg), origin);
+
+			// ハンドシェイク成功としてオリジンを承認
+			this.addAllowedOrigin(origin);
+			this.#isHandshakeComplete = true;
+		} else {
+			console.warn(
+				`InterWindowMessaging: HELO blocked from untrusted origin: ${origin} or missing token.`
+			);
+		}
+	}
+
+	#sendHelo(token) {
+		const targetWin = this.#getTargetWindow();
+		if (targetWin) {
+			const heloMsg = {
+				command: "HELO",
+				parameter: [token],
+			};
+			targetWin.postMessage(this.#safeStringify(heloMsg), this.#targetOrigin);
 		}
 	}
 
@@ -113,18 +162,18 @@ class InterWindowMessaging {
 		}
 	}
 
-	#startHandshake() {
-		this.#handshakeToken = Math.random().toString(36).substring(2, 15);
-		this.#handshakeTimeoutId = setTimeout(() => {
-			if (!this.#isHandshakeComplete) {
-				console.warn("InterWindowMessaging: Handshake timeout.");
-				this.#handshakeToken = null;
-				if (typeof this.#options.onHandshakeTimeout === "function") {
-					this.#options.onHandshakeTimeout();
-				}
-			}
-		}, this.#options.handshakeTimeout);
-	}
+	// #startHandshake() {
+	// 	this.#handshakeToken = Math.random().toString(36).substring(2, 15);
+	// 	this.#handshakeTimeoutId = setTimeout(() => {
+	// 		if (!this.#isHandshakeComplete) {
+	// 			console.warn("InterWindowMessaging: Handshake timeout.");
+	// 			this.#handshakeToken = null;
+	// 			if (typeof this.#options.onHandshakeTimeout === "function") {
+	// 				this.#options.onHandshakeTimeout();
+	// 			}
+	// 		}
+	// 	}, this.#options.handshakeTimeout);
+	// }
 
 	#setReady() {
 		if (!this.#readyState) {
@@ -187,7 +236,8 @@ class InterWindowMessaging {
 			// 送信元ウィンドウが指定されている場合、一致しなければ無視する（他のインスタンス向けのメッセージである可能性があるため）
 			if (targetWin && event.source !== targetWin) return;
 
-			const isHandshakeAck = msg.command === "handshakeAck";
+			const isHandshakeAck =
+				msg.command === "handshakeAck" || msg.response === "handshakeAck";
 			const isAlwaysAllowed =
 				this.#options.alwaysAllowCommands &&
 				this.#options.alwaysAllowCommands.includes(msg.command);
@@ -206,12 +256,6 @@ class InterWindowMessaging {
 				isOriginAllowed,
 				this
 			);
-			if (!isOriginAllowed) {
-				console.warn(
-					`InterWindowMessaging: Message blocked from untrusted origin: ${event.origin}`
-				);
-				return;
-			}
 
 			// ターゲットオリジンの確定（* の場合）
 			if (
@@ -229,18 +273,15 @@ class InterWindowMessaging {
 				event.source
 			);
 
-			// HELO への応答 (ハンドシェイク確立を助ける)
+			// (親)HELO への応答 (ハンドシェイク確立を助ける) - Task 1.1 対応
 			if (isHELO) {
-				const params = new URLSearchParams(window.location.search);
-				const token = params.get("svgMapHandshakeToken");
-				if (token) {
-					this.#sendHandshakeAck(token);
-				}
+				this.#handleHelo(msg, event.source, event.origin);
 				return;
 			}
 
-			// ハンドシェイク処理
+			// (子)Handshake ACK の処理 - Task 1.1 対応
 			if (isHandshakeAck) {
+				console.log("token:", this.#handshakeToken, msg.parameter);
 				const [lid, token] = msg.parameter || [];
 				if (token && token === this.#handshakeToken) {
 					console.log(
@@ -257,8 +298,8 @@ class InterWindowMessaging {
 						this.#options.onHandshake(event.origin);
 					}
 					// ACKに対する返信
-					const resp = { id: msg.id, response: "handshakeAck", content: "ok" };
-					event.source.postMessage(this.#safeStringify(resp), event.origin);
+					//const resp = { id: msg.id, response: "handshakeAck", content: "ok" };
+					//event.source.postMessage(this.#safeStringify(resp), event.origin);
 					return;
 				} else {
 					// マルチターゲット環境（LayerSpecificWebAppHandler等）への配慮:
@@ -267,6 +308,15 @@ class InterWindowMessaging {
 						"InterWindowMessaging: Handshake token mismatch in this instance."
 					);
 				}
+			}
+
+			if (!isOriginAllowed) {
+				console.log("message:", msg);
+				console.log("event:", event);
+				console.warn(
+					`InterWindowMessaging: Message blocked from untrusted origin: ${event.origin}`
+				);
+				return;
 			}
 
 			// ハンドシェイク未完了時の制限
@@ -280,7 +330,7 @@ class InterWindowMessaging {
 				);
 				return;
 			}
-
+			// 以下、信用済みオリジンからのメッセージ処理
 			if (msg.id && this.#pendingRequests.has(msg.id)) {
 				const { resolve } = this.#pendingRequests.get(msg.id);
 				this.#pendingRequests.delete(msg.id);
