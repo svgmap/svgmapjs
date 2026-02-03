@@ -411,6 +411,8 @@ class EssentialUIs {
 				button: 2,
 				clientX: 0,
 				clientY: 0,
+				dummyClientX:evt.clientX,
+				dummyClientY:evt.clientY,
 			});
 			this.#zoomPanManager.wheelZooming = true;
 		}

@@ -535,7 +535,7 @@ class ResumeManager {
 				var origHash = UtilFuncs.getSvgLocation(origLayerProp.href).hash;
 				var currentHash = UtilFuncs.getSvgLocation(currentLayerProp.href).hash;
 				if (origHash != currentHash && currentLayerProp.visible) {
-					visibleDif.push(layerName + currentHash);
+					visibleDif.push(layerName + encodeURIComponent(currentHash));
 				} else if (origLayerProp.visible != currentLayerProp.visible) {
 					if (origLayerProp.visible == true) {
 						// 非表示
@@ -543,7 +543,7 @@ class ResumeManager {
 					} else {
 						// 表示
 						if (origHash != currentHash) {
-							visibleDif.push(layerName + currentHash);
+							visibleDif.push(layerName + encodeURIComponent(currentHash));
 						} else {
 							visibleDif.push(layerName);
 						}

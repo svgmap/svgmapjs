@@ -53,6 +53,7 @@
 import { SvgMapGIS } from "../SVGMapLv0.1_GIS_r4_module.js";
 import { UtilFuncs } from "../libs/UtilFuncs.js";
 import { GlobalMessageDisplay } from "./GlobalMessageDisplay.js";
+import { LaWAauthoringToolsPatch } from "../SVGMapLv0.1_Authoring_r8_module.js"; // 2026/02/02
 
 class LayerSpecificWebAppHandler {
 	static #totalLoadCompletedGuardTime = 20; // XHRでの非同期読み込みを含め読み込み完了検知のためのガードタイム 2021/6/18
@@ -819,7 +820,7 @@ class LayerSpecificWebAppHandler {
 		if (typeof this.#svgMapAuthoringTool != "undefined") {
 			// added 2016.12.19 AuthoringTools
 			//			console.log("add svgMapAuthoringTool to iframe");
-			iframe.contentWindow.svgMapAuthoringTool = this.#svgMapAuthoringTool;
+			iframe.contentWindow.svgMapAuthoringTool = LaWAauthoringToolsPatch.getLayerSpecificAuthoringTools(this.#svgMapAuthoringTool, lid); // 2026/01/29 オーサリングツールバグパッチ
 		}
 		if (typeof svgMapPWA != "undefined") {
 			// 2020/5/14
