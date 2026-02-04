@@ -43,7 +43,7 @@ describe("unittest for EssentialUIs", () => {
 			essentialui.setLayerListSize();
 			let result = document.getElementById("layerList");
 			expect(result.getAttribute("style")).toBe(
-				"left: 30px; top: 10px; width: 300px; height: 90%; position: absolute;"
+				"left :30px; top: 10px; width:300px;height:90%; position: absolute; "
 			); // layerListのサイズを設定する関数
 		});
 

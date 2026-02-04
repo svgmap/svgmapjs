@@ -3,26 +3,17 @@ import { SvgMap } from "../../SVGMapLv0.1_Class_r18module.js";
 import { LayerSpecificWebAppHandler } from "../../libs/LayerSpecificWebAppHandler.js";
 
 // Setup DOM mocks
-const documentObject = {
-	parentNode: {
-		insertBefore: jest.fn(),
-		getElementById: jest.fn().mockReturnThis(),
-		getElementsByTagName: jest.fn().mockReturnValue([]),
-		appendChild: jest.fn(),
-		removeChild: jest.fn(),
-	},
-	getAttribute: jest.fn(),
-	style: {},
-	addEventListener: jest.fn(),
-	setAttribute: jest.fn(),
-	appendChild: jest.fn(),
-    insertBefore: jest.fn(),
-};
+const documentObject = document.createElement('div');
+// Use real element methods
+jest.spyOn(documentObject, "getAttribute").mockReturnValue(null);
 
 jest.spyOn(document, "getElementById").mockImplementation((arg) => {
     return documentObject;
 });
-jest.spyOn(document, "createElement").mockReturnValue(documentObject);
+const originalCreateElement = document.createElement.bind(document);
+jest.spyOn(document, "createElement").mockImplementation((tag) => {
+    return originalCreateElement(tag);
+});
 
 describe("Baseline tests for fix-layer-ui-windowing", () => {
     describe("CRS Resolution baseline", () => {

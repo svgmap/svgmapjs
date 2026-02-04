@@ -9,7 +9,10 @@ describe("Task 2: CRS Default value application for target='_blank'", () => {
         jest.spyOn(document, "getElementById").mockReturnValue({
             appendChild: jest.fn(),
             style: {},
-            ownerDocument: document
+            ownerDocument: document,
+            getAttribute: jest.fn().mockReturnValue(null),
+            addEventListener: jest.fn(),
+            title: ""
         });
         jest.spyOn(window, "open").mockImplementation(() => ({}));
     });
