@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 
 // InterWindowMessaging の手動モック
 class MockMessaging {
-	constructor(functions, targetWin, options) {
+	constructor(functions, targetWin, responseReady, allowedOrigins, options) {
 		this.functions = functions;
 		this.targetWin = targetWin;
 		this.options = options;
@@ -20,40 +20,22 @@ MockMessaging.instance = null;
 
 describe("svgMapSandboxLayerLib Full Sync Flow (Task 5.1/5.2)", () => {
 	beforeEach(async () => {
-		// グローバル環境のモック
-		global.window = {
-			location: { search: "?svgMapHandshakeToken=test", origin: "http://sandbox.com" },
-			opener: { postMessage: jest.fn() },
-			addEventListener: jest.fn(),
-			dispatchEvent: jest.fn(),
-			document: { readyState: "complete" }
-		};
+		// JSDOM環境の前提で、必要なプロパティをモック
+		delete window.location;
+		window.location = new URL("http://sandbox.com/?svgMapHandshakeToken=test");
+		
+		delete window.opener;
+		window.opener = { postMessage: jest.fn() };
+		
+		// dispatchEvent をスパイする
+		jest.spyOn(window, "dispatchEvent");
+		
 		global.fetch = jest.fn().mockResolvedValue({
 			ok: true,
 			text: () => Promise.resolve('<svg xmlns="http://www.w3.org/2000/svg" crs="EPSG:3857"></svg>')
 		});
-		global.DOMParser = class {
-			parseFromString(xml) {
-				return {
-					documentElement: {
-						getAttribute: (name) => name === "crs" ? "EPSG:3857" : null,
-						getAttributeNS: () => null
-					}
-				};
-			}
-		};
-		global.Event = class {
-			constructor(name) {
-				this.type = name;
-				this.bubbles = true;
-				this.cancelable = false;
-			}
-		};
-		// JSDOM の環境を使用しているため、実際の Event を使用するように設定
-		if (typeof window !== 'undefined') {
-			global.Event = window.Event;
-		}
 
+		// MutationObserver のモック
 		global.MutationObserver = class {
 			constructor() {}
 			observe() {}
@@ -65,7 +47,10 @@ describe("svgMapSandboxLayerLib Full Sync Flow (Task 5.1/5.2)", () => {
 			InterWindowMessaging: MockMessaging
 		}));
 
-		await import("../../svgMapSandboxLayerLib.js");
+		// モジュールを再読み込みするためにキャッシュをクリアしたいが、ESMでは困難
+		// そのため、テストごとに異なるパス（クエリ付き）でインポートするか、
+		// 実装側が複数回呼ばれても安全なように設計されていることを期待する
+		await import("../../svgMapSandboxLayerLib.js?update=" + Date.now());
 	});
 
 	it("should perform full sync: fetch -> extract -> sync back -> finalize", async () => {
@@ -86,10 +71,10 @@ describe("svgMapSandboxLayerLib Full Sync Flow (Task 5.1/5.2)", () => {
 		expect(messagingInstance.callRemoteFunc).toHaveBeenCalledWith("replaceSvgImage", [expect.stringContaining("<svg")]);
 
 		// 4. CRSがセットされているか
-		expect(global.window.svgImageProps.CRS).toBe("EPSG:3857");
+		expect(window.svgImageProps.CRS).toBe("EPSG:3857");
 
 		// 5. 最終同期が呼ばれたか
 		expect(messagingInstance.callRemoteFunc).toHaveBeenCalledWith("finalizeSync", []);
-		expect(global.window.dispatchEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "layerWebAppReady" }));
+		expect(window.dispatchEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "layerWebAppReady" }));
 	});
 });

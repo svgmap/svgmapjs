@@ -293,6 +293,7 @@ class InterWindowMessaging {
 					}
 					this.addAllowedOrigin(event.origin);
 					this.#isHandshakeComplete = true;
+					this.#setReady(); // ハンドシェイク完了をもって準備完了とする 2026/02/04
 					this.#handshakeToken = null; // 使い捨て
 					if (typeof this.#options.onHandshake === "function") {
 						this.#options.onHandshake(event.origin);

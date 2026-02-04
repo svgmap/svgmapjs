@@ -15,6 +15,66 @@ import { UtilFuncs } from "./libs/UtilFuncs.js";
 
 let messaging;
 
+// --- クラス定義を前方に移動 ---
+class SvgImageProps {
+	_int_hashVal;
+	set hash(val) {
+		this._int_hashVal = val;
+		if (messaging) messaging.callRemoteFunc("setHash", [val]);
+	}
+	get hash() {
+		return this._int_hashVal;
+	}
+}
+
+class SandboxSvgMap {
+	#mu;
+	constructor() {
+		this.#mu = new MatrixUtil();
+	}
+
+	getSvgImageProps = async function () {
+		if (messaging) {
+			const props = await messaging.callRemoteFunc("getSvgImageProps", []);
+			if (props) {
+				setSvgImageProps(props);
+			}
+		}
+		return window.svgImageProps;
+	};
+	getGeoViewBox = async function () {
+		if (messaging) {
+			const props = await this.getSvgImageProps();
+			return props ? props.geoViewBox : null;
+		}
+		return window.svgImageProps ? window.svgImageProps.geoViewBox : null;
+	};
+	transform = function (x, y, mat, calcSize, nonScaling) {
+		return this.#mu.transform(x, y, mat, calcSize, nonScaling);
+	};
+
+	// サンドボックス内での変更を検知して親に送る (Task 5.2)
+	refreshScreen = async function () {
+		if (!observer) {
+			console.error("MutationObserver not initialized.");
+			return;
+		}
+		// preRenderFunction があれば実行
+		if (window.preRenderFunction) {
+			window.preRenderFunction();
+		}
+		const diffPayload = buildDiffPayload();
+		if (diffPayload.length > 0) {
+			console.log(
+				"svgMapSandboxLayerLib: Sending SVG diff to parent:",
+				diffPayload.length,
+				"mutations"
+			);
+			await messaging.callRemoteFunc("applySvgDiff", [diffPayload]);
+		}
+	};
+}
+
 // 実行環境の判定 (Task 3.2, Requirement 5)
 // 同一ドメイン（IFrame）環境で既に svgMap が存在する場合、既存の仕組みを優先する
 const isSameDomainIFrame = (() => {
@@ -27,9 +87,20 @@ const isSameDomainIFrame = (() => {
 	}
 })();
 
+// 起動時に確実に window オブジェクトへ登録する (Requirement 2.4, 5.1)
+if (!isSameDomainIFrame) {
+	console.log("svgMapSandboxLayerLib: Initializing global objects on window.");
+	window.svgImageProps = window.svgImageProps || new SvgImageProps();
+	window.svgMap = window.svgMap || new SandboxSvgMap();
+	window.svgImage = window.svgImage || null;
+	window.CRS = window.CRS || null;
+}
+
 if (!isSameDomainIFrame) {
 	const startInitialization = () => {
-		console.log("svgMapSandboxLayerLib: Sandbox mode detected. Starting handshake...");
+		console.log(
+			"svgMapSandboxLayerLib: Sandbox mode detected. Starting handshake..."
+		);
 
 		const functions = {
 			eventDispatch: function (msg) {
@@ -40,14 +111,17 @@ if (!isSameDomainIFrame) {
 			},
 			// 親からのイベント転送 (zoomPanMap 等) を受信
 			// InterWindowMessaging.js で postMessage された event への対応
-			receiveParentEvent: function(payload) {
-				console.log("svgMapSandboxLayerLib: Received event from parent:", payload.event);
+			receiveParentEvent: function (payload) {
+				console.log(
+					"svgMapSandboxLayerLib: Received event from parent:",
+					payload.event
+				);
 				if (payload.svgImageProps) {
 					setSvgImageProps(payload.svgImageProps);
 				}
 				const event = new Event(payload.event);
 				window.dispatchEvent(event);
-			}
+			},
 		};
 
 		// 通信の確立 (Task 3.1, Requirement 1.2)
@@ -55,9 +129,15 @@ if (!isSameDomainIFrame) {
 		messaging = new InterWindowMessaging(functions, window.opener, false, [], {
 			handshake: true,
 			onHandshake: async (origin) => {
-				console.log("svgMapSandboxLayerLib: Handshake established with origin:", origin);
+				console.log(
+					"svgMapSandboxLayerLib: Handshake established with origin:",
+					origin
+				);
 				try {
 					// Step 1: 親から配置情報を取得 (Requirement 2.1)
+					console.log(
+						"svgMapSandboxLayerLib: Fetching svgImageProps from parent..."
+					);
 					const sip = await messaging.callRemoteFunc("getSvgImageProps", []);
 					setSvgImageProps(sip);
 
@@ -68,7 +148,10 @@ if (!isSameDomainIFrame) {
 
 					readyInitialization();
 				} catch (e) {
-					console.error("svgMapSandboxLayerLib: Initialization sequence failed:", e);
+					console.error(
+						"svgMapSandboxLayerLib: Initialization sequence failed:",
+						e
+					);
 				}
 			},
 		});
@@ -107,7 +190,6 @@ async function loadAndSyncSvg(svgUrl) {
 		console.log("svgMapSandboxLayerLib: Syncing props and XML back to host...");
 		await messaging.callRemoteFunc("updateFinalProps", [window.svgImageProps]);
 		await messaging.callRemoteFunc("replaceSvgImage", [svgText]);
-		
 	} catch (e) {
 		console.warn("svgMapSandboxLayerLib: Failed to load or sync SVG:", e);
 	}
@@ -122,9 +204,11 @@ function processPreRenderFunctionByEvent(eventName) {
 }
 
 function readyInitialization() {
-	console.log("svgMapSandboxLayerLib: Initialization complete. Setting up observer...");
+	console.log(
+		"svgMapSandboxLayerLib: Initialization complete. Setting up observer..."
+	);
 	startObserving();
-	window.isLayerWebAppReady = true; 
+	window.isLayerWebAppReady = true;
 	const svgMapEvent = new Event("layerWebAppReady");
 	window.dispatchEvent(svgMapEvent);
 	// 親側に準備完了を通知し、画面更新を促す (Task 5.2, Requirement 2.8)
@@ -135,8 +219,12 @@ function readyInitialization() {
 
 function setSvgImageProps(receivedProps) {
 	if (!receivedProps) return {};
-	const props = typeof receivedProps === "string" ? JSON.parse(receivedProps) : receivedProps;
+	const props =
+		typeof receivedProps === "string"
+			? JSON.parse(receivedProps)
+			: receivedProps;
 
+	console.log("svgMapSandboxLayerLib: Setting svgImageProps:", props);
 	if (!window.svgImageProps) window.svgImageProps = new SvgImageProps();
 
 	for (let key in props) {
@@ -146,58 +234,8 @@ function setSvgImageProps(receivedProps) {
 			window.svgImageProps[key] = props[key];
 		}
 	}
-	window.CRS = window.svgImageProps.CRS;
+	window.CRS = window.svgImageProps.CRS || window.CRS;
 	return props;
-}
-
-class SandboxSvgMap {
-	#mu;
-	constructor() {
-		this.#mu = new MatrixUtil();
-	}
-	
-	getSvgImageProps = async function () {
-		return window.svgImageProps;
-	};
-	getGeoViewBox = function () {
-		return window.svgImageProps ? window.svgImageProps.geoViewBox : null;
-	};
-	transform = function (x, y, mat, calcSize, nonScaling) {
-		return this.#mu.transform(x, y, mat, calcSize, nonScaling);
-	};
-	
-	// サンドボックス内での変更を検知して親に送る (Task 5.2)
-	refreshScreen = async function () {
-		if (!observer) {
-			console.error("MutationObserver not initialized.");
-			return;
-		}
-		// preRenderFunction があれば実行
-		if (window.preRenderFunction) {
-			window.preRenderFunction();
-		}
-		const diffPayload = buildDiffPayload();
-		if (diffPayload.length > 0) {
-			console.log("svgMapSandboxLayerLib: Sending SVG diff to parent:", diffPayload.length, "mutations");
-			await messaging.callRemoteFunc("applySvgDiff", [diffPayload]);
-		}
-	};
-}
-
-class SvgImageProps {
-	_int_hashVal;
-	set hash(val) {
-		this._int_hashVal = val;
-		if (messaging) messaging.callRemoteFunc("setHash", [val]);
-	}
-	get hash() {
-		return this._int_hashVal;
-	}
-}
-
-if (!isSameDomainIFrame) {
-	if (!window.svgImageProps) window.svgImageProps = new SvgImageProps();
-	if (!window.svgMap) window.svgMap = new SandboxSvgMap();
 }
 
 const CUSTOM_ID_ATTR = "data-slawa-id";
@@ -235,10 +273,11 @@ function buildDiffPayload() {
 			payload.push({
 				type: "attributeChange",
 				payload: {
-					id: mutation.target.getAttribute(CUSTOM_ID_ATTR) || mutation.target.id,
+					id:
+						mutation.target.getAttribute(CUSTOM_ID_ATTR) || mutation.target.id,
 					attr: mutation.attributeName,
-					value: mutation.target.getAttribute(mutation.attributeName)
-				}
+					value: mutation.target.getAttribute(mutation.attributeName),
+				},
 			});
 		}
 		// ... 他の型 (childList等) の処理

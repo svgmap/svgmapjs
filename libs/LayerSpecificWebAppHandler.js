@@ -359,6 +359,22 @@ class LayerSpecificWebAppHandler {
 		this.#svgMapLayerUI = layerUiObj;
 	}
 
+	/**
+	 * For testing purposes only: expose the functions that are registered with InterWindowMessaging
+	 * @returns {Object}
+	 */
+	getExposedFunctionsForTesting() {
+		return this.#getExposedFunctions();
+	}
+
+	/**
+	 * For testing purposes only: get the InterWindowMessaging instance
+	 * @returns {InterWindowMessaging}
+	 */
+	getMessagingInstanceForTesting() {
+		return this.#iwmsg;
+	}
+
 	#checkController(svgImageProps, layerId, forceLaunch, cbf) {
 		// レイヤ固有UIを実際に設置する
 		// さらに、レイヤ固有UIのオートスタートなどの制御を加える 2017.9.8 - 9.22
