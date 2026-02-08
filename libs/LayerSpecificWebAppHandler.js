@@ -143,6 +143,13 @@ class LayerSpecificWebAppHandler {
 	}
 
 	/**
+	 * For testing purposes only: register a mock popup window for a layer
+	 */
+	setPopupWindowForTesting(layerId, win) {
+		this.#popupWindows[layerId] = win;
+	}
+
+	/**
 	 * 他ドメインのレイヤーUIに露出させる svgMap のメソッド群を定義する
 	 * @returns {Object} 公開関数セット
 	 */
@@ -194,15 +201,43 @@ class LayerSpecificWebAppHandler {
 				const lid = self.#getLayerIdFromSource(this.source);
 				if (!lid || !svgXml) return false;
 				console.log("replaceSvgImage received from layer:", lid);
-				try {
-					const parser = new DOMParser();
-					const svgDoc = parser.parseFromString(svgXml, "image/svg+xml");
-					self.#svgMap.getSvgImages()[lid] = svgDoc;
-					return true;
-				} catch (e) {
-					console.error("Failed to parse SVG XML from sandbox:", e);
-					return false;
+
+				// 1. XMLのパース (IE互換のためのネームスペース処理含む)
+				let resTxt = svgXml;
+				if (resTxt.indexOf("http://www.w3.org/2000/svg") >= 0) {
+					resTxt = resTxt.replace(
+						'xmlns="http://www.w3.org/2000/svg"',
+						'xmlns="http://www.w3.org/"'
+					);
 				}
+
+				const parser = new DOMParser();
+				const svgDoc = parser.parseFromString(resTxt, "application/xml");
+				self.#svgMap.getSvgImages()[lid] = svgDoc;
+
+				// 2. プロパティの更新
+				const props = self.#svgMap.getSvgImagesProps()[lid];
+				if (props) {
+					svgDoc.getElementById = UtilFuncs.getElementByIdUsingQuerySelector;
+					props.CRS = self.#svgMap.getCRS(svgDoc, lid);
+					props.refresh = UtilFuncs.getRefresh(svgDoc);
+				}
+
+				// 3. 描画プロセスの実行
+				let layerDiv = document.getElementById("layer_" + lid);
+				if (!layerDiv) {
+					layerDiv = document.createElement("div");
+					layerDiv.id = "layer_" + lid;
+					// mapcanvas を探して追加
+					const canvas = document.getElementById("mapcanvas");
+					if (canvas) canvas.appendChild(layerDiv);
+				}
+
+				if (typeof self.#svgMap.dynamicLoad === "function") {
+					self.#svgMap.dynamicLoad(lid, layerDiv);
+				}
+
+				return true;
 			},
 			// 同期完了後に画面を更新するトリガー (Task 2.2)
 			finalizeSync: function () {
@@ -671,9 +706,11 @@ class LayerSpecificWebAppHandler {
 				if (url.origin !== window.location.origin) {
 					if (!this.#permittedOrigins.has(url.origin)) {
 						if (
-							!window.confirm(
-								`レイヤーの提供元ドメイン [${url.origin}] へのアクセスおよび通信を許可しますか？`
-							)
+							false
+							// ユーザー確認ダイアログは廃止 2026/02/10
+							// !window.confirm(
+							// 	`レイヤーの提供元ドメイン [${url.origin}] へのアクセスおよび通信を許可しますか？`
+							// )
 						) {
 							console.log(
 								"Access to cross-domain controller denied by user:",
@@ -1863,9 +1900,14 @@ class LayerSpecificWebAppHandler {
 					if (this.#iwmsg) {
 						const currentProps = this.#svgMap.getSvgImagesProps()[layerId];
 						this.#iwmsg.postMessageTo(this.#popupWindows[layerId], {
-							event: ev.type,
-							data: null,
-							svgImageProps: currentProps,
+							command: "receiveParentEvent",
+							parameter: [
+								{
+									event: ev.type,
+									data: null,
+									svgImageProps: currentProps,
+								},
+							],
 						});
 					}
 				}

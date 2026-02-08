@@ -2909,6 +2909,17 @@ class SvgMap {
 		return this.#svgImagesProps;
 	}
 	/**
+	 * 指定されたSVGドキュメントからCRS（座標系）情報を抽出します。
+	 * LayerSpecificUIからも呼ばれます。
+	 *
+	 * @param {Document} svgDoc SVGドキュメント
+	 * @param {string} docId ドキュメントID
+	 * @returns {Object} CRSオブジェクト
+	 */
+	getCRS(svgDoc, docId) {
+		return this.#getCrs(svgDoc, docId);
+	}
+	/**
 	 * SVGMapの個別UI(LayerSpecificUI)を取得します。
 	 *
 	 * @returns {SvgMapLayerUI} SVGマップのレイヤーUIオブジェクト

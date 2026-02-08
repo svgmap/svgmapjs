@@ -12,20 +12,11 @@
 import { InterWindowMessaging } from "./InterWindowMessaging.js";
 import { MatrixUtil } from "./libs/TransformLib.js";
 import { UtilFuncs } from "./libs/UtilFuncs.js";
+import { SvgImageProps } from "./libs/SvgImageProps.js";
 
 let messaging;
 
-// --- クラス定義を前方に移動 ---
-class SvgImageProps {
-	_int_hashVal;
-	set hash(val) {
-		this._int_hashVal = val;
-		if (messaging) messaging.callRemoteFunc("setHash", [val]);
-	}
-	get hash() {
-		return this._int_hashVal;
-	}
-}
+// --- クラス定義を削除 (libs/SvgImageProps.js を使用) ---
 
 class SandboxSvgMap {
 	#mu;
@@ -55,22 +46,20 @@ class SandboxSvgMap {
 
 	// サンドボックス内での変更を検知して親に送る (Task 5.2)
 	refreshScreen = async function () {
-		if (!observer) {
-			console.error("MutationObserver not initialized.");
-			return;
-		}
 		// preRenderFunction があれば実行
 		if (window.preRenderFunction) {
 			window.preRenderFunction();
 		}
-		const diffPayload = buildDiffPayload();
-		if (diffPayload.length > 0) {
+
+		if (messaging && window.svgImage) {
+			const serializedSvg = new XMLSerializer().serializeToString(window.svgImage);
 			console.log(
-				"svgMapSandboxLayerLib: Sending SVG diff to parent:",
-				diffPayload.length,
-				"mutations"
+				`svgMapSandboxLayerLib: refreshScreen called. Syncing SVG length: ${serializedSvg.length}`
 			);
-			await messaging.callRemoteFunc("applySvgDiff", [diffPayload]);
+			await messaging.callRemoteFunc("replaceSvgImage", [serializedSvg]);
+			await messaging.callRemoteFunc("finalizeSync", []);
+		} else if (isSameDomainIFrame && window.parent && window.parent.svgMap) {
+			window.parent.svgMap.refreshScreen();
 		}
 	};
 }
@@ -189,7 +178,9 @@ async function loadAndSyncSvg(svgUrl) {
 		// 親への同期 (Sync Back) (Task 5.1, Requirement 2.5, 2.6)
 		console.log("svgMapSandboxLayerLib: Syncing props and XML back to host...");
 		await messaging.callRemoteFunc("updateFinalProps", [window.svgImageProps]);
-		await messaging.callRemoteFunc("replaceSvgImage", [svgText]);
+		const serializedSvg = new XMLSerializer().serializeToString(window.svgImage);
+		await messaging.callRemoteFunc("replaceSvgImage", [serializedSvg]);
+		await messaging.callRemoteFunc("finalizeSync", []);
 	} catch (e) {
 		console.warn("svgMapSandboxLayerLib: Failed to load or sync SVG:", e);
 	}
@@ -228,24 +219,24 @@ function setSvgImageProps(receivedProps) {
 	if (!window.svgImageProps) window.svgImageProps = new SvgImageProps();
 
 	for (let key in props) {
-		if (key == "hash") {
-			window.svgImageProps._int_hashVal = props[key];
-		} else {
-			window.svgImageProps[key] = props[key];
-		}
+		window.svgImageProps[key] = props[key];
 	}
 	window.CRS = window.svgImageProps.CRS || window.CRS;
 	return props;
 }
 
-const CUSTOM_ID_ATTR = "data-slawa-id";
 let observer;
-let totalMutations = [];
-
+let observerTimer;
 function startObserving() {
 	if (!observer && window.svgImage && window.svgImage.documentElement) {
 		observer = new MutationObserver(function (mutationsList) {
-			totalMutations.push(...mutationsList);
+			console.log("svgMapSandboxLayerLib: Mutation detected. Syncing...");
+			if (observerTimer) clearTimeout(observerTimer);
+			observerTimer = setTimeout(() => {
+				if (window.svgMap && window.svgMap.refreshScreen) {
+					window.svgMap.refreshScreen();
+				}
+			}, 100);
 		});
 		const config = {
 			childList: true,
@@ -254,35 +245,6 @@ function startObserving() {
 			characterData: true,
 		};
 		observer.observe(window.svgImage.documentElement, config);
+		console.log("svgMapSandboxLayerLib: MutationObserver started.");
 	}
-}
-
-function buildDiffPayload() {
-	if (!observer) return [];
-	const pendingMutations = observer.takeRecords();
-	totalMutations.push(...pendingMutations);
-
-	if (totalMutations.length === 0) return [];
-
-	const payload = [];
-	// 簡易的な差分抽出ロジック（将来的に洗練させる）
-	for (const mutation of totalMutations) {
-		// 基本的には、変更があった要素の属性や子要素の変化をパッケージ化する
-		// プロトタイプの実装をベースとする
-		if (mutation.type === "attributes") {
-			payload.push({
-				type: "attributeChange",
-				payload: {
-					id:
-						mutation.target.getAttribute(CUSTOM_ID_ATTR) || mutation.target.id,
-					attr: mutation.attributeName,
-					value: mutation.target.getAttribute(mutation.attributeName),
-				},
-			});
-		}
-		// ... 他の型 (childList等) の処理
-	}
-
-	totalMutations = [];
-	return payload;
 }

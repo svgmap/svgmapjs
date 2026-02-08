@@ -35,6 +35,8 @@ describe("LayerSpecificWebAppHandler Sandbox Logic (Task 2.1/2.2)", () => {
 			getSvgImages: jest.fn().mockReturnValue(testImages),
 			registLayerUiSetter: jest.fn(),
 			refreshScreen: jest.fn(),
+			getCRS: jest.fn().mockReturnValue({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0, isSVG2: false }),
+			dynamicLoad: jest.fn(),
 			transform: jest.fn(),
 			getCanvasSize: jest.fn().mockReturnValue({ width: 800, height: 600 }),
 			getCORSURL: jest.fn().mockImplementation(url => url)

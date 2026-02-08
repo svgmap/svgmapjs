@@ -82,7 +82,7 @@ describe("LayerSpecificWebAppHandler Data Push Test", () => {
 		const eventPushCall = calls.find(call => {
 			try {
 				const data = JSON.parse(call[0]);
-				return data.event === "zoomPanMap";
+				return data.command === "receiveParentEvent" && data.parameter[0].event === "zoomPanMap";
 			} catch(e) {
 				return false;
 			}
@@ -90,7 +90,8 @@ describe("LayerSpecificWebAppHandler Data Push Test", () => {
 
 		expect(eventPushCall).toBeDefined();
 		const pushData = JSON.parse(eventPushCall[0]);
-		expect(pushData.svgImageProps).toBeDefined();
-		expect(pushData.svgImageProps.scale).toBe(1.5);
+		const payload = pushData.parameter[0];
+		expect(payload.svgImageProps).toBeDefined();
+		expect(payload.svgImageProps.scale).toBe(1.5);
 	});
 });

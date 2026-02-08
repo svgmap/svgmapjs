@@ -14,6 +14,42 @@ class SvgImageProps {
 	// TBD: ここに、svgImagePropsで使われるメンバーを書いておきましょう。基本的にsvgImagePropsはwebAppレイヤーからはreadOnlyなのでgetterで制御するべきかと思います。 Proxy(https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Proxy)を使えば呼び元ごとの読み書き権限制御できそう
 
 	#hashChangedByAppLayer = false; // #hashは#からスタートする文字列
+	#controllerData = null;
+	#controllerProxy = null;
+
+	get controller() {
+		return this.#controllerProxy;
+	}
+
+	set controller(data) {
+		if (!data) {
+			this.#controllerData = null;
+			this.#controllerProxy = null;
+			return;
+		}
+
+		this.#controllerData = typeof data === "string" ? { url: data } : data;
+
+		// 文字列としても振る舞い、かつプロパティも持てるように Proxy を作成
+		this.#controllerProxy = new Proxy(this.#controllerData, {
+			get: (target, prop) => {
+				if (prop === Symbol.toPrimitive) {
+					return (hint) =>
+						hint === "number" ? NaN : target.url || target.toString();
+				}
+				if (prop === "toString" || prop === "valueOf") {
+					return () => target.url || "";
+				}
+				// 既存のプロパティへのアクセスを許可
+				return target[prop];
+			},
+			set: (target, prop, value) => {
+				target[prop] = value;
+				return true;
+			},
+		});
+	}
+
 	clearHashChangedFlag() {
 		const ans = this.#hashChangedByAppLayer;
 		this.#hashChangedByAppLayer = false;
