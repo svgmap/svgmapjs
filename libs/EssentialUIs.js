@@ -401,11 +401,18 @@ class EssentialUIs {
 	}
 
 	#wheelTimerID;
+	#wheelZoomingAnimationId; // 2026/02/18 カタカタ物理ホイールのスムースズーム対応
 	#wheelZooming;
+	
+	#wheelTh = 100; // ホイールイベントがタッチ系かカタカタ物理ホイール系かの閾値(概ね100ぐらいでいいかな?)
+	#wheelAmimInterval = 20;
+	#wheelZoomingTimeout = 200;
 
+	#wheelAmimClientY=0; // カタカタ物理ホイール系アニメーションのアニメ中ClientY値
+	
 	#testWheel(evt) {
 		if (this.#wheelZooming == 0) {
-			// console.log("start wheel");
+			console.log("start wheel : ", evt.deltaY);
 			this.#zoomPanManager.startPan({
 				type: "wheelDummy",
 				button: 2,
@@ -419,10 +426,13 @@ class EssentialUIs {
 		var zf = 1;
 		// https://groups.google.com/a/chromium.org/g/chromium-dev/c/VhSKxAJFCs0
 		// たしかに、パッドでピンチするとctrlはtrueになってる
-		if (evt.ctrlKey) {
+		if (evt.ctrlKey) { // パッドでピンチしたケース
 			zf = 3;
+		} else { // パッドで２本指ドラッグやホイール
+//			console.log("Wheel zooming (not pad pinch)");
 		}
 		this.#wheelZooming -= (evt.deltaX + evt.deltaY + evt.deltaZ) * zf;
+//		console.log("this.#wheelZooming:", this.#wheelZooming, " zf:",zf, "  eventAll:",evt);
 		/**
 		console.log(
 			"wheel Zooming ",
@@ -433,21 +443,41 @@ class EssentialUIs {
 			evt.ctrlKey
 		);
 		**/
-		this.#zoomPanManager.showPanning({
-			type: "wheelDummy",
-			buttons: 1,
-			clientX: 0,
-			clientY: this.#wheelZooming,
-		});
+		if ( Math.abs(evt.deltaY)>=this.#wheelTh){ // カタカタ物理ホイール判定
+			// アニメーションを50fpsぐらいで発動させる
+			clearInterval(this.#wheelZoomingAnimationId);
+			const wheelAnimClientYincliment = (this.#wheelZooming - this.#wheelAmimClientY ) /  (this.#wheelZoomingTimeout/this.#wheelAmimInterval );
+			this.#wheelZoomingAnimationId = setInterval(function(){
+				this.#wheelAmimClientY += wheelAnimClientYincliment;
+//				console.log("wheelZoomingAnimation func :  pseudo this.#wheelZooming:",this.#wheelAmimClientY, " target wheelZooming:",this.#wheelZooming);
+				this.#zoomPanManager.showPanning({
+					type: "wheelDummy",
+					buttons: 1,
+					clientX: 0,
+					clientY: this.#wheelAmimClientY,
+				});
+			}.bind(this),this.#wheelAmimInterval);
+			
+		} else { // それ以外のピンチ・ドラッグタッチ系
+			this.#zoomPanManager.showPanning({
+				type: "wheelDummy",
+				buttons: 1,
+				clientX: 0,
+				clientY: this.#wheelZooming,
+			});
+		}
 		clearTimeout(this.#wheelTimerID);
+		
 		this.#wheelTimerID = setTimeout(
 			function () {
-				// console.log("wheel終了", this.#wheelTimerID, this.#wheelZooming);
+//				console.log("wheel終了", this.#wheelTimerID, this.#wheelZooming);
 				this.#zoomPanManager.endPan();
 				this.#zoomPanManager.wheelZooming = false;
 				this.#wheelZooming = 0;
+				this.#wheelAmimClientY  = 0;
+				clearInterval(this.#wheelZoomingAnimationId);
 			}.bind(this),
-			200
+			this.#wheelZoomingTimeout
 		);
 		evt.preventDefault();
 	}
