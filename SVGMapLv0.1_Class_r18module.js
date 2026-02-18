@@ -357,6 +357,7 @@ class SvgMap {
 			this,
 			this.#svgMapAuthoringTool,
 			this.#getLayerStatus,
+			this.#proxyManager,
 		);
 		this.#svgMapLayerUI = new SvgMapLayerUI(
 			this,

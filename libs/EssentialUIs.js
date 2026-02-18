@@ -412,7 +412,7 @@ class EssentialUIs {
 	
 	#testWheel(evt) {
 		if (this.#wheelZooming == 0) {
-			console.log("start wheel : ", evt.deltaY);
+//			console.log("start wheel : ", evt.deltaY);
 			this.#zoomPanManager.startPan({
 				type: "wheelDummy",
 				button: 2,

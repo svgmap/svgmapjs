@@ -15,6 +15,7 @@ class ProxyManager {
 		crossOriginAnonymous: false,
 		getNonlinearTransformationProxyUrl: null, // 2021/1/27 ビットイメージの非線形変換を行うときだけプロキシを使う設定
 		crossOriginAnonymousNonlinearTF: false,
+		getUrlViaLaWAProxy: null, // 同LaWAのfetch,XHR用 2026/02/18
 	};
 
 	getAccessInfo(rPath) {
@@ -61,6 +62,16 @@ class ProxyManager {
 		};
 	}
 
+	getLaWAfetchAccessInfo(rPath) { // 2026/02/18
+		var pxPath;
+		if (typeof this.#contentProxyParams.getUrlViaLaWAProxy == "function") {
+			pxPath = this.#contentProxyParams.getUrlViaLaWAProxy(rPath);
+		} else {
+			pxPath = rPath;
+		}
+		return pxPath;
+	}
+	
 	/**
 	 *
 	 * @param {Function} documentURLviaProxyFunction
@@ -68,13 +79,15 @@ class ProxyManager {
 	 * @param {Boolean} imageCrossOriginAnonymous
 	 * @param {Function} imageURLviaProxyFunctionForNonlinearTransformation
 	 * @param {Boolean} imageCrossOriginAnonymousForNonlinearTransformation
+	 * @param {Function} LaWAfetchviaProxyFunction
 	 */
 	setProxyURLFactory(
 		documentURLviaProxyFunction,
 		imageURLviaProxyFunction,
 		imageCrossOriginAnonymous,
 		imageURLviaProxyFunctionForNonlinearTransformation,
-		imageCrossOriginAnonymousForNonlinearTransformation
+		imageCrossOriginAnonymousForNonlinearTransformation,
+		LaWAfetchviaProxyFunction
 	) {
 		// 2020/1/30 proxyURL生成のsetterを設けるとともに、ビットイメージに対するproxyも設定できるように
 		// 2021/1/27 ビットイメージの非線形変換のためだけに用いるプロキシを別設定可能にした。 APIの仕様がイケてない・・
@@ -113,6 +126,12 @@ class ProxyManager {
 			this.#contentProxyParams.crossOriginAnonymousNonlinearTF = false;
 		}
 
+		if ( typeof LaWAfetchviaProxyFunction == "function" ) { // 2026/02/18 LaWAの fetch/XHRに対しても一律でフックを掛けたいケースに対応
+			this.#contentProxyParams.getUrlViaLaWAProxy = LaWAfetchviaProxyFunction;
+		} else if (LaWAfetchviaProxyFunction === null) {
+			this.#contentProxyParams.getUrlViaLaWAProxy = null;
+		}
+		
 		console.log(
 			"called setProxyURLFactory: contentProxyParams:",
 			this.#contentProxyParams,

@@ -72,6 +72,7 @@ class LayerSpecificWebAppHandler {
 	#svgMapGIStool; // ISSUE SVGMapGISは、今後はそもそも各LayerWebApp側でimportするだけで十分なのではないか説(今は従来継承のために起動時暗黙インスタンスにしてある)
 	#svgMapAuthoringTool;
 	#svgMapLayerUI;
+	#proxyManager;
 
 	//	#layersCustomizer;
 
@@ -84,8 +85,9 @@ class LayerSpecificWebAppHandler {
 
 	#iframeOnLoadProcessQueue = {};
 
-	constructor(svgMapObj, svgMapAuthoringToolObj, getLayerStatusFunc) {
+	constructor(svgMapObj, svgMapAuthoringToolObj, getLayerStatusFunc, proxyManagerObj) {
 		this.#svgMap = svgMapObj;
+		this.#proxyManager = proxyManagerObj;
 		this.#svgMapAuthoringTool = svgMapAuthoringToolObj;
 		/**
 		svgMapObj.registLayerUiSetter( 
@@ -1116,16 +1118,26 @@ class LayerSpecificWebAppHandler {
 
 		//console.log("setXHRhooks:this:",this,this.location);
 		var that = this;
-		ifWin.fetch = (function (fetch) {
-			return async function () {
+		ifWin.fetch = (function (originalFetch) {
+			return async function (input, init) {
+				let processedInput = input;
+				if (typeof input === 'string') { // 2026/02/18 ＵＲＬ書き換え機能を実装
+					processedInput = that.#proxyManager.getLaWAfetchAccessInfo(input);
+				} else if (input instanceof Request) {
+					processedInput = that.#proxyManager.getLaWAfetchAccessInfo(input.url);
+				}
 				//    	console.log("fetch v1:",v1);
 				//console.log("[layerUI] fetch HOOK arguments:",arguments);
 				that.#registLoadingFlag(ifWin.layerID, sip);
 				//	        return fetch.apply(this, arguments); // これはコンテキストが間違っていました‥ 2021/6/17
 				//	        return fetch.apply(ifWin, arguments); // Response自体をフックしてreleaseLoadingFlagするようにする 2023/1/13
-				const resp = await fetch.apply(ifWin, arguments);
-				that.#releaseLoadingFlag(ifWin.layerID, sip);
-				return resp;
+				try{
+//					const resp = await fetch.apply(ifWin, arguments);
+					const resp = await originalFetch.call(ifWin, processedInput, init);
+					return resp;
+				} finally {
+					that.#releaseLoadingFlag(ifWin.layerID, sip);
+				}
 			};
 		})(ifWin.fetch);
 
@@ -1142,7 +1154,16 @@ class LayerSpecificWebAppHandler {
 		**/
 
 		// XHRのためのフック
-		(function (send) {
+		(function (originalOpen) {
+			ifWin.XMLHttpRequest.prototype.open = function (method, url, ...args) {
+				// console.log("[layerUI] XHR HOOK: open:arguments:",arguments);
+				const proxyUrl = that.#proxyManager.getLaWAfetchAccessInfo(url);  // 2026/02/18 ＵＲＬ書き換え機能を実装
+//				open.apply(this, arguments);
+				return originalOpen.apply(this, [method, proxyUrl, ...args]);
+			};
+		})(ifWin.XMLHttpRequest.prototype.open);
+		
+		(function (originalSend) {
 			ifWin.XMLHttpRequest.prototype.send = function () {
 				// console.log("[layerUI] XHR HOOK: send:arguments:",arguments,"  this:",this);
 				that.#registLoadingFlag(ifWin.layerID, sip);
@@ -1157,16 +1178,10 @@ class LayerSpecificWebAppHandler {
 						callback.apply(this, arguments);
 					}
 				};
-				send.apply(this, arguments);
+				originalSend.apply(this, arguments);
 			};
 		})(ifWin.XMLHttpRequest.prototype.send);
 
-		(function (open) {
-			ifWin.XMLHttpRequest.prototype.open = function () {
-				// console.log("[layerUI] XHR HOOK: open:arguments:",arguments);
-				open.apply(this, arguments);
-			};
-		})(ifWin.XMLHttpRequest.prototype.open);
 	}
 
 	#registLoadingFlag(layerId, sip) {
