@@ -20,7 +20,7 @@ class TernarySimultaneousEquationsSolution {
 		x2o,
 		y2o,
 		x3o,
-		y3o
+		y3o,
 	) {
 		// ３基準点の変換の振る舞いから、それに適合する1次変換行列を得るための関数 2020/3/26
 		// メルカトル対応に伴い実装
@@ -42,7 +42,7 @@ class TernarySimultaneousEquationsSolution {
 				1,
 				x1o,
 				x2o,
-				x3o
+				x3o,
 			);
 		var ys =
 			TernarySimultaneousEquationsSolution.getTernarySimultaneousEquationsSolution(
@@ -57,7 +57,7 @@ class TernarySimultaneousEquationsSolution {
 				1,
 				y1o,
 				y2o,
-				y3o
+				y3o,
 			);
 		if (xs && ys) {
 			var ansMatrix = {
@@ -86,7 +86,7 @@ class TernarySimultaneousEquationsSolution {
 		a33,
 		b1,
 		b2,
-		b3
+		b3,
 	) {
 		// 三元連立方程式の解を得る関数 2020/3/26
 		// getLinearTransformMatrixが使用する

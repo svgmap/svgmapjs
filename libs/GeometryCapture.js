@@ -52,7 +52,7 @@ class GeometryCapture {
 		prop4,
 		prop5,
 		prop6,
-		prop7
+		prop7,
 	) {
 		// 非同期、callbackFuncいるだろうね
 		if (this.GISgeometriesCaptureFlag) {
@@ -78,7 +78,7 @@ class GeometryCapture {
 				prop4,
 				prop5,
 				prop6,
-				prop7
+				prop7,
 			);
 		}.bind(this);
 		document.addEventListener("screenRefreshed", cgf, false);
@@ -94,7 +94,7 @@ class GeometryCapture {
 		prop4,
 		prop5,
 		prop6,
-		prop7
+		prop7,
 	) {
 		//	DEBUG 2017.6.12 geojsonの座標並びが逆だった・・・
 		var svgImagesProps = this.#svgMapObj.getSvgImagesProps();
@@ -113,7 +113,7 @@ class GeometryCapture {
 							geom.svgXY[0],
 							geom.svgXY[1],
 							null,
-							invCrs
+							invCrs,
 						);
 						geom.coordinates = [geoCrd.lng, geoCrd.lat];
 					} else if (geom.type === "Coverage") {
@@ -127,25 +127,25 @@ class GeometryCapture {
 									geom.svgXY[0][0],
 									geom.svgXY[0][1],
 									null,
-									invCrs
+									invCrs,
 								);
 								geoCrd2 = this.#matUtil.SVG2Geo(
 									geom.svgXY[1][0],
 									geom.svgXY[1][1],
 									null,
-									invCrs
+									invCrs,
 								);
 							} else {
 								// transform 一時対応（回転成分がないケースのみ）2019.5.16
 								var sxy = this.#matUtil.transform(
 									geom.svgXY[0][0],
 									geom.svgXY[0][1],
-									geom.transform
+									geom.transform,
 								);
 								var sxy2 = this.#matUtil.transform(
 									geom.svgXY[1][0],
 									geom.svgXY[1][1],
-									geom.transform
+									geom.transform,
 								);
 								geoCrd = this.#matUtil.SVG2Geo(sxy.x, sxy.y, null, invCrs);
 								geoCrd2 = this.#matUtil.SVG2Geo(sxy2.x, sxy2.y, null, invCrs);
@@ -180,7 +180,7 @@ class GeometryCapture {
 								geom.svgXY[0][0][0],
 								geom.svgXY[0][0][1],
 								null,
-								invCrs
+								invCrs,
 							);
 							geom.coordinates = [geoCrd.lng, geoCrd.lat];
 							geom.type = "Point";
@@ -200,7 +200,7 @@ class GeometryCapture {
 											point[0],
 											point[1],
 											null,
-											invCrs
+											invCrs,
 										);
 										if (k == 0) {
 											var startP = geoCrd;
@@ -237,7 +237,7 @@ class GeometryCapture {
 			prop4,
 			prop5,
 			prop6,
-			prop7
+			prop7,
 		);
 	}
 
@@ -337,7 +337,7 @@ class GeometryCapture {
 			"layerCanvases:",
 			layerCanvases,
 			" root SvgImagesProps:",
-			rootSip
+			rootSip,
 		);
 		for (var layerId in layerCanvases) {
 			var imgUri = layerCanvases[layerId].toDataURL("image/png");
@@ -397,7 +397,7 @@ class GeometryCapture {
 					0,
 					0,
 					subWidth,
-					subHeight
+					subHeight,
 				);
 				row.push(canvas.toDataURL());
 			}
@@ -445,7 +445,7 @@ class SVGMapGISgeometry {
 		cat,
 		subCat,
 		svgNode,
-		GISgeometriesCaptureOptions
+		GISgeometriesCaptureOptions,
 	) {
 		if (cat == SvgMapElementType.EMBEDSVG) {
 			console.log("return null for GISGeometry");
@@ -461,7 +461,7 @@ class SVGMapGISgeometry {
 				cat,
 				subCat,
 				svgNode,
-				GISgeometriesCaptureOptions
+				GISgeometriesCaptureOptions,
 			);
 		}
 	}

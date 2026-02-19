@@ -88,7 +88,7 @@ class LinkedDocOp {
 						param2,
 						param3,
 						param4,
-						param5
+						param5,
 					);
 				}
 			}
@@ -156,7 +156,7 @@ class LinkedDocOp {
 		return function () {
 			// コンターのレイヤー(のルート文書のハッシュ)を取り出す
 			var targetHash = this.#svgMapObject.getHashByDocPath(
-				"vectorContainer.svg"
+				"vectorContainer.svg",
 			);
 			// その文書の子孫文書(タイル)全部に対して、指定した文書処理(ここではcontourMarker)を実施する
 			// linkedDocOpがそのためのユーティリティ関数です

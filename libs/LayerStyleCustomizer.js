@@ -31,14 +31,14 @@ class LayerStyleCustomizer {
 		modal_elm.innerHTML = this.uiSrc
 			.replaceAll(
 				"layerStyleCustom_saturateValue",
-				this.saturateTransform(initStyles.saturate, true)
+				this.saturateTransform(initStyles.saturate, true),
 			)
 			.replaceAll("layerStyleCustom_invertValue", initStyles.invert)
 			.replaceAll("layerStyleCustom_hueRotateValue", initStyles["hue-rotate"])
 			.replaceAll("layerStyleCustom_opacityValue", initStyles.opacity * 100)
 			.replaceAll(
 				"layerStyleCustom_colorizeValue",
-				initStyles.colorize ? "checked" : ""
+				initStyles.colorize ? "checked" : "",
 			);
 
 		//		svgMap.setCustomModal(modal_elm, null, this.CustomizerUiCallBack, layerID);
@@ -187,7 +187,7 @@ class LayerStyleCustomizer {
 				const s = this.getStyleParamsFromUi(uiElements);
 				this.setStyle(layerID, uiElements, s.gv, s.iv, s.hv, s.ov, s.cv);
 			},
-			false
+			false,
 		);
 		uiElements.ii.addEventListener(
 			"input",
@@ -196,7 +196,7 @@ class LayerStyleCustomizer {
 				const s = this.getStyleParamsFromUi(uiElements);
 				this.setStyle(layerID, uiElements, s.gv, s.iv, s.hv, s.ov, s.cv);
 			},
-			false
+			false,
 		);
 		uiElements.hi.addEventListener(
 			"input",
@@ -205,7 +205,7 @@ class LayerStyleCustomizer {
 				const s = this.getStyleParamsFromUi(uiElements);
 				this.setStyle(layerID, uiElements, s.gv, s.iv, s.hv, s.ov, s.cv);
 			},
-			false
+			false,
 		);
 		uiElements.oi.addEventListener(
 			"input",
@@ -213,7 +213,7 @@ class LayerStyleCustomizer {
 				const s = this.getStyleParamsFromUi(uiElements);
 				this.setStyle(layerID, uiElements, s.gv, s.iv, s.hv, s.ov, s.cv);
 			},
-			false
+			false,
 		);
 		uiElements.ci.addEventListener(
 			"change",
@@ -227,7 +227,7 @@ class LayerStyleCustomizer {
 					this.setStyle(layerID, uiElements, 100, 0, s.hv, s.ov, s.cv);
 				}
 			},
-			false
+			false,
 		);
 		uiElements.nb.addEventListener(
 			"click",
@@ -236,7 +236,7 @@ class LayerStyleCustomizer {
 				const s = this.getStyleParamsFromUi(uiElements);
 				this.setStyle(layerID, uiElements, 100, 0, 0, s.ov);
 			},
-			false
+			false,
 		);
 		uiElements.mb.addEventListener(
 			"click",
@@ -245,7 +245,7 @@ class LayerStyleCustomizer {
 				const s = this.getStyleParamsFromUi(uiElements);
 				this.setStyle(layerID, uiElements, 0, 0, 0, s.ov, s.cv);
 			},
-			false
+			false,
 		);
 		uiElements.ib.addEventListener(
 			"click",
@@ -254,7 +254,7 @@ class LayerStyleCustomizer {
 				const s = this.getStyleParamsFromUi(uiElements);
 				this.setStyle(layerID, uiElements, 0, 100, 0, s.ov, s.cv);
 			},
-			false
+			false,
 		);
 		uiElements.db.addEventListener(
 			"click",
@@ -263,7 +263,7 @@ class LayerStyleCustomizer {
 				const s = this.getStyleParamsFromUi(uiElements);
 				this.setStyle(layerID, uiElements, 100, 100, 180, s.ov, s.cv);
 			},
-			false
+			false,
 		);
 	}
 
@@ -279,7 +279,7 @@ class LayerStyleCustomizer {
 		console.log(
 			"Layer Style Customizer UI CallBack : ",
 			layerID,
-			elem.style.filter
+			elem.style.filter,
 		);
 	}
 	/**
@@ -348,7 +348,7 @@ class LayerStyleCustomizer {
 		}
 		this.firstTimeFilterApplied = false;
 		const parentDiv = modal_elm.querySelector(
-			`#svgMapLayerStyleCustomizerUiTable`
+			`#svgMapLayerStyleCustomizerUiTable`,
 		);
 		const mTr = document.createElement("tr");
 		const msgContent = `<td colspan="3" style="font-size:12px;background-color:#eee;">Note:レイヤの色を変更した場合、凡例やラスタGISの色と表示色が一致しなくなります。これらを利用する場合は解除してください</td>`;

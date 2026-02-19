@@ -3182,18 +3182,21 @@ class SvgMap {
 	setCustomModal(...params) {
 		return this.#customModal.setCustomModal(...params);
 	}
-	
+
 	/**
 	 * カーソル位置を中心としたズームモードを設定する
 	 * @param {Boolean} enable
 	 */
-	setCursorCenterZooming( enable ){
-		if ( this.#zoomPanManager ){
-			this.#zoomPanManager.setCursorCenterZooming( enable );
+	setCursorCenterZooming(enable) {
+		if (this.#zoomPanManager) {
+			this.#zoomPanManager.setCursorCenterZooming(enable);
 		} else {
-			setTimeout( function(){
-				this.setCursorCenterZooming(enable)
-			}.bind(this),10);
+			setTimeout(
+				function () {
+					this.setCursorCenterZooming(enable);
+				}.bind(this),
+				10,
+			);
 		}
 	}
 

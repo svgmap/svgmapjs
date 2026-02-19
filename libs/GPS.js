@@ -64,7 +64,7 @@ class GPS {
 		this.#svgMapObj.setGeoCenter(
 			position.coords.latitude,
 			position.coords.longitude,
-			(position.coords.accuracy * 10) / 100000
+			(position.coords.accuracy * 10) / 100000,
 		);
 	}.bind(this);
 }

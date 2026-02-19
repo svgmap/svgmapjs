@@ -7,10 +7,10 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 class SvgStyleEditor {
-	constructor(){
-	}
-	
-	createStyleEditor(targetSvgElement, targetUiDiv, options) { // staticでも良いか
+	constructor() {}
+
+	createStyleEditor(targetSvgElement, targetUiDiv, options) {
+		// staticでも良いか
 		const container = document.createElement("div");
 		container.style.border = "1px solid #ccc";
 		container.style.padding = "10px";
@@ -68,7 +68,7 @@ class SvgStyleEditor {
 			});
 
 			input.addEventListener("input", () =>
-				targetSvgElement.setAttribute(attr, input.value)
+				targetSvgElement.setAttribute(attr, input.value),
 			);
 
 			label.appendChild(select);
@@ -82,15 +82,15 @@ class SvgStyleEditor {
 			label.textContent = labelText;
 
 			const input = document.createElement("input");
-			input.style.width="50px";
+			input.style.width = "50px";
 			input.type = type;
 			input.value = getComputedOrDefault(attr, defaultValue).replace("px", "");
 
 			input.addEventListener("input", () =>
 				targetSvgElement.setAttribute(
 					attr,
-					input.value + (type === "number" ? "px" : "")
-				)
+					input.value + (type === "number" ? "px" : ""),
+				),
 			);
 
 			label.appendChild(input);
@@ -101,19 +101,19 @@ class SvgStyleEditor {
 		let isTextElement = false;
 		if (targetSvgElement.tagName.toLowerCase() === "text") {
 			isTextElement = true;
-		} else if ( options.editingMode=="TEXT"){
+		} else if (options.editingMode == "TEXT") {
 			isTextElement = true;
 		}
 		let isPolylineElement = false;
-		if ( options?.editingMode=="POLYLINE"){
+		if (options?.editingMode == "POLYLINE") {
 			isPolylineElement = true;
 		}
-		
-		if ( !isPolylineElement){
+
+		if (!isPolylineElement) {
 			createColorInput(
 				`${isTextElement ? "Text" : "Fill"} Color: `,
 				"fill",
-				"black"
+				"black",
 			);
 		}
 		if (!isTextElement) {
@@ -133,7 +133,7 @@ class SvgStyleEditor {
 				checkbox.addEventListener("change", () => {
 					targetSvgElement.setAttribute(
 						attr,
-						checkbox.checked ? value : "normal"
+						checkbox.checked ? value : "normal",
 					);
 				});
 				label.appendChild(checkbox);
@@ -141,10 +141,10 @@ class SvgStyleEditor {
 				container.appendChild(document.createElement("br"));
 			}
 			let noFontStyle = false;
-			if ( options?.fontStyle ===false ){
-				noFontStyle=true;
+			if (options?.fontStyle === false) {
+				noFontStyle = true;
 			}
-			if ( !noFontStyle ){
+			if (!noFontStyle) {
 				createCheckbox("Bold", "font-weight", "bold");
 				createCheckbox("Italic", "font-style", "italic");
 			}
