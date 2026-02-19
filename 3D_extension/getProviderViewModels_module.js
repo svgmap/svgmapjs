@@ -49,11 +49,11 @@ class CesiumProviderViewModels {
 		if (options?.disableLayers) {
 			terrainSources = this.#disableLayers(
 				terrainSources,
-				options.disableLayers
+				options.disableLayers,
 			);
 			imagerySources = this.#disableLayers(
 				imagerySources,
-				options.disableLayers
+				options.disableLayers,
 			);
 		}
 
@@ -90,7 +90,7 @@ class CesiumProviderViewModels {
 				creationFunction: function () {
 					return GSIImageProvider1;
 				},
-			})
+			}),
 		);
 
 		var GSIImageProvider2 = new this.#Cesium.JapanGSIImageryProvider({
@@ -106,7 +106,7 @@ class CesiumProviderViewModels {
 				creationFunction: function () {
 					return GSIImageProvider2;
 				},
-			})
+			}),
 		);
 
 		var GSIImageProvider3 = new this.#Cesium.JapanGSIImageryProvider({
@@ -122,7 +122,7 @@ class CesiumProviderViewModels {
 				creationFunction: function () {
 					return GSIImageProvider3;
 				},
-			})
+			}),
 		);
 
 		if (bingKey) {
@@ -141,7 +141,7 @@ class CesiumProviderViewModels {
 					creationFunction: function () {
 						return bing1;
 					},
-				})
+				}),
 			);
 
 			const bing2 = new this.#Cesium.BingMapsImageryProvider({
@@ -159,7 +159,7 @@ class CesiumProviderViewModels {
 					creationFunction: function () {
 						return bing2;
 					},
-				})
+				}),
 			);
 
 			const bing3 = new this.#Cesium.BingMapsImageryProvider({
@@ -177,7 +177,7 @@ class CesiumProviderViewModels {
 					creationFunction: function () {
 						return bing3;
 					},
-				})
+				}),
 			);
 
 			const bing4 = new this.#Cesium.BingMapsImageryProvider({
@@ -195,7 +195,7 @@ class CesiumProviderViewModels {
 					creationFunction: function () {
 						return bing4;
 					},
-				})
+				}),
 			);
 		}
 
@@ -212,7 +212,7 @@ class CesiumProviderViewModels {
 				creationFunction: function () {
 					return GSIterrainProvider1;
 				},
-			})
+			}),
 		);
 		terrainSources.push(
 			new this.#Cesium.ProviderViewModel({
@@ -223,7 +223,7 @@ class CesiumProviderViewModels {
 				creationFunction: function () {
 					return GSIterrainProvider2;
 				},
-			})
+			}),
 		);
 
 		if (ionKey) {
@@ -254,10 +254,10 @@ class CesiumProviderViewModels {
 			}
 		}
 
-		(this.terrainSources = terrainSources),
+		((this.terrainSources = terrainSources),
 			(this.imagerySources = imagerySources),
 			(this.defaultTerrianIndex = defaultTerrianIndex),
-			(this.defaultImageryIndex = defaultImageryIndex);
+			(this.defaultImageryIndex = defaultImageryIndex));
 	}
 
 	#noIonMapBox(sources) {

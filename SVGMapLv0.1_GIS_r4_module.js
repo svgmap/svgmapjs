@@ -187,7 +187,7 @@ class SvgMapGIS {
 		inverse,
 		pointOnly,
 		getIncludedPolygonAttr,
-		preCapturedGeometry
+		preCapturedGeometry,
 	) {
 		// 2019.12.26 : preCapturedGeometry あらかじめ別に取得済みのgeom.を流用したいときに指定 : 今後同様オプションをcaptureGISgeometries実行しているロジックに入れていくだろう
 		var superParam = {
@@ -205,7 +205,7 @@ class SvgMapGIS {
 		console.log(
 			"called getIncludedPoints:",
 			pointsDocTreeID,
-			polygonsDocTreeID
+			polygonsDocTreeID,
 		);
 		//		svgMap.captureGISgeometries(getIncludedPointsS2 , superParam );
 		if (!preCapturedGeometry) {
@@ -224,7 +224,7 @@ class SvgMapGIS {
 			param,
 			progrssCallback,
 			true,
-			pointOnly
+			pointOnly,
 		);
 	}
 
@@ -388,7 +388,7 @@ class SvgMapGIS {
 		compArray,
 		counter,
 		startTime,
-		ansPois
+		ansPois,
 	) {
 		if (!counter) {
 			startTime = new Date().getTime();
@@ -476,11 +476,11 @@ class SvgMapGIS {
 					"call laze compu",
 					counter,
 					compArray.length,
-					Math.ceil(counter / compArray.length)
+					Math.ceil(counter / compArray.length),
 				);
 				if (superParam.progrssCallback) {
 					superParam.progrssCallback(
-						Math.ceil((1000 * counter) / compArray.length) / 10
+						Math.ceil((1000 * counter) / compArray.length) / 10,
 					);
 				}
 				startTime = new Date().getTime();
@@ -492,7 +492,7 @@ class SvgMapGIS {
 					compArray,
 					counter,
 					startTime,
-					ansPois
+					ansPois,
 				);
 				break;
 			}
@@ -540,7 +540,7 @@ class SvgMapGIS {
 		addSourceMetadata,
 		getResultAsGeoJsonCallback,
 		getResultAsGeoJsonCallbackParam,
-		options
+		options,
 	) {
 		if (!options) {
 			options = {};
@@ -557,7 +557,7 @@ class SvgMapGIS {
 			addSourceMetadata,
 			getResultAsGeoJsonCallback,
 			getResultAsGeoJsonCallbackParam,
-			options
+			options,
 		);
 	}
 	/**
@@ -585,7 +585,7 @@ class SvgMapGIS {
 		addSourceMetadata,
 		getResultAsGeoJsonCallback,
 		getResultAsGeoJsonCallbackParam,
-		options
+		options,
 	) {
 		var processMode = "intersection";
 		var resultGroupId = "resultGroup";
@@ -740,7 +740,7 @@ class SvgMapGIS {
 		ansFeatures,
 		ansFeature,
 		ansFeatureMetadata,
-		originalFeatureArea
+		originalFeatureArea,
 	) {
 		// 2020/1/10 非同期処理のために、かなりトリッキーですよ (そろそろasync awaitに移行すべき)
 		var startTime = new Date().getTime();
@@ -771,7 +771,7 @@ class SvgMapGIS {
 			}
 			ansFeatures = [];
 			params.metaSchema = this.#getSvgMapMetaSchema(
-				svgImages[params.sourceId1]
+				svgImages[params.sourceId1],
 			); // 切り取る方のメタデータはないでしょう
 			if (params.areaComp) {
 				params.metaSchema.push("areaRatio");
@@ -792,11 +792,11 @@ class SvgMapGIS {
 				try {
 					featureA = this.#jsts.simplify.DouglasPeuckerSimplifier.simplify(
 						featureA,
-						0.00001
+						0.00001,
 					);
 					featureA = this.#jsts.precision.GeometryPrecisionReducer.reduce(
 						featureA,
-						pm
+						pm,
 					);
 				} catch (e) {
 					continue;
@@ -814,21 +814,21 @@ class SvgMapGIS {
 				try {
 					featureB = this.#jsts.simplify.DouglasPeuckerSimplifier.simplify(
 						featureB,
-						0.00001
+						0.00001,
 					);
 					featureB = this.#jsts.precision.GeometryPrecisionReducer.reduce(
 						featureB,
-						pm
+						pm,
 					);
 					var difFeature = ansFeature.difference(featureB);
 					if (difFeature) {
 						ansFeature = this.#jsts.simplify.DouglasPeuckerSimplifier.simplify(
 							difFeature,
-							0.00001
+							0.00001,
 						);
 						ansFeature = this.#jsts.precision.GeometryPrecisionReducer.reduce(
 							ansFeature,
-							pm
+							pm,
 						);
 					}
 				} catch (e) {
@@ -841,8 +841,8 @@ class SvgMapGIS {
 					if (params.progrssCallback) {
 						params.progrssCallback(
 							Math.ceil(
-								((i * fa2.length + j) / (fa2.length * fa1.length)) * 1000
-							) / 10
+								((i * fa2.length + j) / (fa2.length * fa1.length)) * 1000,
+							) / 10,
 						);
 					}
 					var nextCount2 = j + 1;
@@ -876,7 +876,7 @@ class SvgMapGIS {
 						ansFeatures,
 						ansFeature,
 						ansFeatureMetadata,
-						originalFeatureArea
+						originalFeatureArea,
 					);
 					return;
 				}
@@ -893,7 +893,7 @@ class SvgMapGIS {
 							ansGeoJsFeature.properties = this.#getVectorGisMetadata(
 								ansFeatureMetadata,
 								null,
-								params.metaSchema
+								params.metaSchema,
 							);
 							if (params.areaComp) {
 								ansGeoJsFeature.properties.areaRatio =
@@ -974,35 +974,35 @@ class SvgMapGIS {
 		console.log("buffered srcgem1:", fa1, "  srcgem2:", fa2);
 
 		var jstsFeature1 = this.#getFeature(
-			buildGeoJsonGeometryCollectionFromGeometryArray(fa1)
+			buildGeoJsonGeometryCollectionFromGeometryArray(fa1),
 		);
 		var jstsFeature2 = this.#getFeature(
-			buildGeoJsonGeometryCollectionFromGeometryArray(fa2)
+			buildGeoJsonGeometryCollectionFromGeometryArray(fa2),
 		);
 		var gpr = this.#jsts.precision.GeometryPrecisionReducer;
 		//		jstsFeature1 = jstsFeature1.buffer(0);
 		//		jstsFeature2 = jstsFeature2.buffer(0);
 		jstsFeature1 = this.#jsts.simplify.DouglasPeuckerSimplifier.simplify(
 			jstsFeature1,
-			0.00001
+			0.00001,
 		);
 		jstsFeature2 = this.#jsts.simplify.DouglasPeuckerSimplifier.simplify(
 			jstsFeature2,
-			0.00001
+			0.00001,
 		);
 		console.log(
 			"buffered jstsFeature1:",
 			jstsFeature1,
 			"  jstsFeature2:",
-			jstsFeature2
+			jstsFeature2,
 		);
 		jstsFeature1 = gpr.reduce(
 			jstsFeature1,
-			new this.#jsts.geom.PrecisionModel(1000000)
+			new this.#jsts.geom.PrecisionModel(1000000),
 		);
 		jstsFeature2 = gpr.reduce(
 			jstsFeature2,
-			new this.#jsts.geom.PrecisionModel(1000000)
+			new this.#jsts.geom.PrecisionModel(1000000),
 		);
 		console.log("GeometryPrecisionReducer:", gpr);
 		var isf;
@@ -1034,7 +1034,7 @@ class SvgMapGIS {
 			if (params.getResultAsGeoJsonCallbackParam) {
 				params.getResultAsGeoJsonCallback(
 					isg,
-					params.getResultAsGeoJsonCallbackParam
+					params.getResultAsGeoJsonCallbackParam,
 				);
 			} else {
 				params.getResultAsGeoJsonCallback(isg);
@@ -1050,7 +1050,7 @@ class SvgMapGIS {
 				"p0",
 				"poi",
 				null,
-				params.resultGroup
+				params.resultGroup,
 			);
 			this.#svgMap.refreshScreen();
 		}
@@ -1171,13 +1171,13 @@ class SvgMapGIS {
 				metaSchema = this.#getSvgMapMetaSchema(svgImages[params.sourceId1]);
 				var len1 = metaSchema.length;
 				metaSchema = metaSchema.concat(
-					this.#getSvgMapMetaSchema(svgImages[params.sourceId2])
+					this.#getSvgMapMetaSchema(svgImages[params.sourceId2]),
 				);
 				var len2 = metaSchema.length - len1;
 				if (params.areaComp) {
 					metaSchema.push(`areaRatio1(${len1 == 0 ? "-" : "0-" + (len1 - 1)})`);
 					metaSchema.push(
-						`areaRatio2(${len2 == 0 ? "-" : len1 + "-" + (len1 + len2 - 1)})`
+						`areaRatio2(${len2 == 0 ? "-" : len1 + "-" + (len1 + len2 - 1)})`,
 					);
 				}
 			}
@@ -1189,12 +1189,12 @@ class SvgMapGIS {
 				metaSchema = this.#getSvgMapMetaSchema(svgImages[params.sourceId2]);
 				var len1 = metaSchema.length;
 				metaSchema = metaSchema.concat(
-					this.#getSvgMapMetaSchema(svgImages[params.sourceId1])
+					this.#getSvgMapMetaSchema(svgImages[params.sourceId1]),
 				);
 				var len2 = metaSchema.length - len1;
 				if (params.areaComp) {
 					metaSchema.push(
-						`areaRatio1(${len2 == 0 ? "-" : len1 + "-" + (len1 + len2 - 1)})`
+						`areaRatio1(${len2 == 0 ? "-" : len1 + "-" + (len1 + len2 - 1)})`,
 					);
 					metaSchema.push(`areaRatio2(${len1 == 0 ? "-" : "0-" + (len1 - 1)})`);
 				}
@@ -1218,7 +1218,7 @@ class SvgMapGIS {
 						var feature1 = this.#getFeature(geom1);
 						feature1 = this.#jsts.simplify.DouglasPeuckerSimplifier.simplify(
 							feature1,
-							0.00001
+							0.00001,
 						);
 						var feature1Obj = {
 							feature: feature1,
@@ -1288,7 +1288,7 @@ class SvgMapGIS {
 		counter,
 		startTime,
 		feature2,
-		intersections
+		intersections,
 	) {
 		//		console.log("called buildIntersectionS3:",counter);
 		// 再帰処理用内部変数の初期化
@@ -1309,7 +1309,7 @@ class SvgMapGIS {
 				feature2 = this.#getFeature(geom2);
 				feature2 = this.#jsts.simplify.DouglasPeuckerSimplifier.simplify(
 					feature2,
-					0.00001
+					0.00001,
 				);
 				if (params.areaComp) {
 					feature2area = feature2.getArea();
@@ -1330,7 +1330,7 @@ class SvgMapGIS {
 							isGeom.properties = this.#getVectorGisMetadata(
 								meta1,
 								meta2,
-								params.metaSchema
+								params.metaSchema,
 							);
 						}
 						if (params.areaComp) {
@@ -1366,7 +1366,7 @@ class SvgMapGIS {
 				//				console.log( "call laze compu",counter, compArray.length , Math.ceil(counter /  compArray.length));
 				if (params.progrssCallback) {
 					params.progrssCallback(
-						Math.ceil((1000 * counter) / compArray.length) / 10
+						Math.ceil((1000 * counter) / compArray.length) / 10,
 					);
 				}
 				startTime = new Date().getTime();
@@ -1381,7 +1381,7 @@ class SvgMapGIS {
 					counter,
 					startTime,
 					feature2,
-					intersections
+					intersections,
 				);
 				break;
 			}
@@ -1409,7 +1409,7 @@ class SvgMapGIS {
 			if (params.getResultAsGeoJsonCallbackParam) {
 				params.getResultAsGeoJsonCallback(
 					geoJsonIntersections,
-					params.getResultAsGeoJsonCallbackParam
+					params.getResultAsGeoJsonCallbackParam,
 				);
 			} else {
 				params.getResultAsGeoJsonCallback(geoJsonIntersections);
@@ -1420,7 +1420,7 @@ class SvgMapGIS {
 			if (params.addMetadata) {
 				targetDoc.documentElement.setAttribute(
 					"property",
-					geoJsonIntersections.csvMetadataSchema
+					geoJsonIntersections.csvMetadataSchema,
 				);
 			}
 			this.#drawGeoJson(
@@ -1434,7 +1434,7 @@ class SvgMapGIS {
 				null,
 				params.resultGroup,
 				geoJsonIntersections.csvMetadataSchema.split(","),
-				{ multiGeometryGrouping: true }
+				{ multiGeometryGrouping: true },
 			);
 			this.#svgMap.refreshScreen();
 		}
@@ -1477,7 +1477,7 @@ class SvgMapGIS {
 		param,
 		progrssCallback,
 		preCapturedGeometry,
-		computingOptions
+		computingOptions,
 	) {
 		// 出力データ形式: cbFuncの第一引数に以下の形のデータが返却される
 		// [{coordinates[geoX,geoY],inRange,color}]
@@ -1494,7 +1494,7 @@ class SvgMapGIS {
 			param,
 			progrssCallback,
 			preCapturedGeometry,
-			computingOptions
+			computingOptions,
 		);
 	}
 	#getInRangeLineParts(
@@ -1505,7 +1505,7 @@ class SvgMapGIS {
 		param,
 		progrssCallback,
 		preCapturedGeometry,
-		computingOptions
+		computingOptions,
 	) {
 		// 出力データ形式: cbFuncの第一引数に以下の形のデータが返却される
 		// [{extent,width,height,pixSize,rasterData,hasIntersection,hasInRange,hasOutOfRange,inRangeCounts,outOfRangeCounts},...]
@@ -1524,7 +1524,7 @@ class SvgMapGIS {
 			param,
 			progrssCallback,
 			preCapturedGeometry,
-			computingOptions
+			computingOptions,
 		);
 	}
 	#getInRangePoints(
@@ -1535,7 +1535,7 @@ class SvgMapGIS {
 		param,
 		progrssCallback,
 		preCapturedGeometry,
-		computingOptions
+		computingOptions,
 	) {
 		if (!computingOptions) {
 			computingOptions = {};
@@ -1549,7 +1549,7 @@ class SvgMapGIS {
 			param,
 			progrssCallback,
 			preCapturedGeometry,
-			computingOptions
+			computingOptions,
 		);
 	}
 
@@ -1561,7 +1561,7 @@ class SvgMapGIS {
 		param,
 		progrssCallback,
 		preCapturedGeometry,
-		computingOptions
+		computingOptions,
 	) {
 		// 必要な検索パラメータ(superParam)を整形した後、SVGMap.jsからviewportのgeometryisを取得してgetInRangePointsS2に投げる
 		// computingOptions:
@@ -1600,7 +1600,7 @@ class SvgMapGIS {
 				poiID_or_points.length,
 				coverID,
 				"  range:",
-				superParam.range
+				superParam.range,
 			);
 		} else {
 			superParam.pointsDocTreeID = poiID_or_points;
@@ -1609,7 +1609,7 @@ class SvgMapGIS {
 				poiID_or_points,
 				coverID,
 				"  range:",
-				superParam.range
+				superParam.range,
 			);
 		}
 
@@ -1777,7 +1777,7 @@ class SvgMapGIS {
 			"targetCoverages:",
 			targetCoverages,
 			"  targetGeoms.length:",
-			targetGeoms.length
+			targetGeoms.length,
 		);
 		superParam.targetGeomsBbox = this.#getTargetGeomsBbox(targetGeoms);
 		console.log("targetGeomsBbox:", superParam.targetGeomsBbox);
@@ -1786,7 +1786,7 @@ class SvgMapGIS {
 		superParam.coverageIndex = this.#getNextIntersectedCoverage(
 			superParam.targetCoverages,
 			superParam.targetGeomsBbox,
-			-1
+			-1,
 		);
 		superParam.ans = [];
 
@@ -1803,7 +1803,7 @@ class SvgMapGIS {
 			"getImagePixData B:",
 			targetCoverage,
 			"   superParam.coverageIndex:",
-			superParam.coverageIndex
+			superParam.coverageIndex,
 		);
 		if (targetCoverage && targetCoverage.href) {
 			var targetCoverageURL = targetCoverage.href;
@@ -1813,7 +1813,7 @@ class SvgMapGIS {
 				this.#computeInRangePoints,
 				superParam,
 				targetCoverage.src.getAttribute("iid"),
-				targetCoverage.src.getAttribute("style")
+				targetCoverage.src.getAttribute("style"),
 			);
 		} else {
 			this.#halt = false;
@@ -1872,19 +1872,19 @@ class SvgMapGIS {
 			// lng:x lat:y
 			cLatMin = Math.min(
 				targetCoverage.coordinates[0].lat,
-				targetCoverage.coordinates[1].lat
+				targetCoverage.coordinates[1].lat,
 			);
 			cLatMax = Math.max(
 				targetCoverage.coordinates[0].lat,
-				targetCoverage.coordinates[1].lat
+				targetCoverage.coordinates[1].lat,
 			);
 			cLngMin = Math.min(
 				targetCoverage.coordinates[0].lng,
-				targetCoverage.coordinates[1].lng
+				targetCoverage.coordinates[1].lng,
 			);
 			cLngMax = Math.max(
 				targetCoverage.coordinates[0].lng,
-				targetCoverage.coordinates[1].lng
+				targetCoverage.coordinates[1].lng,
 			);
 			targetCoverage.geoExtent = [cLatMin, cLatMax, cLngMin, cLngMax]; // ここで、普通にはない .geoExtentを追加している
 		} else {
@@ -1925,7 +1925,7 @@ class SvgMapGIS {
 						pixWidth,
 						pixHeight,
 						geomCrd[j],
-						superParam
+						superParam,
 					);
 				}
 			} else if (superParam.computingOptions.targetVectorType == 2) {
@@ -1937,14 +1937,14 @@ class SvgMapGIS {
 						pixWidth,
 						pixHeight,
 						geomCrd[j],
-						superParam
+						superParam,
 					);
 				}
 			} else if (superParam.computingOptions.targetVectorType == 0) {
 				// ポイントフィーチャーとカバレッジのGIS
 				// 以下、poly*と同様に別関数にするかもしれない
 				var extent = this.#getCoverageExtent(
-					superParam.targetCoverages[superParam.coverageIndex]
+					superParam.targetCoverages[superParam.coverageIndex],
 				);
 				//			console.log("cover:",extent.latMin,extent.latMax,extent.lngMin,extent.lngMax,"  poi:",geomCrd[1],geomCrd[0]);
 				if (
@@ -1961,7 +1961,7 @@ class SvgMapGIS {
 						geomCrd[0],
 						geomCrd[1],
 						superParam.targetCoverages[superParam.coverageIndex],
-						extent
+						extent,
 					);
 					var addr = (canXY.x + canXY.y * pixWidth) * 4;
 					var R = pixData[addr];
@@ -1995,14 +1995,14 @@ class SvgMapGIS {
 		superParam.coverageIndex = this.#getNextIntersectedCoverage(
 			superParam.targetCoverages,
 			superParam.targetGeomsBbox,
-			superParam.coverageIndex
+			superParam.coverageIndex,
 		);
 
 		if (superParam.progrssCallback) {
 			superParam.progrssCallback(
 				Math.ceil(
-					100 * (superParam.coverageIndex / superParam.targetCoverages.length)
-				)
+					100 * (superParam.coverageIndex / superParam.targetCoverages.length),
+				),
 			);
 		}
 
@@ -2020,8 +2020,8 @@ class SvgMapGIS {
 				"   comp.Ratio[%]:",
 				Math.floor(
 					(10000 * this.#computingOverhead) /
-						(this.#computingOverhead + this.#fileGetOverhead)
-				) / 100
+						(this.#computingOverhead + this.#fileGetOverhead),
+				) / 100,
 			);
 			if (superParam.computingOptions.splitByCoverage == true) {
 				if (superParam.computingOptions.targetVectorType == 2) {
@@ -2048,7 +2048,7 @@ class SvgMapGIS {
 					this.#computeInRangePoints,
 					superParam,
 					targetCoverage.src.getAttribute("iid"),
-					targetCoverage.src.getAttribute("style")
+					targetCoverage.src.getAttribute("style"),
 				);
 			} else {
 				// これは異常終了のケース？
@@ -2128,7 +2128,7 @@ class SvgMapGIS {
 		callbackFunc,
 		callbackFuncParams,
 		imageIID,
-		imageStyle
+		imageStyle,
 	) {
 		// 2020.1.30 自ドメイン経由のビットイメージの場合、画面に表示しているimgリソースをそのまま画像処理用として利用する。　これをより有効にするため、コアモジュールもbitimageをproxy経由で取得させる機能を実装している(svgMap.setProxyURLFactory)
 		//		console.log("getImagePixData: url,iid,iid's elem: ",imageUrl,imageIID,document.getElementById(imageIID));
@@ -2141,7 +2141,7 @@ class SvgMapGIS {
 				this.#imageCache[imageURL_int],
 				callbackFunc,
 				callbackFuncParams,
-				imageStyle
+				imageStyle,
 			);
 		} else {
 			var documentImage, imgSrcURL;
@@ -2161,7 +2161,7 @@ class SvgMapGIS {
 					documentImage,
 					callbackFunc,
 					callbackFuncParams,
-					imageStyle
+					imageStyle,
 				);
 				if (this.#imageCacheEnabled) {
 					this.#addImageCache(imageURL_int, documentImage);
@@ -2178,7 +2178,7 @@ class SvgMapGIS {
 						img,
 						callbackFunc,
 						callbackFuncParams,
-						imageStyle
+						imageStyle,
 					);
 					if (this.#imageCacheEnabled) {
 						this.#addImageCache(imageURL_int, img);
@@ -2192,7 +2192,7 @@ class SvgMapGIS {
 		img,
 		callbackFunc,
 		callbackFuncParams,
-		imageStyle
+		imageStyle,
 	) {
 		var canvas = document.createElement("canvas");
 		//		canvas.width  = img.width;
@@ -2252,7 +2252,7 @@ class SvgMapGIS {
 						startP.x,
 						startP.y,
 						targetCoverage,
-						cExt
+						cExt,
 					);
 					var endXY = this.#latLng2coverageImageXY(
 						pixWidth,
@@ -2260,13 +2260,13 @@ class SvgMapGIS {
 						endP.x,
 						endP.y,
 						targetCoverage,
-						cExt
+						cExt,
 					);
 
 					// その座標間にピクセル化した直線の座標列を算出する
 					var pixs = this.#getStraightLineCoordinates(
 						[startXY.x, startXY.y],
-						[endXY.x, endXY.y]
+						[endXY.x, endXY.y],
 					);
 					// console.log("pixs:",pixs);
 
@@ -2278,7 +2278,7 @@ class SvgMapGIS {
 							pixWidth,
 							pixHeight,
 							pixData,
-							superParam.range
+							superParam.range,
 						);
 						var geoPos = this.#coverageImageXY2LatLng(
 							pixWidth,
@@ -2286,7 +2286,7 @@ class SvgMapGIS {
 							pixs[j][0],
 							pixs[j][1],
 							targetCoverage,
-							cExt
+							cExt,
 						);
 						if (comPix.inBounds) {
 							if (superParam.computingOptions.splitByCoverage == true) {
@@ -2321,7 +2321,7 @@ class SvgMapGIS {
 		pixWidth,
 		pixHeight,
 		geomCrd,
-		superParam
+		superParam,
 	) {
 		var targetCoverage = superParam.targetCoverages[superParam.coverageIndex];
 		//console.log("computeInRangePolygonParts: geomCrd:",geomCrd,"  targetCoverage:",targetCoverage);
@@ -2344,7 +2344,7 @@ class SvgMapGIS {
 					geomCrd[i][0],
 					geomCrd[i][1],
 					targetCoverage,
-					cExt
+					cExt,
 				);
 				canvasCrds.push([canXY.x, canXY.y]);
 			}
@@ -2399,7 +2399,7 @@ class SvgMapGIS {
 								pixWidth,
 								pixHeight,
 								pixData,
-								superParam.range
+								superParam.range,
 							);
 							//							var geoPos = coverageImageXY2LatLng(pixWidth , pixHeight, px,py ,targetCoverage,cExt);
 							if (comPix.inBounds) {
@@ -2562,7 +2562,7 @@ class SvgMapGIS {
 			lng,
 			lat,
 			targetCoverage,
-			cExt
+			cExt,
 		);
 		return { x: Math.floor(pixel.x), y: Math.floor(pixel.y) };
 	}
@@ -2574,7 +2574,7 @@ class SvgMapGIS {
 		lng,
 		lat,
 		targetCoverage,
-		cExt
+		cExt,
 	) {
 		var px, py;
 		if (!targetCoverage.geo2svg) {
@@ -2652,7 +2652,7 @@ class SvgMapGIS {
 		lastClipped = poly;
 		lastClipped = clipSide(
 			lastClipped,
-			Edge(rect.x, rect.y, rect.x, rect.y + rect.height)
+			Edge(rect.x, rect.y, rect.x, rect.y + rect.height),
 		);
 		lastClipped = clipSide(
 			lastClipped,
@@ -2660,8 +2660,8 @@ class SvgMapGIS {
 				rect.x,
 				rect.y + rect.height,
 				rect.x + rect.width,
-				rect.y + rect.height
-			)
+				rect.y + rect.height,
+			),
 		);
 		lastClipped = clipSide(
 			lastClipped,
@@ -2669,12 +2669,12 @@ class SvgMapGIS {
 				rect.x + rect.width,
 				rect.y + rect.height,
 				rect.x + rect.width,
-				rect.y
-			)
+				rect.y,
+			),
 		);
 		lastClipped = clipSide(
 			lastClipped,
-			Edge(rect.x + rect.width, rect.y, rect.x, rect.y)
+			Edge(rect.x + rect.width, rect.y, rect.x, rect.y),
 		);
 		return lastClipped;
 
@@ -3037,11 +3037,11 @@ class SvgMapGIS {
 								var iTile = inersectedTiles[k].tile;
 								iPx = Math.floor(
 									(iTile.width * (pLng - iTile.extent.lngMin)) /
-										iTile.extent.width
+										iTile.extent.width,
 								);
 								iPy = Math.floor(
 									(iTile.height * (iTile.extent.latMax - pLat)) /
-										iTile.extent.height
+										iTile.extent.height,
 								);
 
 								//								if ( dc < 100 ){console.log(iPx,iPy,iTile.rasterData[iPy][iPx])}
@@ -3068,7 +3068,7 @@ class SvgMapGIS {
 											iTile.width,
 											iTile.height,
 											superParam.pixDataBuffer[inersectedTiles[k].index],
-											superParam.range
+											superParam.range,
 										);
 										if (comPix.inRange == true) {
 											cAns.rasterData[py][px] = {};
@@ -3100,7 +3100,7 @@ class SvgMapGIS {
 			"Number of points inranged by OR processing : ",
 			dc,
 			"   by backup Processing:",
-			dc2
+			dc2,
 		);
 		superParam.cbFunc(superParam.ans, superParam.param);
 	}
@@ -3405,7 +3405,7 @@ class SvgMapGIS {
 		parentMetadata,
 		parentElm,
 		metaDictionary,
-		options
+		options,
 	) {
 		if (!options) {
 			options = {};
@@ -3450,7 +3450,7 @@ class SvgMapGIS {
 					metadata,
 					parentElm,
 					metaDictionary,
-					options
+					options,
 				);
 			}
 		} else if (geojson.type == "FeatureCollection") {
@@ -3467,7 +3467,7 @@ class SvgMapGIS {
 					metadata,
 					parentElm,
 					metaDictionary,
-					options
+					options,
 				);
 			}
 		} else if (geojson.type == "Feature") {
@@ -3495,7 +3495,7 @@ class SvgMapGIS {
 				metadata,
 				parentElm,
 				metaDictionary,
-				options
+				options,
 			);
 		} else if (geojson.type == "GeometryCollection") {
 			var geoms = geojson.geometries;
@@ -3511,7 +3511,7 @@ class SvgMapGIS {
 					metadata,
 					parentElm,
 					metaDictionary,
-					options
+					options,
 				);
 			}
 		} else if (geojson.type == "MultiPolygon") {
@@ -3522,7 +3522,7 @@ class SvgMapGIS {
 					colletionParent = this.#getMultiGeometryGroup(
 						parentElm,
 						svgImage,
-						geojson.type
+						geojson.type,
 					);
 				}
 				for (var i = 0; i < geojson.coordinates.length; i++) {
@@ -3534,7 +3534,7 @@ class SvgMapGIS {
 						metadata,
 						colletionParent,
 						metaDictionary,
-						options
+						options,
 					);
 				}
 			}
@@ -3547,7 +3547,7 @@ class SvgMapGIS {
 				metadata,
 				parentElm,
 				metaDictionary,
-				options
+				options,
 			);
 		} else if (geojson.type == "MultiLineString") {
 			// これは、pathのサブパスのほうが良いと思うが・・
@@ -3557,7 +3557,7 @@ class SvgMapGIS {
 					colletionParent = this.#getMultiGeometryGroup(
 						parentElm,
 						svgImage,
-						geojson.type
+						geojson.type,
 					);
 				}
 				for (var i = 0; i < geojson.coordinates.length; i++) {
@@ -3570,7 +3570,7 @@ class SvgMapGIS {
 						metadata,
 						colletionParent,
 						metaDictionary,
-						options
+						options,
 					);
 				}
 			}
@@ -3584,7 +3584,7 @@ class SvgMapGIS {
 				metadata,
 				parentElm,
 				metaDictionary,
-				options
+				options,
 			);
 		} else if (geojson.type == "MultiPoint") {
 			// グループで囲んで一括でmetadataつけたほうが良いと思うが・・
@@ -3594,7 +3594,7 @@ class SvgMapGIS {
 					colletionParent = this.#getMultiGeometryGroup(
 						parentElm,
 						svgImage,
-						geojson.type
+						geojson.type,
 					);
 				}
 				for (var i = 0; i < geojson.coordinates.length; i++) {
@@ -3607,7 +3607,7 @@ class SvgMapGIS {
 						metadata,
 						colletionParent,
 						metaDictionary,
-						options
+						options,
 					);
 				}
 			}
@@ -3621,7 +3621,7 @@ class SvgMapGIS {
 				metadata,
 				parentElm,
 				metaDictionary,
-				options
+				options,
 			);
 		}
 	}
@@ -3671,7 +3671,7 @@ class SvgMapGIS {
 		poiTitle,
 		metadata,
 		parentElm,
-		styleData
+		styleData,
 	) {
 		console.log("kml draw method.");
 		var svgImages = this.#svgMap.getSvgImages();
@@ -3705,7 +3705,7 @@ class SvgMapGIS {
 					kmlName,
 					kmlDescription,
 					parentElm,
-					styleData
+					styleData,
 				);
 			});
 		} else {
@@ -3732,7 +3732,7 @@ class SvgMapGIS {
 						POIiconId,
 						kmlName,
 						[kmlDescription],
-						parentElm
+						parentElm,
 					);
 				} else if (kmlGeometory == "linestring") {
 					arr_metadata.push(kmlName);
@@ -3744,7 +3744,7 @@ class SvgMapGIS {
 						strokeColor,
 						strokeWidth,
 						arr_metadata,
-						parentElm
+						parentElm,
 					);
 				} else if (kmlGeometory == "linearring") {
 					arr_metadata.push(kmlName);
@@ -3756,7 +3756,7 @@ class SvgMapGIS {
 						strokeColor,
 						strokeWidth,
 						arr_metadata,
-						parentElm
+						parentElm,
 					);
 				} else if (kmlGeometory == "polygon") {
 				} else if (kmlGeometory == "multigeometry") {
@@ -3822,7 +3822,7 @@ class SvgMapGIS {
 		poiTitle,
 		metadata,
 		parentElm,
-		metaDictionary
+		metaDictionary,
 	) {
 		var metastyle = this.#getSvgMapSimpleMeta(metadata, metaDictionary);
 		// console.log("putPoint: style:",metastyle.styles,"  metadata:",metadata,"  metaDictionary:",metaDictionary);
@@ -3909,7 +3909,7 @@ class SvgMapGIS {
 		strokeWidth,
 		metadata,
 		parentElm,
-		metaDictionary
+		metaDictionary,
 	) {
 		var metastyle = this.#getSvgMapSimpleMeta(metadata, metaDictionary);
 		var metaString = this.#array2string(metastyle.normalized);
@@ -3970,7 +3970,7 @@ class SvgMapGIS {
 		fillColor,
 		metadata,
 		parentElm,
-		metaDictionary
+		metaDictionary,
 	) {
 		var metastyle = this.#getSvgMapSimpleMeta(metadata, metaDictionary);
 		var metaString = this.#array2string(metastyle.normalized);
@@ -4206,15 +4206,15 @@ class SvgMapGIS {
 					"x",
 					Math.min(
 						tile.extent.x * crs.a,
-						(tile.extent.x + tile.extent.width) * crs.a
-					)
+						(tile.extent.x + tile.extent.width) * crs.a,
+					),
 				);
 				rct.setAttribute(
 					"y",
 					Math.min(
 						tile.extent.y * crs.d,
-						(tile.extent.y + tile.extent.height) * crs.d
-					)
+						(tile.extent.y + tile.extent.height) * crs.d,
+					),
 				);
 				rct.setAttribute("width", Math.abs(tile.extent.width * crs.a));
 				rct.setAttribute("height", Math.abs(tile.extent.height * crs.d));
@@ -4225,11 +4225,11 @@ class SvgMapGIS {
 				rct.setAttribute("y", tile.coordinates[0].y);
 				rct.setAttribute(
 					"width",
-					tile.coordinates[1].x - tile.coordinates[0].x
+					tile.coordinates[1].x - tile.coordinates[0].x,
 				);
 				rct.setAttribute(
 					"height",
-					tile.coordinates[1].y - tile.coordinates[0].y
+					tile.coordinates[1].y - tile.coordinates[0].y,
 				);
 				rct.setAttribute(
 					"transform",
@@ -4245,7 +4245,7 @@ class SvgMapGIS {
 						tMat.e +
 						"," +
 						tMat.f +
-						")"
+						")",
 				);
 			}
 			rct.setAttribute("xlink:href", tileImageUri);
@@ -4447,7 +4447,7 @@ class SvgMapGIS {
 			callBack,
 			callBackParam,
 			svgMapCoverageGeometry.src.getAttribute("iid"),
-			svgMapCoverageGeometry.src.getAttribute("style")
+			svgMapCoverageGeometry.src.getAttribute("style"),
 		);
 	}
 	buildDifference(...params) {

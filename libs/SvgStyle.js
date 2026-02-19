@@ -26,7 +26,7 @@ class SvgStyle {
 		"stroke-dasharray",
 		"marker-end",
 		"visibility",
-		"image-rendering"
+		"image-rendering",
 	);
 
 	constructor() {}

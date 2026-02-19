@@ -45,7 +45,7 @@ class MapTicker {
 		isEditingLayer,
 		getLayerName,
 		setLoadCompleted,
-		svgMapAuthoringTool
+		svgMapAuthoringTool,
 	) {
 		this.#svgMapObject = svgMapObject;
 		this.#centerSight = document.getElementById("centerSight"); // ISSUE centerSightがないとtickerができないのはまずすぎる
@@ -100,14 +100,14 @@ class MapTicker {
 		this.pathHitTester = new PathHitTester(
 			svgMapObject,
 			svgMapAuthoringTool,
-			setLoadCompleted
+			setLoadCompleted,
 		);
 		this.poiHitTester = new PoiHitTester();
 		this.#customHitTester = new CustomHitTester(svgMapObject, getLayerName);
 		this.showPoiProperty = new ShowPoiProperty(
 			svgMapObject,
 			getLayerName,
-			matUtil
+			matUtil,
 		);
 
 		//console.log("MapTicker new:",svgMapObject);
@@ -209,19 +209,19 @@ class MapTicker {
 			hittedPoiObjects = this.poiHitTester.getPoiObjectsAtPoint(px, py);
 			hittedLayerHitTests = this.#customHitTester.getLayerHitTestAtPoint(
 				px,
-				py
+				py,
 			); // 2022/05
 		} else if (this.#centerHitTestEnabled) {
 			hittedObjects = this.pathHitTester.getHittedObjects(); // 2018.1.18 setCentralVectorObjectsGetterと組み合わせ、getVectorObjectsAtPointを代替して効率化 : ベクタでヒットしたモノ
 			var mapCanvasSize = this.#svgMapObject.getMapCanvasSize();
 			hittedPoiObjects = this.poiHitTester.getPoiObjectsAtPoint(
 				mapCanvasSize.width / 2,
-				mapCanvasSize.height / 2
+				mapCanvasSize.height / 2,
 			); // ラスタPOIでヒットしたモノ
 			hittedLayerHitTests = this.#customHitTester.getLayerHitTestAtPoint(
 				mapCanvasSize.width / 2,
 				mapCanvasSize.height / 2,
-				true
+				true,
 			); // 2022/05 , 2022/09 中心ヒットテスト判別可能にする
 		} else {
 			// 2025/11/13 (!this.#centerHitTestEnabled)のときはhideTicker()もせずに単に終わらせる(return)でもいいのかも？
@@ -253,7 +253,7 @@ class MapTicker {
 				function () {
 					that.#fixTickerSize();
 				}.bind(this),
-				300
+				300,
 			);
 			// for raster POI
 			for (var i = 0; i < hittedPoiObjects.length; i++) {
@@ -278,19 +278,19 @@ class MapTicker {
 					var vMeta = this.showPoiProperty.getVectorMetadata(
 						hittedObjects.elements[i],
 						hittedObjects.parents[i],
-						hittedObjects.bboxes[i]
+						hittedObjects.bboxes[i],
 					);
 					var meta = this.showPoiProperty.getMetadataObject(
 						vMeta.metadata,
 						vMeta.metaSchema,
-						vMeta.title
+						vMeta.title,
 					);
 					console.log(
 						vMeta.geolocMin,
 						vMeta.geolocMax,
 						meta,
 						meta.title,
-						vMeta.layerName
+						vMeta.layerName,
 					);
 
 					var vcbf = (function (elem, parent, bbox, that) {
@@ -302,14 +302,14 @@ class MapTicker {
 						hittedObjects.elements[i],
 						hittedObjects.parents[i],
 						hittedObjects.bboxes[i],
-						this.showPoiProperty
+						this.showPoiProperty,
 					);
 					lastCallback = vcbf;
 					this.#addTickerItem(
 						meta.title,
 						vcbf,
 						this.#tickerTable,
-						vMeta.layerName
+						vMeta.layerName,
 					);
 					this.#tickerTableMetadata.push({
 						title: meta.title,
@@ -346,7 +346,7 @@ class MapTicker {
 					hitObj.title,
 					cbf,
 					this.#tickerTable,
-					hitObj.layerName
+					hitObj.layerName,
 				);
 				this.#tickerTableMetadata.push(hitObj);
 			}

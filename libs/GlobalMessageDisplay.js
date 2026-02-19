@@ -21,7 +21,7 @@ class GlobalMessageDisplay {
 		var gs = document.getElementById(GlobalMessageDisplay.#globalMessageID);
 		if (!gs) {
 			console.log(
-				'NO id="' + GlobalMessageDisplay.#globalMessageID + '" element skip'
+				'NO id="' + GlobalMessageDisplay.#globalMessageID + '" element skip',
 			);
 			return false;
 		}
@@ -37,7 +37,7 @@ class GlobalMessageDisplay {
 
 		var gmc = gs.children;
 		var msgCell = document.getElementById(
-			GlobalMessageDisplay.#GlobalMessageprefix + layerId
+			GlobalMessageDisplay.#GlobalMessageprefix + layerId,
 		);
 		if (!msgCell) {
 			if (gmc.length >= GlobalMessageDisplay.#maxGlobalMessages) {
@@ -73,7 +73,7 @@ class GlobalMessageDisplay {
 			return;
 		}
 		var gmc = document.getElementById(
-			GlobalMessageDisplay.#GlobalMessageprefix + layerId
+			GlobalMessageDisplay.#GlobalMessageprefix + layerId,
 		);
 		console.log("globalMessageCell:", gmc);
 		if (gmc && gmc.parentNode) {

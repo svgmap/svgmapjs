@@ -93,7 +93,7 @@ class UtilFuncs {
 					var lhName = lhash[i].substring(0, lhash[i].indexOf("(")); // )
 					var lhVal = lhash[i].substring(
 						lhash[i].indexOf("(") + 1,
-						lhash[i].length - 1
+						lhash[i].length - 1,
 					); // )
 					lhash[i] = [lhName, lhVal];
 				}
@@ -320,7 +320,7 @@ class UtilFuncs {
 		var layers;
 		layers = Array.prototype.slice.call(doc.getElementsByTagName(tagn1));
 		layers = layers.concat(
-			Array.prototype.slice.call(doc.getElementsByTagName(tagn2))
+			Array.prototype.slice.call(doc.getElementsByTagName(tagn2)),
 		);
 		return layers;
 	}
@@ -349,7 +349,7 @@ class UtilFuncs {
 		// resTxtからdata-controller-srcを除去する
 		// 注意:やらないとは思うが、したがって、data-controller-srcをDOMで操作しても何も起きない・・
 		var controllerSrc = resTxt.match(
-			/data-controller-src[\s\S]*?"([\s\S]*?)"/
+			/data-controller-src[\s\S]*?"([\s\S]*?)"/,
 		)[1];
 		controllerSrc = controllerSrc.replace(/&amp;/g, "&");
 		controllerSrc = controllerSrc.replace(/&quot;/g, '"');
@@ -575,7 +575,7 @@ class UtilFuncs {
 		category,
 		parentProps,
 		subCategory,
-		GISgeometry
+		GISgeometry,
 	) {
 		var x,
 			y,
@@ -656,7 +656,7 @@ class UtilFuncs {
 					x = Number(imgE.getAttribute("x"));
 					y = Number(imgE.getAttribute("y"));
 					transform = UtilFuncs.parseTransformMatrix(
-						imgE.getAttribute("transform")
+						imgE.getAttribute("transform"),
 					);
 				}
 				width = Number(imgE.getAttribute("width")); // nonScalingではwidth,heightの値はisIntersectでは0とみなして計算するようにします
@@ -674,7 +674,7 @@ class UtilFuncs {
 				) {
 					// 2015.7.3 spatial fragment
 					href_fragment = href.substring(
-						5 + href.indexOf("xywh=", href.indexOf("#"))
+						5 + href.indexOf("xywh=", href.indexOf("#")),
 					);
 					href = href.substring(0, href.indexOf("#")); // ブラウザが#以下があるとキャッシュ無視するのを抑止
 				}
@@ -884,7 +884,7 @@ class UtilFuncs {
 									continue;
 								} else if (symbolNodes[k].childNodes[l].nodeName == "image") {
 									var symb = UtilFuncs.getSymbolProps(
-										symbolNodes[k].childNodes[l]
+										symbolNodes[k].childNodes[l],
 									);
 									if (!symb.id) {
 										symb.id = symbolNodes[k].getAttribute("id");
@@ -905,7 +905,7 @@ class UtilFuncs {
 							for (var l = 0; l < symbolNodes[k].childNodes.length; l++) {
 								if (symbolNodes[k].childNodes[l].nodeName == "path") {
 									var symb = UtilFuncs.getPathSymbolMakerProps(
-										symbolNodes[k].childNodes[l]
+										symbolNodes[k].childNodes[l],
 									);
 									symbols["#" + symb.id] = symb;
 									break;

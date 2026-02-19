@@ -31,7 +31,7 @@ class ResourceLoadingObserver {
 		svgImagesProps,
 		svgImages,
 		refreshScreen,
-		viewBoxChanged
+		viewBoxChanged,
 	) {
 		// pubDatas
 		Object.defineProperty(this, "loadingImgs", { value: {} });
@@ -79,7 +79,7 @@ class ResourceLoadingObserver {
 
 			if (this.#mapViewerProps.uaProps.Edge) {
 				this.#imgRenderer.buildPixelatedImages4Edge(
-					this.#mapViewerProps.mapCanvas
+					this.#mapViewerProps.mapCanvas,
 				);
 			}
 
@@ -211,7 +211,7 @@ class ResourceLoadingObserver {
 			console.log(
 				"removeUnusedDocs : docId:",
 				delKeys,
-				" are no longer used. Delete it."
+				" are no longer used. Delete it.",
 			);
 		}
 	}
@@ -230,7 +230,7 @@ class ResourceLoadingObserver {
 							this.#refreshLayer(layerId);
 						}.bind(this),
 						this.#svgImagesProps[layerId].refresh.timeout * 1000,
-						layerId
+						layerId,
 					);
 				} else {
 					//				console.log("Already Started Refresh:",layerId,svgImagesProps[layerId]);

@@ -54,6 +54,7 @@ import { SvgMapGIS } from "../SVGMapLv0.1_GIS_r4_module.js";
 import { UtilFuncs } from "../libs/UtilFuncs.js";
 import { GlobalMessageDisplay } from "./GlobalMessageDisplay.js";
 import { InterWindowMessaging } from "../InterWindowMessaging.js";
+import { LaWAauthoringToolsPatch } from "../SVGMapLv0.1_Authoring_r8_module.js"; // 2026/02/02
 
 class LayerSpecificWebAppHandler {
 	static #totalLoadCompletedGuardTime = 20; // XHRでの非同期読み込みを含め読み込み完了検知のためのガードタイム 2021/6/18
@@ -72,6 +73,7 @@ class LayerSpecificWebAppHandler {
 	#svgMapGIStool; // ISSUE SVGMapGISは、今後はそもそも各LayerWebApp側でimportするだけで十分なのではないか説(今は従来継承のために起動時暗黙インスタンスにしてある)
 	#svgMapAuthoringTool;
 	#svgMapLayerUI;
+	#proxyManager;
 
 	//	#layersCustomizer;
 
@@ -90,8 +92,14 @@ class LayerSpecificWebAppHandler {
 	#iwmsgs = new Map(); // layerID -> InterWindowMessaging instance (マルチターゲット対応) 2026/02/01
 	#permittedOrigins = new Set(); // ユーザーが許可したドメインを記憶 2026/01/28
 
-	constructor(svgMapObj, svgMapAuthoringToolObj, getLayerStatusFunc) {
+	constructor(
+		svgMapObj,
+		svgMapAuthoringToolObj,
+		getLayerStatusFunc,
+		proxyManagerObj,
+	) {
 		this.#svgMap = svgMapObj;
+		this.#proxyManager = proxyManagerObj;
 		this.#svgMapAuthoringTool = svgMapAuthoringToolObj;
 		/**
 	                svgMapObj.registLayerUiSetter( 
@@ -128,7 +136,7 @@ class LayerSpecificWebAppHandler {
 			"construct layerUI: svgMapGIStool:",
 			this.#svgMapGIStool,
 			" svgMapAuthoringTool:",
-			this.#svgMapAuthoringTool
+			this.#svgMapAuthoringTool,
 		);
 		window.initSvgMapWebAppLayer = this.initSvgMapWebAppLayer; // 2024/07/23
 
@@ -379,7 +387,7 @@ class LayerSpecificWebAppHandler {
 						layerProps[layerID].svgImageProps,
 						layerProps[layerID].id,
 						true,
-						cbf
+						cbf,
 					);
 				}
 			} else {
@@ -537,7 +545,7 @@ class LayerSpecificWebAppHandler {
 			// 要素をpreDefinedTargetUiElementで明示してあった場合は、それで初期化する(assignLayerSpecificUiElement()があらかじめ呼ばれている)
 			console.log(
 				"Found preDefinedTargetUiElement! : ",
-				this.#preDefinedTargetUi
+				this.#preDefinedTargetUi,
 			);
 			this.#layerSpecificUI = this.#preDefinedTargetUi.element;
 			if (this.#preDefinedTargetUi.isInline) {
@@ -559,7 +567,7 @@ class LayerSpecificWebAppHandler {
 
 			this.#layerSpecificUI.setAttribute(
 				"style",
-				"right :10px; top: 40px; width:400px;height:400px; position: absolute; background-color: white;opacity:0.8;display:none;zIndex:20;"
+				"right :10px; top: 40px; width:400px;height:400px; position: absolute; background-color: white;opacity:0.8;display:none;zIndex:20;",
 			);
 
 			document.body.appendChild(this.#layerSpecificUI);
@@ -670,7 +678,7 @@ class LayerSpecificWebAppHandler {
 		layerId,
 		controllerURL,
 		hiddenOnLaunch,
-		callBackFunction
+		callBackFunction,
 	) {
 		// 2024/2/5全部evebtに入れている汚い実装なので、整理した
 		var lsuiDoc = this.#layerSpecificUI.ownerDocument;
@@ -793,7 +801,7 @@ class LayerSpecificWebAppHandler {
 			// hiddenOnLaunchでない場合で、ターゲットとは別の表示中のLayerUIがあればそれを隠す
 			this.#dispatchCutomIframeEvent(
 				LayerSpecificWebAppHandler.#hideFrame,
-				visibleIframeId
+				visibleIframeId,
 			);
 			lsuiDoc.getElementById(visibleIframeId).style.display = "none";
 		}
@@ -807,7 +815,7 @@ class LayerSpecificWebAppHandler {
 				this.#imgResize(
 					trgIframe,
 					lsuiDoc.getElementById("layerSpecificUI"),
-					reqSize
+					reqSize,
 				);
 			} else {
 				trgIframe.style.display = "block";
@@ -815,7 +823,7 @@ class LayerSpecificWebAppHandler {
 			}
 			this.#dispatchCutomIframeEvent(
 				LayerSpecificWebAppHandler.#appearFrame,
-				targetIframeId
+				targetIframeId,
 			);
 		} else {
 			//		console.log("create new iframe");
@@ -832,21 +840,21 @@ class LayerSpecificWebAppHandler {
 					function (event) {
 						UtilFuncs.MouseWheelListenerFunc(event);
 					}.bind(this),
-					false
+					false,
 				);
 				resLayerSpecificUI.addEventListener(
 					"mousewheel",
 					function (event) {
 						UtilFuncs.MouseWheelListenerFunc(event);
 					}.bind(this),
-					false
+					false,
 				);
 				resLayerSpecificUI.addEventListener(
 					"DOMMouseScroll",
 					function (event) {
 						UtilFuncs.MouseWheelListenerFunc(event);
 					}.bind(this),
-					false
+					false,
 				);
 				this.#lsUIbdy.appendChild(img);
 				//				document.getElementById("layerSpecificUIbody").appendChild(img);
@@ -857,14 +865,14 @@ class LayerSpecificWebAppHandler {
 					100,
 					img,
 					resLayerSpecificUI,
-					reqSize
+					reqSize,
 				);
 				setTimeout(
 					function (targetElem, isRetry) {
 						this.#setLsUIbtnOffset(targetElem, isRetry);
 					}.bind(this),
 					100,
-					img
+					img,
 				);
 			} else {
 				this.#initIframe(
@@ -872,7 +880,7 @@ class LayerSpecificWebAppHandler {
 					controllerURL,
 					reqSize,
 					hiddenOnLaunch,
-					callBackFunction
+					callBackFunction,
 				);
 			}
 		}
@@ -970,7 +978,7 @@ class LayerSpecificWebAppHandler {
 			iframeParam.lid,
 			iframeParam.reqSize,
 			iframeParam.controllerURL,
-			iframeParam.cbf
+			iframeParam.cbf,
 		);
 		delete this.#iframeOnLoadProcessQueue[iframeParam.lid];
 	}.bind(this);
@@ -1021,7 +1029,7 @@ class LayerSpecificWebAppHandler {
 				this.#iframeOnLoadProcess(iframe, lid, reqSize, controllerURL, cbf);
 				delete this.#iframeOnLoadProcessQueue[lid];
 			}.bind(this),
-			false
+			false,
 		);
 
 		var bySrcdoc = false;
@@ -1137,17 +1145,17 @@ class LayerSpecificWebAppHandler {
 			document.removeEventListener(
 				"zoomPanMap",
 				this.#transferCustomEvent2iframe[lid],
-				false
+				false,
 			);
 			document.removeEventListener(
 				"screenRefreshed",
 				this.#transferCustomEvent2iframe[lid],
-				false
+				false,
 			);
 			document.removeEventListener(
 				"zoomPanMapCompleted",
 				this.#transferCustomEvent2iframe[lid],
-				false
+				false,
 			);
 		} else {
 			this.#transferCustomEvent2iframe[lid] =
@@ -1174,17 +1182,17 @@ class LayerSpecificWebAppHandler {
 		document.addEventListener(
 			"zoomPanMap",
 			this.#transferCustomEvent2iframe[lid],
-			false
+			false,
 		);
 		document.addEventListener(
 			"screenRefreshed",
 			this.#transferCustomEvent2iframe[lid],
-			false
+			false,
 		);
 		document.addEventListener(
 			"zoomPanMapCompleted",
 			this.#transferCustomEvent2iframe[lid],
-			false
+			false,
 		);
 
 		if (cbf) {
@@ -1336,6 +1344,35 @@ class LayerSpecificWebAppHandler {
 	}
 
 	#iframeOnLoadProcess(iframe, lid, reqSize, controllerURL, cbf) {
+		// srcdocだと、xxmsぐらい待たないと、contentWindowへの設定がwindowに保持されないので、初期化されるまでリトライすることに。
+		// xxmsの時間もなんかまちまち・・(on chrome) 2019/11/26
+		// DOMContentLoaded イベントで動作させれば良いんじゃないかな とも思ったがどうだろう
+		// 参考: https://ja.javascript.info/onload-ondomcontentloaded 2019/12/05
+		// https://stackoverflow.com/questions/16960829/detect-domcontentloaded-in-iframe
+		// DOMContentLoadedはiframeでは発行されない。が、力技で解決する手法を作った人がいる。 >iFrameReady
+		// https://stackoverflow.com/questions/24603580/how-can-i-access-the-dom-elements-within-an-iframe/24603642#comment38157462_24603642
+		var iframeId = iframe.id;
+		/**
+		console.log(
+			"initIframe load eventListen : controllerURL:",
+			controllerURL,
+			"  svgMapAuthoringTool:",
+			this.#svgMapAuthoringTool
+		);
+		**/
+		this.#dispatchCutomIframeEvent(
+			LayerSpecificWebAppHandler.#openFrame,
+			iframeId,
+		);
+		if (this.#layerSpecificUiMaxHeight == 0) {
+			this.#layerSpecificUiMaxHeight = this.#layerSpecificUI.offsetHeight;
+		}
+		iframe.contentWindow.layerID = lid;
+
+
+	#iframeOnLoadProcess(iframe, lid, reqSize, controllerURL, cbf) {
+	
+		
 		var iframeId = iframe.id;
 		this.#dispatchCutomIframeEvent(
 			LayerSpecificWebAppHandler.#openFrame,
@@ -1460,7 +1497,7 @@ class LayerSpecificWebAppHandler {
 					console.log("Has CRS transform function force refreshScreen.");
 					this.#svgMap.refreshScreen();
 				}.bind(this),
-				1000
+				1000,
 			);
 		}
 
@@ -1553,7 +1590,7 @@ class LayerSpecificWebAppHandler {
 				controllerWindow.svgImageProps.script.preRenderFunction;
 		}
 		controllerWindow.svgImageProps.script.onloadFunction(
-			this.#getLayerStatus(controllerWindow.layerID)
+			this.#getLayerStatus(controllerWindow.layerID),
 		);
 	}
 
@@ -1568,16 +1605,27 @@ class LayerSpecificWebAppHandler {
 
 		//console.log("setXHRhooks:this:",this,this.location);
 		var that = this;
-		ifWin.fetch = (function (fetch) {
-			return async function () {
+		ifWin.fetch = (function (originalFetch) {
+			return async function (input, init) {
+				let processedInput = input;
+				if (typeof input === "string") {
+					// 2026/02/18 ＵＲＬ書き換え機能を実装
+					processedInput = that.#proxyManager.getLaWAfetchAccessInfo(input);
+				} else if (input instanceof Request) {
+					processedInput = that.#proxyManager.getLaWAfetchAccessInfo(input.url);
+				}
 				//    	console.log("fetch v1:",v1);
 				//console.log("[layerUI] fetch HOOK arguments:",arguments);
 				that.#registLoadingFlag(ifWin.layerID, sip);
 				//	        return fetch.apply(this, arguments); // これはコンテキストが間違っていました‥ 2021/6/17
 				//	        return fetch.apply(ifWin, arguments); // Response自体をフックしてreleaseLoadingFlagするようにする 2023/1/13
-				const resp = await fetch.apply(ifWin, arguments);
-				that.#releaseLoadingFlag(ifWin.layerID, sip);
-				return resp;
+				try {
+					//					const resp = await fetch.apply(ifWin, arguments);
+					const resp = await originalFetch.call(ifWin, processedInput, init);
+					return resp;
+				} finally {
+					that.#releaseLoadingFlag(ifWin.layerID, sip);
+				}
 			};
 		})(ifWin.fetch);
 
@@ -1594,7 +1642,16 @@ class LayerSpecificWebAppHandler {
 		**/
 
 		// XHRのためのフック
-		(function (send) {
+		(function (originalOpen) {
+			ifWin.XMLHttpRequest.prototype.open = function (method, url, ...args) {
+				// console.log("[layerUI] XHR HOOK: open:arguments:",arguments);
+				const proxyUrl = that.#proxyManager.getLaWAfetchAccessInfo(url); // 2026/02/18 ＵＲＬ書き換え機能を実装
+				//				open.apply(this, arguments);
+				return originalOpen.apply(this, [method, proxyUrl, ...args]);
+			};
+		})(ifWin.XMLHttpRequest.prototype.open);
+
+		(function (originalSend) {
 			ifWin.XMLHttpRequest.prototype.send = function () {
 				// console.log("[layerUI] XHR HOOK: send:arguments:",arguments,"  this:",this);
 				that.#registLoadingFlag(ifWin.layerID, sip);
@@ -1609,16 +1666,9 @@ class LayerSpecificWebAppHandler {
 						callback.apply(this, arguments);
 					}
 				};
-				send.apply(this, arguments);
+				originalSend.apply(this, arguments);
 			};
 		})(ifWin.XMLHttpRequest.prototype.send);
-
-		(function (open) {
-			ifWin.XMLHttpRequest.prototype.open = function () {
-				// console.log("[layerUI] XHR HOOK: open:arguments:",arguments);
-				open.apply(this, arguments);
-			};
-		})(ifWin.XMLHttpRequest.prototype.open);
 	}
 
 	#registLoadingFlag(layerId, sip) {
@@ -1636,7 +1686,7 @@ class LayerSpecificWebAppHandler {
 			--sip[layerId].xhrLoading;
 		} else {
 			console.error(
-				"svgImagesProps[" + layerId + "].xhrLoading flag is inconsistent."
+				"svgImagesProps[" + layerId + "].xhrLoading flag is inconsistent.",
 			);
 		}
 		//console.log("releaseLoadingFlag: id:",layerId,"  count:",sip[layerId].xhrLoading);
@@ -1664,7 +1714,7 @@ class LayerSpecificWebAppHandler {
 				function () {
 					this.#fireXHRCevent();
 				}.bind(this),
-				LayerSpecificWebAppHandler.#totalLoadCompletedGuardTime
+				LayerSpecificWebAppHandler.#totalLoadCompletedGuardTime,
 			);
 		} else {
 			// console.log("reject toFireXHRCevent");
@@ -1717,7 +1767,7 @@ class LayerSpecificWebAppHandler {
 			// この場合も、極力<head>の最初に入れる形にする
 			sourceDoc = sourceDoc.replace(
 				/<html[^>]*>/,
-				"$&" + `<head>${baseHtml}</head>`
+				"$&" + `<head>${baseHtml}</head>`,
 			);
 		}
 
@@ -1781,7 +1831,7 @@ class LayerSpecificWebAppHandler {
 				}.bind(this),
 				1000,
 				targetElem,
-				true
+				true,
 			);
 		}
 	}
@@ -1921,7 +1971,7 @@ class LayerSpecificWebAppHandler {
 
 		this.#dispatchCutomIframeEvent(
 			LayerSpecificWebAppHandler.#hideFrame,
-			visibleIframeId
+			visibleIframeId,
 		);
 		lsuiDoc.getElementById(visibleIframeId).style.display = "none";
 
@@ -1962,22 +2012,22 @@ class LayerSpecificWebAppHandler {
 			document.removeEventListener(
 				"zoomPanMap",
 				this.#transferCustomEvent2iframe[layerId],
-				false
+				false,
 			);
 			document.removeEventListener(
 				"screenRefreshed",
 				this.#transferCustomEvent2iframe[layerId],
-				false
+				false,
 			);
 			document.removeEventListener(
 				"zoomPanMapCompleted",
 				this.#transferCustomEvent2iframe[layerId],
-				false
+				false,
 			);
 			delete this.#transferCustomEvent2iframe[layerId];
 			this.#dispatchCutomIframeEvent(
 				LayerSpecificWebAppHandler.#closeFrame,
-				targetIframeId
+				targetIframeId,
 			);
 			this.#globalMessageDisplay.clearGlobalMessage(layerId);
 			setTimeout(function () {
@@ -2029,21 +2079,21 @@ class LayerSpecificWebAppHandler {
 			function (event) {
 				this.#unloadedLayersUIupdate(event);
 			}.bind(this),
-			false
+			false,
 		); // 2020/2/13
 		window.addEventListener(
 			"zoomPanMap",
 			function (event) {
 				this.#zpm_checkLoadingFlag(event);
 			}.bind(this),
-			false
+			false,
 		); // 2021/6/21
 		window.addEventListener(
 			"screenRefreshed",
 			function (event) {
 				this.#unloadedLayersUIupdate(event);
 			}.bind(this),
-			false
+			false,
 		); // ^
 		this.#checkLayerListAndRegistLayerUI(); // 2017.9.8 この関数の先にあるcheckControllerで#loadTiming=layerLoad|uiAppear(default) を起動時処理する
 	}

@@ -2064,7 +2064,7 @@ class SvgMap {
 	}.bind(this);
 
 	#getCrs(svgDoc, docId) {
-		console.log("getCrs:", new Error().stack);
+		// console.log("getCrs:", new Error().stack);
 		var isSVG2 = false;
 		var crs = null;
 		var globalView = UtilFuncs.getElementByIdNoNS(svgDoc, "globe");
@@ -3225,6 +3225,23 @@ class SvgMap {
 	 */
 	setCustomModal(...params) {
 		return this.#customModal.setCustomModal(...params);
+	}
+
+	/**
+	 * カーソル位置を中心としたズームモードを設定する
+	 * @param {Boolean} enable
+	 */
+	setCursorCenterZooming(enable) {
+		if (this.#zoomPanManager) {
+			this.#zoomPanManager.setCursorCenterZooming(enable);
+		} else {
+			setTimeout(
+				function () {
+					this.setCursorCenterZooming(enable);
+				}.bind(this),
+				10,
+			);
+		}
 	}
 
 	/**

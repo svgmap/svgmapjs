@@ -33,7 +33,7 @@ class CesiumWindow {
 			cesiumObj,
 			svgMapOpenerWindow,
 			accessTokens,
-			options
+			options,
 		);
 	}
 
@@ -52,7 +52,7 @@ class CesiumWindow {
 
 		if (!svgMapOpenerWindow || !cesiumObj) {
 			console.warn(
-				"NO window.opener(svgMapOpenerWindow) or cesiumObject exit."
+				"NO window.opener(svgMapOpenerWindow) or cesiumObject exit.",
 			);
 			return;
 		}
@@ -62,7 +62,7 @@ class CesiumWindow {
 				viewGeoJson: this.#viewGeoJson,
 			},
 			svgMapOpenerWindow,
-			true
+			true,
 		);
 
 		this.#getReldir2imageUrl();
@@ -79,7 +79,7 @@ class CesiumWindow {
 			" terrainSources:",
 			srcs.terrainSources,
 			" accessTokens:",
-			accessTokens
+			accessTokens,
 		);
 		this.#viewer = new Cesium.Viewer("cesiumContainer", {
 			imageryProviderViewModels: srcs.imagerySources,
@@ -138,7 +138,7 @@ class CesiumWindow {
 			west + dw,
 			south + dh - dy,
 			east - dw,
-			north - dh - dy
+			north - dh - dy,
 		);
 		var rectangleV = Cesium.Rectangle.fromDegrees(west, south, east, north);
 		this.#viewer.camera.flyTo({
@@ -185,7 +185,7 @@ class CesiumWindow {
 		this.#scene.primitives.add(
 			new Cesium.GroundPrimitive({
 				geometryInstance: rectangleInstance,
-			})
+			}),
 		);
 	}
 
@@ -204,12 +204,12 @@ class CesiumWindow {
 			"testGroundPrimitive:",
 			this.#scene,
 			this.#scene.primitives,
-			rectangleInstance
+			rectangleInstance,
 		);
 		this.#scene.primitives.add(
 			new Cesium.GroundPrimitive({
 				geometryInstance: rectangleInstance,
-			})
+			}),
 		);
 	}
 
@@ -270,7 +270,7 @@ class CesiumWindow {
 			"called getHeights,sampleTerrainMostDetailed:",
 			positions,
 			"  viewer.terrainProvider:",
-			this.#viewer.terrainProvider.availability
+			this.#viewer.terrainProvider.availability,
 		);
 		//	Cesium.sampleTerrain(this.#viewer.terrainProvider, 9, positions).then(callBackFunc);
 		//	Cesium.sampleTerrainMostDetailed(this.#viewer.terrainProvider, positions).then(callBackFunc);
@@ -279,7 +279,7 @@ class CesiumWindow {
 			this.#viewer.terrainProvider,
 			positions,
 			callBackFunc,
-			progressFunc
+			progressFunc,
 		);
 		/**
 		var stC = this.#sampleTerrainWrapperC();
@@ -301,7 +301,7 @@ class CesiumWindow {
 			"   when",
 			Cesium.when,
 			"   Cesium:",
-			Cesium
+			Cesium,
 		);
 		this.#viewer.terrainProvider.readyPromise.then(function () {
 			console.log("readyPromise");
@@ -311,7 +311,7 @@ class CesiumWindow {
 			lng,
 			lat,
 			5000,
-			new Cesium.Cartographic()
+			new Cesium.Cartographic(),
 		);
 		console.log("terrainProvider", this.#viewer.terrainProvider);
 		if (this.#viewer.terrainProvider.availability) {
@@ -319,8 +319,8 @@ class CesiumWindow {
 			console.log(
 				"availability.computeMaximumLevelAtPosition : ",
 				this.#viewer.terrainProvider.availability.computeMaximumLevelAtPosition(
-					pointOfInterest
-				)
+					pointOfInterest,
+				),
 			);
 		}
 		//,this.#viewer.terrainProvider.availability.computeMaximumLevelAtPosition(pointOfInterest));
@@ -333,7 +333,7 @@ class CesiumWindow {
 			console.log(
 				"Height in meters is: " + samples[0].height,
 				"   rect:",
-				rect
+				rect,
 			);
 			this.#setRect(rect, samples[0].height);
 		});
@@ -412,7 +412,7 @@ class CesiumWindow {
 				function () {
 					this.#viewGeoJson(geojsInp, rect);
 				}.bind(this),
-				200
+				200,
 			);
 		}
 
@@ -495,7 +495,7 @@ class CesiumWindow {
 								sw *
 									(normalizedValue + 0.01) *
 									this.#relBarTickness *
-									this.#relBarFullRange
+									this.#relBarFullRange,
 							); // 0.01は0になると柱が消えちゃうので、1%程度サバ読み
 						} else {
 							geoJSinstance.features.push(feature);
@@ -532,7 +532,7 @@ class CesiumWindow {
 				rect.y,
 				rect.x + rect.width,
 				rect.y + rect.height,
-				true
+				true,
 			);
 			//		this.#flyToRectangle(rect.x, rect.y, rect.x + rect.width, rect.y + rect.height , false );
 		}
@@ -563,9 +563,9 @@ class CesiumWindow {
 					geom.coordinates[0].lng,
 					geom.coordinates[0].lat,
 					geom.coordinates[1].lng,
-					geom.coordinates[1].lat
+					geom.coordinates[1].lat,
 				),
-			})
+			}),
 		);
 
 		coverageImagery.alpha = 0.5;
@@ -591,7 +591,7 @@ class CesiumWindow {
 		}
 		console.log(
 			"called addGeoJsonObj : coverageImageries",
-			this.#coverageImageries
+			this.#coverageImageries,
 		);
 		if (doClear) {
 			this.#viewer.dataSources.removeAll();
@@ -604,7 +604,7 @@ class CesiumWindow {
 				strokeWidth: sw / 4, // 2018.7.25 cesiumのstrokeWidth定義が変化した？　えらく太くなるので４分の１にしてみる・・・nonScalingになった？
 				markerSymbol: "?",
 				clampToGround: this.#clampToGround,
-			})
+			}),
 		);
 	}
 
@@ -621,7 +621,7 @@ class CesiumWindow {
 			terrainProvider,
 			positions,
 			callBackFunc,
-			progressFunc
+			progressFunc,
 		) {
 			answerPositions = [];
 			completedCount = 0;
@@ -637,11 +637,11 @@ class CesiumWindow {
 			console.log("called sampleSubTerrain:", completedCount);
 			var subPositions = inputPositions.slice(
 				completedCount,
-				completedCount + subCount
+				completedCount + subCount,
 			);
 			Cesium.sampleTerrainMostDetailed(
 				sampleTerrainWrapperTerrainProvider,
-				subPositions
+				subPositions,
 			).then(
 				//		Cesium.sampleTerrain(sampleTerrainWrapperTerrainProvider,9, subPositions).then(
 				function (resolvedSubPositions) {
@@ -651,13 +651,13 @@ class CesiumWindow {
 					console.log(completedCount, inputPositions.length);
 					if (completedCount < inputPositions.length) {
 						sampleTerrainWrapperProgressF(
-							completedCount / inputPositions.length
+							completedCount / inputPositions.length,
 						);
 						sampleSubTerrain();
 					} else {
 						sampleTerrainWrapperCBF(answerPositions);
 					}
-				}
+				},
 			);
 		}
 
@@ -673,7 +673,7 @@ class SampleTerrainWrapper {
 			terrainProvider,
 			positions,
 			callBackFunc,
-			progressFunc
+			progressFunc,
 		);
 	}
 
@@ -689,7 +689,7 @@ class SampleTerrainWrapper {
 		terrainProvider,
 		positions,
 		callBackFunc,
-		progressFunc
+		progressFunc,
 	) {
 		this.#answerPositions = [];
 		this.#completedCount = 0;
@@ -705,11 +705,11 @@ class SampleTerrainWrapper {
 		console.log("called sampleSubTerrain:", this.#completedCount);
 		var subPositions = this.#inputPositions.slice(
 			this.#completedCount,
-			this.#completedCount + this.#subCount
+			this.#completedCount + this.#subCount,
 		);
 		Cesium.sampleTerrainMostDetailed(
 			this.#sampleTerrainWrapperTerrainProvider,
-			subPositions
+			subPositions,
 		).then(
 			//		Cesium.sampleTerrain(this.#sampleTerrainWrapperTerrainProvider,9, subPositions).then(
 			function (resolvedSubPositions) {
@@ -720,13 +720,13 @@ class SampleTerrainWrapper {
 				console.log(this.#completedCount, this.#inputPositions.length);
 				if (this.#completedCount < this.#inputPositions.length) {
 					this.#sampleTerrainWrapperProgressF(
-						this.#completedCount / this.#inputPositions.length
+						this.#completedCount / this.#inputPositions.length,
 					);
 					this.#sampleSubTerrain();
 				} else {
 					this.#sampleTerrainWrapperCBF(this.#answerPositions);
 				}
-			}
+			},
 		);
 	}.bind(this);
 }

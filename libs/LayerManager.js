@@ -39,7 +39,7 @@ class LayerManager {
 			// 文字列(ハッシュ)の場合
 			layer = UtilFuncs.getElementByImgIdNoNS(
 				this.#svgImages["root"],
-				layerID_Numb_Title
+				layerID_Numb_Title,
 			); // ID(レイヤーのハッシュキー)で検索
 			if (!layer) {
 				// タイトルで検索
@@ -238,7 +238,7 @@ class LayerManager {
 					"switch",
 					"batch",
 					"editable",
-					"clickable"
+					"clickable",
 				);
 
 				for (var j = 0; j < layerClass.length; j++) {
@@ -278,7 +278,7 @@ class LayerManager {
 				"batch",
 				"editable",
 				"clickable",
-				"switch"
+				"switch",
 			);
 		} else {
 			// classが設定されていないレイヤーはＯＫを返す
@@ -407,7 +407,7 @@ class LayerManager {
 					"switch",
 					"batch",
 					"editable",
-					"clickable"
+					"clickable",
 				);
 				if (layerGroupNames.length > 0) {
 					layerGroupName = layerGroupNames[0];
@@ -454,7 +454,7 @@ class LayerManager {
 		editing,
 		hashOption,
 		removeLayer,
-		execOption
+		execOption,
 	) {
 		this.setRootLayersPropsPostprocessed.processed = false; // refreshScreen()によるレンダリングループで、updateLayerListUIintが起きるようにする
 		var layer = this.getLayer(layerID_Numb_Title);
@@ -586,7 +586,7 @@ class LayerManager {
 			false,
 			hashOption,
 			null,
-			execOption
+			execOption,
 		);
 		/** refreshScreen側で実行するように改修 2021/10/14
 		if ( typeof updateLayerListUIint == "function" ){

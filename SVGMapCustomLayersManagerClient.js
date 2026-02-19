@@ -23,21 +23,21 @@ class SvgMapCustomLayersManagerClient {
 	async getDetailedLayersPropertySet() {
 		return await this.#iwmsg.callRemoteFunc(
 			this.getDetailedLayersPropertySet.name,
-			[]
+			[],
 		);
 	}
 
 	async getDetailedOriginalLayersPropertySet() {
 		return await this.#iwmsg.callRemoteFunc(
 			this.getDetailedOriginalLayersPropertySet.name,
-			[]
+			[],
 		);
 	}
 
 	async setCustomLayerSettingIndex(key) {
 		return await this.#iwmsg.callRemoteFunc(
 			this.setCustomLayerSettingIndex.name,
-			[key]
+			[key],
 		);
 	}
 
@@ -55,7 +55,7 @@ class SvgMapCustomLayersManagerClient {
 	async registCustomLayer(
 		customLayerObject,
 		applyImmediately,
-		customLayerMetadata
+		customLayerMetadata,
 	) {
 		return await this.#iwmsg.callRemoteFunc(this.registCustomLayer.name, [
 			customLayerObject,
@@ -67,28 +67,28 @@ class SvgMapCustomLayersManagerClient {
 	async loadCustomLayerSettings() {
 		return await this.#iwmsg.callRemoteFunc(
 			this.loadCustomLayerSettings.name,
-			[]
+			[],
 		);
 	}
 
 	async storeCustomLayerSettings(settings) {
 		return await this.#iwmsg.callRemoteFunc(
 			this.storeCustomLayerSettings.name,
-			[settings]
+			[settings],
 		);
 	}
 
 	async deleteAllCustomLayerSettings() {
 		return await this.#iwmsg.callRemoteFunc(
 			this.deleteAllCustomLayerSettings.name,
-			[]
+			[],
 		);
 	}
 
 	async deleteAllCustomViewBoxSettings() {
 		return await this.#iwmsg.callRemoteFunc(
 			this.deleteAllCustomViewBoxSettings.name,
-			[]
+			[],
 		);
 	}
 
@@ -98,18 +98,18 @@ class SvgMapCustomLayersManagerClient {
 		geoViewBoxX,
 		geoViewBoxY,
 		geoViewBoxWidth,
-		geoViewBoxHeight
+		geoViewBoxHeight,
 	) {
 		return await this.#iwmsg.callRemoteFunc(
 			this.buildCustomGeoViewboxSettingObject.name,
-			[key, title, geoViewBoxX, geoViewBoxY, geoViewBoxWidth, geoViewBoxHeight]
+			[key, title, geoViewBoxX, geoViewBoxY, geoViewBoxWidth, geoViewBoxHeight],
 		);
 	}
 
 	async loadCustomGeoViewboxes() {
 		return await this.#iwmsg.callRemoteFunc(
 			this.loadCustomGeoViewboxes.name,
-			[]
+			[],
 		);
 	}
 
@@ -122,14 +122,14 @@ class SvgMapCustomLayersManagerClient {
 	async applyCustomLayersSettingsToCurrentMapView(lpEdit) {
 		return await this.#iwmsg.callRemoteFunc(
 			this.applyCustomLayersSettingsToCurrentMapView.name,
-			[lpEdit]
+			[lpEdit],
 		);
 	}
 
 	async deleteCustomLayerSetting(customSettingKey) {
 		return await this.#iwmsg.callRemoteFunc(
 			this.deleteCustomLayerSetting.name,
-			[customSettingKey]
+			[customSettingKey],
 		);
 	}
 
@@ -137,7 +137,7 @@ class SvgMapCustomLayersManagerClient {
 		// 内部処理で実行できるけど面倒なのでライブラリにパスする・・
 		return await this.#iwmsg.callRemoteFunc(
 			this.buildCustomLayersSetting.name,
-			[editedLayersProperty, originalLayersProperty]
+			[editedLayersProperty, originalLayersProperty],
 		);
 	}
 
