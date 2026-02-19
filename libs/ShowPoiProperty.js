@@ -14,6 +14,7 @@ class ShowPoiProperty {
 	#svgImagesProps;
 	#getLayerName;
 	#matUtil;
+	#_showPoiPropertyBackup;
 
 	constructor(svgMapObject, getLayerName, matUtil) {
 		this.#svgMapObject = svgMapObject;
@@ -220,9 +221,18 @@ class ShowPoiProperty {
 		}
 	}
 
-	// setShowPoiProperty: 特定のレイヤー・svg文書(いずれもIDで指定)もしくは、全体に対して別のprop.表示関数を指定できる。
-	// 指定した関数は、帰り値がfalseだった場合、デフォルトprop.表示関数を再度呼び出す
-
+	/**
+	 * POIクリック時のコールバック関数を設定または削除します。
+	 * `docId`が指定されている場合は特定のレイヤー/ドキュメントID向けのコールバックを設定/上書きし、
+	 * 指定されていない場合はグローバルなデフォルトコールバックを設定/上書きします。
+	 * `func`に`null`を渡した場合、対応するコールバック設定が削除されます。
+	 * 設定した関数が`false`を返した場合、デフォルトのPOI表示関数が再度呼び出されます。
+	 * @param {Function|null} func - 設定するコールバック関数、または削除する場合は`null`。
+	 *                                 コールバック関数は`targetElement` (クリックされたSVG要素) を引数にとります。
+	 *                                 `false`を返すとデフォルトのPOI表示関数が実行されます。
+	 * @param {string} [docId] - コールバックを設定するドキュメントIDまたはレイヤーID。省略した場合はグローバル設定となります。
+	 * @returns {void}
+	 */
 	setShowPoiProperty(func, docId) {
 		if (!func) {
 			// 消去する
@@ -495,6 +505,44 @@ class ShowPoiProperty {
 			}
 		}
 		return metaData;
+	}
+
+	/**
+	 * 現在のPOIクリックハンドラ設定をバックアップします。
+	 * グローバルおよび特定のレイヤー/ドキュメントID向けのコールバック関数設定を内部に保存します。
+	 * 既にバックアップが存在する場合は、既存のバックアップを上書きせず、何も行いません。
+	 * @returns {void}
+	 */
+	backupShowPoiProperty() {
+		// 既にバックアップ済みなら何もしない
+		if (!this.#_showPoiPropertyBackup) {
+			this.#_showPoiPropertyBackup = {
+				specific: { ...this.#specificShowPoiPropFunctions },
+				defaultCustom: this.#defaultShowPoiPropertyCustom,
+			};
+		}
+	}
+
+	/**
+	 * バックアップされたPOIクリックハンドラ設定を復元します。
+	 * `backupShowPoiProperty`によって保存されたコールバック関数設定を復元し、内部のバックアップをクリアします。
+	 * バックアップが存在しない状態で呼び出された場合、何も行わず、エラーも発生させません。
+	 * @returns {void}
+	 */
+	restoreShowPoiProperty() {
+		if (this.#_showPoiPropertyBackup) {
+			this.#specificShowPoiPropFunctions = { ...this.#_showPoiPropertyBackup.specific };
+			this.#defaultShowPoiPropertyCustom = this.#_showPoiPropertyBackup.defaultCustom;
+			this.#_showPoiPropertyBackup = null;
+		}
+	}
+
+	/**
+	 * 現在、POIクリックハンドラ設定のバックアップが存在するかどうかを返します。
+	 * @returns {boolean} バックアップが存在する場合は`true`、存在しない場合は`false`。
+	 */
+	isHookActive() {
+		return !!this.#_showPoiPropertyBackup;
 	}
 }
 
