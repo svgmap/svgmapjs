@@ -1344,33 +1344,6 @@ class LayerSpecificWebAppHandler {
 	}
 
 	#iframeOnLoadProcess(iframe, lid, reqSize, controllerURL, cbf) {
-		// srcdocだと、xxmsぐらい待たないと、contentWindowへの設定がwindowに保持されないので、初期化されるまでリトライすることに。
-		// xxmsの時間もなんかまちまち・・(on chrome) 2019/11/26
-		// DOMContentLoaded イベントで動作させれば良いんじゃないかな とも思ったがどうだろう
-		// 参考: https://ja.javascript.info/onload-ondomcontentloaded 2019/12/05
-		// https://stackoverflow.com/questions/16960829/detect-domcontentloaded-in-iframe
-		// DOMContentLoadedはiframeでは発行されない。が、力技で解決する手法を作った人がいる。 >iFrameReady
-		// https://stackoverflow.com/questions/24603580/how-can-i-access-the-dom-elements-within-an-iframe/24603642#comment38157462_24603642
-		var iframeId = iframe.id;
-		/**
-		console.log(
-			"initIframe load eventListen : controllerURL:",
-			controllerURL,
-			"  svgMapAuthoringTool:",
-			this.#svgMapAuthoringTool
-		);
-		**/
-		this.#dispatchCutomIframeEvent(
-			LayerSpecificWebAppHandler.#openFrame,
-			iframeId,
-		);
-		if (this.#layerSpecificUiMaxHeight == 0) {
-			this.#layerSpecificUiMaxHeight = this.#layerSpecificUI.offsetHeight;
-		}
-		iframe.contentWindow.layerID = lid;
-
-
-	#iframeOnLoadProcess(iframe, lid, reqSize, controllerURL, cbf) {
 	
 		
 		var iframeId = iframe.id;
