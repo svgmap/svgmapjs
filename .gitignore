@@ -11,3 +11,7 @@ package-lock.json
 GEMINI.md
 .gemini/
 .kiro/
+
+# For unittests/e2e tests
+*.pem
+demo-content/

@@ -233,8 +233,11 @@ class InterWindowMessaging {
 			}
 
 			const targetWin = this.#getTargetWindow();
+
 			// 送信元ウィンドウが指定されている場合、一致しなければ無視する（他のインスタンス向けのメッセージである可能性があるため）
-			if (targetWin && event.source !== targetWin) return;
+			if (targetWin && event.source !== targetWin) {
+				return;
+			}
 
 			const isHandshakeAck =
 				msg.command === "handshakeAck" || msg.response === "handshakeAck";
@@ -249,13 +252,6 @@ class InterWindowMessaging {
 				isAlwaysAllowed ||
 				isHELO ||
 				(isHandshakeAck && this.#handshakeToken); // ハンドシェイクACKは検証前でもオリジンを問わずパースを許可
-			console.log(
-				"## InterWindowMessaging: Received message from origin:",
-				event.origin,
-				"Allowed:",
-				isOriginAllowed,
-				this
-			);
 
 			// ターゲットオリジンの確定（* の場合）
 			if (
@@ -266,13 +262,6 @@ class InterWindowMessaging {
 				this.#targetOrigin = event.origin;
 			}
 
-			console.log(
-				"InterWindowMessaging get message:",
-				event.data,
-				" srcWin:",
-				event.source
-			);
-
 			// (親)HELO への応答 (ハンドシェイク確立を助ける) - Task 1.1 対応
 			if (isHELO) {
 				this.#handleHelo(msg, event.source, event.origin);
@@ -281,9 +270,8 @@ class InterWindowMessaging {
 
 			// (子)Handshake ACK の処理 - Task 1.1 対応
 			if (isHandshakeAck) {
-				console.log("token:", this.#handshakeToken, msg.parameter);
 				const [lid, token] = msg.parameter || [];
-				if (token && token === this.#handshakeToken) {
+				if (token && this.#handshakeToken && token === this.#handshakeToken) {
 					console.log(
 						`InterWindowMessaging: Handshake established. Origin: ${event.origin}`
 					);
@@ -298,22 +286,16 @@ class InterWindowMessaging {
 					if (typeof this.#options.onHandshake === "function") {
 						this.#options.onHandshake(event.origin);
 					}
-					// ACKに対する返信
-					//const resp = { id: msg.id, response: "handshakeAck", content: "ok" };
-					//event.source.postMessage(this.#safeStringify(resp), event.origin);
 					return;
-				} else {
-					// マルチターゲット環境（LayerSpecificWebAppHandler等）への配慮:
-					// 自身の待受トークンと一致しない場合でも、上位レイヤーで処理される可能性があるため警告のみ
-					console.log(
-						"InterWindowMessaging: Handshake token mismatch in this instance."
-					);
 				}
+				// 自身のトークンと一致しない場合は、コマンドハンドラ(functionSet)に任せるためここでは return しない 2026/02/22
 			}
 
 			if (!isOriginAllowed) {
-				console.log("message:", msg);
-				console.log("event:", event);
+				// 自分が関与すべきメッセージ（コマンドが functionSet にある）でなければ静かに無視する 2026/02/22
+				if (!msg.command || !this.#functionSet_int[msg.command]) {
+					return;
+				}
 				console.warn(
 					`InterWindowMessaging: Message blocked from untrusted origin: ${event.origin}`
 				);
@@ -326,11 +308,16 @@ class InterWindowMessaging {
 				!this.#isHandshakeComplete &&
 				!isAlwaysAllowed
 			) {
+				// 自分が関与すべきメッセージでなければ無視
+				if (!msg.command || !this.#functionSet_int[msg.command]) {
+					return;
+				}
 				console.warn(
 					"InterWindowMessaging: Message blocked before handshake completion."
 				);
 				return;
 			}
+
 			// 以下、信用済みオリジンからのメッセージ処理
 			if (msg.id && this.#pendingRequests.has(msg.id)) {
 				const { resolve } = this.#pendingRequests.get(msg.id);
@@ -340,7 +327,7 @@ class InterWindowMessaging {
 			}
 
 			if (msg.command) {
-				if (this.#functionSet_int[msg.command]) {
+				if (this.#functionSet_int && this.#functionSet_int[msg.command]) {
 					const ans = await this.#functionSet_int[msg.command].call(
 						{ origin: event.origin, source: event.source },
 						...(msg.parameter || [])
@@ -348,12 +335,13 @@ class InterWindowMessaging {
 					const resp = { id: msg.id, response: msg.command, content: ans };
 					const replyOrigin =
 						this.#targetOrigin === "*" ? event.origin : this.#targetOrigin;
-					event.source.postMessage(this.#safeStringify(resp), replyOrigin);
+					
+					if (replyOrigin && replyOrigin !== "null") {
+						event.source.postMessage(this.#safeStringify(resp), replyOrigin);
+					}
 				} else {
-					const resp = { id: msg.id, response: "error" };
-					const replyOrigin =
-						this.#targetOrigin === "*" ? event.origin : this.#targetOrigin;
-					event.source.postMessage(this.#safeStringify(resp), replyOrigin);
+					// 自分の担当外のコマンドは完全に無視する（他のインスタンスへ処理を譲る）
+					return;
 				}
 			} else if (msg.ready === true) {
 				this.#setReady();

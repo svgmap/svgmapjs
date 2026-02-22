@@ -7,14 +7,54 @@ const LOCAL_DEMO_URL = 'https://svgmap.org/demos/demo1/';
 test.describe('InterWindowMessaging Regression Proof', () => {
     test.beforeEach(async ({ page, context }) => {
         const rootDir = process.cwd();
+        
+        // ログ出力設定
         page.on('console', msg => {
             const text = msg.text();
-            if (text.includes('InterWindowMessaging') || text.includes('Handshake')) {
+            if (text.includes('InterWindowMessaging') || text.includes('Handshake') || text.includes('[IWM Debug]')) {
                 console.log(`BROWSER: ${text}`);
             }
         });
 
-        // サーバー側の最新の機能のみを検証するため、ローカルファイルの上書き（routing）は一切行わない
+        // ブラウザエラーのキャッチ
+        page.on('pageerror', err => {
+            console.error(`BROWSER ERROR: ${err.message}`);
+        });
+
+        // プロジェクト内の主要なディレクトリを定義
+        const searchDirs = [
+            rootDir,
+            path.join(rootDir, 'libs'),
+            path.join(rootDir, '3D_extension')
+        ];
+
+        // すべての JS と HTML リクエストを監視し、ローカルにファイルがあれば差し替える
+        await context.route('**/*.{js,html}', async (route) => {
+            const url = new URL(route.request().url());
+            const fileName = url.pathname.split('/').pop()?.split('?')[0];
+            
+            if (!fileName) return route.continue();
+
+            let foundPath = null;
+            for (const dir of searchDirs) {
+                const targetPath = path.join(dir, fileName);
+                if (fs.existsSync(targetPath) && fs.lstatSync(targetPath).isFile()) {
+                    foundPath = targetPath;
+                    break;
+                }
+            }
+            
+            if (foundPath) {
+                const contentType = fileName.endsWith('.js') ? 'application/javascript' : 'text/html';
+                console.log(`ROUTING: ${fileName} -> LOCAL`);
+                await route.fulfill({ 
+                    body: fs.readFileSync(foundPath), 
+                    contentType: contentType 
+                });
+            } else {
+                await route.continue();
+            }
+        });
     });
 
     test('verify Cesium 3D view functionality', async ({ page, context }) => {
@@ -55,7 +95,7 @@ test.describe('InterWindowMessaging Regression Proof', () => {
     test('confirm baseline functionality in layerCustomManager.', async ({ page, context }) => {
         await page.goto(LOCAL_DEMO_URL, { waitUntil: 'networkidle' });
         
-        // 1. カスタムレイヤーマネージャーを開く (InterWindowMessaging使用箇所2)
+        // 1. カスタムレイヤーマネージャーを開く
         const layerListBtn = page.getByLabel(/Layer List: \d layers visible/);
         await layerListBtn.click();
         const customizerBtn = page.locator('[id="layersCustomizerImageButton"]');
@@ -88,10 +128,6 @@ test.describe('InterWindowMessaging Regression Proof', () => {
                  return inputs.some(i => i.value.includes('Container.svg'));
              });
              if (!hasContainer) {
-                 const allValues = await layerTable.evaluate((table) => {
-                     return Array.from(table.querySelectorAll('input[type="text"]')).map(i => (i as HTMLInputElement).value);
-                 });
-                 console.log('DEBUG: All input values in layerTable:', allValues);
                  throw new Error('Container.svg not found in layerTable inputs');
              }
         }).toPass({ timeout: 15000 });
@@ -112,8 +148,5 @@ test.describe('InterWindowMessaging Regression Proof', () => {
         await expect(download.suggestedFilename()).not.toBe('');
         
         await popup.close();
-    });
-
-    test('confirm baseline functionality in CesiumButton.', async ({ page, context }) => {
     });
 });
