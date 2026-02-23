@@ -78,17 +78,43 @@ describe("InterWindowMessaging Compatibility (Task 4.1)", () => {
 		expect(result).toBe("remoteResult");
 	});
 
-	test("should maintain postMessageTo signature", () => {
-		const iwm = new InterWindowMessaging(functionSet, mockTargetWindow, true);
-		const otherWindow = {
-			postMessage: jest.fn(),
-			location: { origin: "http://other.com" }
+	test("should remain silent for unhandled commands in multi-instance environment", async () => {
+		// インスタンス A: 'cmdA' のみ担当
+		const functionSetA = { cmdA: jest.fn().mockResolvedValue("resultA") };
+		const iwmA = new InterWindowMessaging(functionSetA, mockTargetWindow, false);
+
+		// インスタンス B: 'cmdB' のみ担当
+		const functionSetB = { cmdB: jest.fn().mockResolvedValue("resultB") };
+		const iwmB = new InterWindowMessaging(functionSetB, mockTargetWindow, false);
+
+		mockTargetWindow.postMessage.mockClear();
+
+		// 'cmdB' を送信
+		const msgId = "test-id-123";
+		const messageEvent = {
+			origin: "http://localhost",
+			source: mockTargetWindow,
+			data: JSON.stringify({
+				id: msgId,
+				command: "cmdB",
+				parameter: []
+			})
 		};
+		window.dispatchEvent(new MessageEvent("message", messageEvent));
+
+		// 非同期処理を待機
+		await new Promise(resolve => setTimeout(resolve, 50));
+
+		// 検証:
+		// 1. インスタンス A は cmdB を知らないので、何も返信していないはず
+		// 2. インスタンス B は cmdB を知っているので、1回だけ正しく返信しているはず
 		
-		iwm.postMessageTo(otherWindow, { data: "test" });
+		// 以前のバグでは、インスタンス A が 'error' レスポンスを返してしまい、合計2回の呼び出しが発生していた
+		expect(mockTargetWindow.postMessage).toHaveBeenCalledTimes(1);
 		
-		expect(otherWindow.postMessage).toHaveBeenCalled();
-		const sentData = JSON.parse(otherWindow.postMessage.mock.calls[0][0]);
-		expect(sentData.data).toBe("test");
+		const response = JSON.parse(mockTargetWindow.postMessage.mock.calls[0][0]);
+		expect(response.response).toBe("cmdB");
+		expect(response.content).toBe("resultB");
+		expect(response.id).toBe(msgId);
 	});
 });
