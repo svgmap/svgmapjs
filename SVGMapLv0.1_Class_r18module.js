@@ -356,7 +356,8 @@ class SvgMap {
 		this.#layerSpecificWebAppHandler = new LayerSpecificWebAppHandler(
 			this,
 			this.#svgMapAuthoringTool,
-			this.#getLayerStatus
+			this.#getLayerStatus,
+			this.#proxyManager
 		);
 		this.#svgMapLayerUI = new SvgMapLayerUI(
 			this,

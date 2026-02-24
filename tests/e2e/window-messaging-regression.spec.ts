@@ -1,14 +1,96 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, BrowserContext, Page } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
 
 const LOCAL_DEMO_URL = 'https://svgmap.org/demos/demo1/';
 
-test.describe('InterWindowMessaging Regression Proof', () => {
-    test.beforeEach(async ({ page, context }) => {
-        const rootDir = process.cwd();
+/**
+ * ローカルのJS/HTMLファイルをブラウザに読み込ませるためのルーティング設定
+ */
+async function applyLocalRouting(context: BrowserContext) {
+    const rootDir = process.cwd();
+    const searchDirs = [
+        rootDir,
+        path.join(rootDir, 'libs'),
+        path.join(rootDir, '3D_extension')
+    ];
+
+    await context.route('**/*.{js,html}', async (route) => {
+        const url = new URL(route.request().url());
+        const fileName = url.pathname.split('/').pop()?.split('?')[0];
         
-        // ログ出力設定
+        if (!fileName) return route.continue();
+
+        let foundPath = null;
+        for (const dir of searchDirs) {
+            const targetPath = path.join(dir, fileName);
+            if (fs.existsSync(targetPath) && fs.lstatSync(targetPath).isFile()) {
+                foundPath = targetPath;
+                break;
+            }
+        }
+        
+        if (foundPath) {
+            const contentType = fileName.endsWith('.js') ? 'application/javascript' : 'text/html';
+            await route.fulfill({ 
+                body: fs.readFileSync(foundPath), 
+                contentType: contentType 
+            });
+        } else {
+            await route.continue();
+        }
+    });
+}
+
+/**
+ * 地理院 指定緊急避難場所レイヤの動作を確認する共通ロジック
+ */
+async function verifyGsiEvacuationLayer(page: Page) {
+    await page.goto(LOCAL_DEMO_URL, { waitUntil: 'networkidle' });
+    
+    // 1. レイヤ一覧を開く
+    const layerListBtn = page.getByLabel(/Layer List: \d layers visible/);
+    await expect(layerListBtn).toBeVisible({ timeout: 15000 });
+    await layerListBtn.click();
+
+    // 2. 「地理院 指定緊急避難場所」を探して有効化
+    const gsiLayerCheckbox = page.getByLabel('地理院 指定緊急避難場所');
+    await expect(gsiLayerCheckbox).toBeVisible({ timeout: 10000 });
+    await gsiLayerCheckbox.check();
+    await expect(gsiLayerCheckbox).toBeChecked();
+
+    // 3. レイヤIDの取得と、描画要素(img)の生成を待機
+    const detectionResult = await page.evaluate(async (title) => {
+        const start = Date.now();
+        // @ts-ignore
+        const svgMap = window.svgMap;
+        if (!svgMap) return { success: false, reason: 'svgMap not found' };
+
+        const layerId = svgMap.getLayerId(title);
+        if (!layerId) return { success: false, reason: `Layer ID for "${title}" not found` };
+
+        // mapcanvas 配下の id=layerId の要素内に img が出現するまで待機
+        while (Date.now() - start < 20000) { 
+            const layerElem = document.querySelector(`#mapcanvas #${layerId}`);
+            if (layerElem) {
+                const images = layerElem.querySelectorAll('img');
+                if (images.length > 0) {
+                    return { success: true, layerId, imgCount: images.length };
+                }
+            }
+            await new Promise(r => setTimeout(r, 1000));
+        }
+        return { success: false, reason: 'Timeout: No img elements found under layer element', layerId };
+    }, '地理院 指定緊急避難場所');
+
+    if (!detectionResult.success) {
+        throw new Error(`GSI layer verification failed: ${detectionResult.reason} (LayerID: ${detectionResult.layerId})`);
+    }
+    console.log(`GSI layer verification successful: LayerID=${detectionResult.layerId}, ImgCount=${detectionResult.imgCount}`);
+}
+
+test.describe('InterWindowMessaging Regression Proof', () => {
+    test.beforeEach(async ({ page }) => {
         page.on('console', msg => {
             const text = msg.text();
             if (text.includes('InterWindowMessaging') || text.includes('Handshake') || text.includes('[IWM Debug]')) {
@@ -16,57 +98,19 @@ test.describe('InterWindowMessaging Regression Proof', () => {
             }
         });
 
-        // ブラウザエラーのキャッチ
         page.on('pageerror', err => {
             console.error(`BROWSER ERROR: ${err.message}`);
-        });
-
-        // プロジェクト内の主要なディレクトリを定義
-        const searchDirs = [
-            rootDir,
-            path.join(rootDir, 'libs'),
-            path.join(rootDir, '3D_extension')
-        ];
-
-        // すべての JS と HTML リクエストを監視し、ローカルにファイルがあれば差し替える
-        await context.route('**/*.{js,html}', async (route) => {
-            const url = new URL(route.request().url());
-            const fileName = url.pathname.split('/').pop()?.split('?')[0];
-            
-            if (!fileName) return route.continue();
-
-            let foundPath = null;
-            for (const dir of searchDirs) {
-                const targetPath = path.join(dir, fileName);
-                if (fs.existsSync(targetPath) && fs.lstatSync(targetPath).isFile()) {
-                    foundPath = targetPath;
-                    break;
-                }
-            }
-            
-            if (foundPath) {
-                const contentType = fileName.endsWith('.js') ? 'application/javascript' : 'text/html';
-                console.log(`ROUTING: ${fileName} -> LOCAL`);
-                await route.fulfill({ 
-                    body: fs.readFileSync(foundPath), 
-                    contentType: contentType 
-                });
-            } else {
-                await route.continue();
-            }
         });
     });
 
     test('verify Cesium 3D view functionality', async ({ page, context }) => {
+        await applyLocalRouting(context);
         await page.goto(LOCAL_DEMO_URL, { waitUntil: 'networkidle' });
         
-        // 1. Cesium 3D View メインボタンをクリック
         const cesiumBtn = page.locator('[id="3DviewButton"]');
         await expect(cesiumBtn).toBeVisible({ timeout: 15000 });
         await cesiumBtn.click();
-        console.log('Cesium 3D view button clicked.');
 
-        // 2. 表示される Simple 3D view ボタンをクリック
         const simple3dBtn = page.locator('[id="svg2cesiumBtn1"]');
         await expect(simple3dBtn).toBeVisible({ timeout: 10000 });
         
@@ -76,26 +120,19 @@ test.describe('InterWindowMessaging Regression Proof', () => {
         ]);
 
         await popup.waitForLoadState('networkidle');
-        console.log('Cesium popup opened:', popup.url());
-        
-        // ポップアップの内容が空でないことを確認
         await expect(popup.locator('body')).not.toBeEmpty();
         await popup.close();
 
-        // 3. 3dViewBtns パネルを閉じる ('x' ボタンをクリック)
         const closeBtn = page.locator('[id="3dViewBtns"] input[value="x"]');
         await expect(closeBtn).toBeVisible();
         await closeBtn.click();
-        
-        // パネルが非表示になることを確認
         await expect(page.locator('[id="3dViewBtns"]')).toBeHidden();
-        console.log('Cesium 3D view buttons panel closed.');
     });
 
     test('confirm baseline functionality in layerCustomManager.', async ({ page, context }) => {
+        await applyLocalRouting(context);
         await page.goto(LOCAL_DEMO_URL, { waitUntil: 'networkidle' });
         
-        // 1. カスタムレイヤーマネージャーを開く
         const layerListBtn = page.getByLabel(/Layer List: \d layers visible/);
         await layerListBtn.click();
         const customizerBtn = page.locator('[id="layersCustomizerImageButton"]');
@@ -108,20 +145,13 @@ test.describe('InterWindowMessaging Regression Proof', () => {
 
         await popup.waitForLoadState('networkidle');
 
-        // 2. 詳細な検証 (Popup内)
-        
-        // 2.1 defaultVbRadio が On であること
         const defaultVbRadio = popup.locator('[id="defaultVbRadio"]');
         await expect(async () => {
             await expect(defaultVbRadio).toBeChecked();
         }).toPass({ timeout: 15000 });
-        console.log('defaultVbRadio is checked.');
 
-        // 2.2 Custom Layers Setting タブの確認
         await popup.locator('label[for="layers_t"]').click();
         const layerTable = popup.locator('[id="layerTable"]');
-        
-        // input[type="text"] の中身も含めて Container.svg を探す
         await expect(async () => {
              const hasContainer = await layerTable.evaluate((table) => {
                  const inputs = Array.from(table.querySelectorAll('input[type="text"]')) as HTMLInputElement[];
@@ -131,22 +161,25 @@ test.describe('InterWindowMessaging Regression Proof', () => {
                  throw new Error('Container.svg not found in layerTable inputs');
              }
         }).toPass({ timeout: 15000 });
-        console.log('layerTable contains Container.svg.');
 
-        // 2.3 Others タブの確認とダウンロード
         await popup.locator('label[for="others_t"]').click();
         const downloadBtn = popup.locator('[id="downloadButton"]');
         await expect(downloadBtn).toBeVisible();
-        console.log('downloadButton found in Others tab.');
 
-        // ダウンロードをトリガー
         const [download] = await Promise.all([
             popup.waitForEvent('download', { timeout: 20000 }),
             downloadBtn.click()
         ]);
-        console.log('Download triggered:', download.suggestedFilename());
         await expect(download.suggestedFilename()).not.toBe('');
-        
         await popup.close();
+    });
+
+    test('verify GSI evacuation layer - Official Baseline', async ({ page }) => {
+        await verifyGsiEvacuationLayer(page);
+    });
+
+    test('verify GSI evacuation layer - Local Regression Check', async ({ page, context }) => {
+        await applyLocalRouting(context);
+        await verifyGsiEvacuationLayer(page);
     });
 });
