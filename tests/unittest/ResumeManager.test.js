@@ -1,3 +1,7 @@
+/**
+ * @jest-environment jsdom
+ * @jest-environment-options {"url": "http://hontohakotti.com/main.svg"}
+ */
 // License: (MPL v2)
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -63,19 +67,6 @@ describe("target ResumeManager.", () => {
 				mock_svgMapCustomLayersManager,
 				mock_parseSVGfunc
 			);
-		});
-		beforeEach(() => {
-			mock_location = jest.spyOn(global, "location", "get").mockReturnValue({
-				href: "http://kondokoso.com",
-				pathname: "/main.svg",
-				origin: "http://hontohakotti.com",
-			});
-		});
-		afterEach(() => {
-			if (mock_location != null) {
-				mock_location.mockClear();
-				mock_location.mockReset();
-			}
 		});
 		// ブラウザにかかわるところは専用のクラスを用いると試験しやすい
 		it("check Resume", () => {

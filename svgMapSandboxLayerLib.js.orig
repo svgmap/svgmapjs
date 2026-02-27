@@ -1,0 +1,425 @@
+// Description:
+// サンドボックスLaWA(S-LaWA)用のsvgMapSandboxLayerLib.js
+// すなわち、これはS-LaWAとなるアプリが呼び出すことで、svgmap.jsのS-LaWAとして機能するようになる。
+//
+//  Programmed by Satoru Takagi
+//
+// License: (MPL v2)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+import { InterWindowMessaging } from "https://localhost:5500/svgMapLv0.2/InterWindowMessaging.js";
+import {
+  MatrixUtil,
+  GenericMatrix,
+  Mercator,
+} from "https://cdn.jsdelivr.net/gh/svgmap/svgmapjs@latest/libs/TransformLib.js";
+
+import { UtilFuncs } from "https://cdn.jsdelivr.net/gh/svgmap/svgmapjs@latest/libs/UtilFuncs.js";
+
+let messaging;
+window.addEventListener("DOMContentLoaded", () => {
+  console.log("window loaded:", window.opener);
+  messaging = new InterWindowMessaging(
+    {
+      connectionReady: function (param) {
+        console.log("connection established");
+      },
+      setInitialSvgImage: function (msg) {
+        console.log("初期SVGImageコンテンツを設定:", msg.svgImageXml);
+        window.layerID = msg.layerID;
+        setSvgImage(msg.svgImageXml);
+        setSvgImageProps(msg.svgImagePropsJSONtext);
+
+        readyInitialization();
+      },
+      getInitialSvgImage: function (msg) {
+        window.layerID = msg.layerID;
+        setSvgImageProps(msg.svgImagePropsJSONtext);
+        getSvgImageAndSendToParent(msg.svgImageUrl);
+      },
+      eventDispatch: function (msg) {
+        const svgMapEvent = new Event(msg.name);
+        setSvgImageProps(msg.svgImagePropsJSONtext);
+        // console.log("dispatch event on sandbox:",msg.name);
+        window.dispatchEvent(svgMapEvent);
+        processPreRenderFunctionByEvent(msg.name);
+      },
+      callCustomShowPoiPropertyFunc: function (msg) {
+        console.log("getCustomShowPoiPropertySrc:", msg);
+        callCustomShowPoiPropertyFunc(msg);
+      },
+    },
+    window.opener,
+    true, //2025/09/02 セキュリティ改善
+  );
+});
+
+function processPreRenderFunctionByEvent(eventName) {
+  // 2025/11/21
+  // 外のイベントによって引き起こされるpreRenderFunction実行（これによるrefreshScreenがS-LaWAの一つのオーバーへど部分になる）
+  if (eventName == "zoomPanMap") {
+    // このsvgMap.refreshScreen()を通して、下のprocessPreRenderFunction()が呼ばれる
+    svgMap.refreshScreen();
+  }
+}
+
+function processPreRenderFunction() {
+  // これが管理しているS-LaWAのpreRenderFunctionがあれば実行する
+  if (svgMap && window.preRenderFunction) {
+    // console.log("processPreRenderFunction");
+    window.preRenderFunction();
+  }
+}
+
+function readyInitialization() {
+  startObserving(); // この段階でsvgImage DOMの監視を開始
+  const svgMapEvent = new Event("layerWebAppReady");
+  window.dispatchEvent(svgMapEvent);
+}
+
+// S-LaWA側でレイヤルートSVGを取得し、フレームワーク側に送るパターン
+async function getSvgImageAndSendToParent(svgImageUrl) {
+  try {
+    const svgDomText = await (await fetch(svgImageUrl)).text();
+    setSvgImage(svgDomText);
+    console.log("getSvgImageAndSendToParent:");
+    await messaging.callRemoteFunc("replaceSvgImage", {
+      svgImageXml: svgDomText,
+    });
+    readyInitialization();
+  } catch (e) {
+    console.warn("svgImageの取得に失敗しました・・・");
+  }
+}
+
+function setSvgImage(svgImageXml) {
+  const xmlDom = new DOMParser().parseFromString(svgImageXml, "text/xml");
+  window.svgImage = xmlDom;
+  const originalSvgImageCreateElement = window.svgImage.createElement;
+  window.svgImage.createElement = function (tagName) {
+    // 元のcreateElementを呼び出し、要素を作成
+    const element = originalSvgImageCreateElement.call(this, tagName);
+
+    // 独自IDを自動的に付番
+    element.setAttribute(CUSTOM_ID_ATTR, `slawa-id-${nextId++}`);
+
+    return element;
+  };
+}
+
+function setSvgImageProps(receivedPropsJSONtext) {
+  const receivedProps = JSON.parse(receivedPropsJSONtext);
+  for (let key in receivedProps) {
+    if (key == "hash") {
+      _int_hashVal = receivedProps[key];
+    } else {
+      window.svgImageProps[key] = receivedProps[key]; // あ、これhashをセットするとセッターが動いてえらいことにならない？
+    }
+  }
+  window.CRS = window.svgImageProps.CRS; // 2025/11/19
+  return receivedProps;
+}
+
+class SandboxSvgMap {
+  #mu;
+  constructor() {
+    this.#mu = new MatrixUtil();
+  }
+  refreshScreenReplace = async function () {
+    console.log("refreshScreenReplace:");
+    const serializer = new XMLSerializer();
+    const svgImageXml = serializer.serializeToString(window.svgImage);
+    await messaging.callRemoteFunc("replaceSvgImage", { svgImageXml });
+  };
+  getSvgImageProps = async function () {
+    console.log("getSvgImageProps:");
+    const sipTxt = await messaging.callRemoteFunc("getSvgImageProps", []);
+    const sip = setSvgImageProps(sipTxt);
+    return sip;
+  };
+  /**
+	getGeoViewBox = async function(){ // これはなくていいと思う(svgImagePropsに最初から入っているべきだしasyncになり非互換なので)
+		const resp = await messaging.callRemoteFunc("getGeoViewBox",null);
+		console.log(resp);
+		return resp;
+	}
+	**/
+  getGeoViewBox = function () {
+    // なので、これでいいよね・・・
+    const gvb = svgImageProps.geoViewBox;
+    return gvb;
+  };
+  transform = function (x, y, mat, calcSize, nonScaling) {
+    return this.#mu.transform(x, y, mat, calcSize, nonScaling);
+  };
+
+  refreshScreen = async function () {
+    if (!observer) {
+      console.error("MutationObserver not initialized.");
+      return;
+    }
+    // refreshScreen前にまずはpreRenderFunctionがあればそれが実行され、再描画前のDOM構築をエミュレートする2025/11/21
+    processPreRenderFunction();
+    const diffPayload = buildDiffPayload();
+    await messaging.callRemoteFunc("applySvgDiff", [diffPayload]);
+
+    // 監視を再開(これは誤りだと思う)
+    //startObserving();
+  };
+  setShowPoiProperty = function (customShowPoiPropertyFunc, dummyLayerID) {
+    console.log("TBD:", customShowPoiPropertyFunc, dummyLayerID);
+    customShowPoiPropertyFunction = customShowPoiPropertyFunc;
+    messaging.callRemoteFunc("enableCustomShowPoiProperty", [true]);
+  };
+  /**
+   * @function' や " でエスケープされたcsvの1ラインをパースして配列に格納する関数
+   *
+   * @param {String} csv
+   * @returns {Array}
+   *
+   * @description TODO: utilに移設するほうがよいのでは？
+   */
+  parseEscapedCsvLine(csv) {
+    // ' や " でエスケープされたcsvの1ラインをパースして配列に格納する。(高級split(","))
+    var metaData = csv.split(",");
+    for (var j = 0; j < metaData.length; j++) {
+      metaData[j] = UtilFuncs.trim(metaData[j]);
+      if (metaData[j].indexOf("'") == 0 || metaData[j].indexOf('"') == 0) {
+        var countss = 0;
+        while (
+          metaData[j].substr(metaData[j].length - 1, 1) != "'" &&
+          metaData[j].substr(metaData[j].length - 1, 1) != '"'
+        ) {
+          metaData[j] = metaData[j] + "," + metaData[j + 1];
+          metaData.splice(j + 1, 1);
+          ++countss;
+          if (countss > 5) {
+            break;
+          }
+        }
+        metaData[j] = metaData[j].replace(/['"]/g, "");
+      }
+    }
+    return metaData;
+  }
+  showModal(src, width, height) {
+    messaging.callRemoteFunc("showModal", { src, width, height });
+  }
+
+  #proxy = { path: null, encodeUri: false };
+  getCORSURL(href) {
+    if (this.#proxy.path) {
+      if (this.#proxy.encodeUri) {
+        href = encodeURIComponent(href);
+      }
+      return this.#proxy.path + href;
+    } else {
+      return href;
+    }
+  }
+  setCORSproxy(proxyPath, encodeUri) {
+    this.#proxy.path = proxyPath;
+    this.#proxy.encodeUri = encodeUri;
+    console.log("setCORSproxy:", this.#proxy);
+  }
+}
+
+class SvgImageProps {
+  _int_hashVal;
+  set hash(val) {
+    this._int_hashVal = val;
+    messaging.callRemoteFunc("setHash", { hash: val });
+  }
+  get hash() {
+    return this._int_hashVal;
+  }
+}
+
+window.svgImageProps = new SvgImageProps();
+
+window.svgMap = new SandboxSvgMap(); // APIの互換性のために、S-LaWAで使えるものもsvgMapというグローバルオブジェクトということにする（中身は違うが）
+
+// 差分更新機能
+
+// --- カスタムIDの定義と自動付番 ---
+const CUSTOM_ID_ATTR = "data-slawa-id";
+let nextId = 0;
+
+// --- MutationObserverと差分情報生成 ---
+let observer;
+
+// MutationObserverを初期化し、監視を開始します
+function startObserving() {
+  // console.log("startObserving:", svgImage.documentElement);
+  if (!observer) {
+    observer = new MutationObserver(function (mutationsList, observer) {
+      console.log("変更検知:", mutationsList);
+      // refreshScreen()が呼ばれるまで変更を蓄積
+      totalMutations.push(...mutationsList);
+    });
+    const config = {
+      childList: true,
+      attributes: true,
+      subtree: true,
+      characterData: true,
+    };
+    observer.observe(svgImage.documentElement, config);
+  }
+}
+
+let totalMutations = [];
+// 蓄積された変更を元に差分情報を生成します
+function buildDiffPayload() {
+  const pendingMutations = observer.takeRecords();
+  totalMutations.push(...pendingMutations);
+
+  // 新たな追加ノードとそのIDを一時的に保存
+  const addedNodesInfo = new Map();
+  const payload = [];
+
+  // ステップ1: すべての変更を元の順序で一時的に記録
+  for (const mutation of totalMutations) {
+    if (mutation.type === "childList") {
+      mutation.addedNodes.forEach((node) => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const id = node.getAttribute(CUSTOM_ID_ATTR);
+          if (id) {
+            // 追加ノードの情報を一時保存
+            addedNodesInfo.set(id, node);
+          }
+        }
+      });
+    }
+  }
+
+  // ステップ2: 記録した変更を元の順序で最終ペイロードに整理
+  for (const mutation of totalMutations) {
+    if (mutation.type === "childList") {
+      mutation.addedNodes.forEach((node) => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const id = node.getAttribute(CUSTOM_ID_ATTR);
+          if (id) {
+            let isDescendantOfAnotherAddition = false;
+            let parent = node.parentNode;
+
+            // 親を遡り、その親が今回の変更ログに含まれていないかチェック
+            // ルートノードの子孫でない追加ノードの重複を排除
+            while (parent && parent !== svgImage.documentElement) {
+              if (addedNodesInfo.has(parent.getAttribute(CUSTOM_ID_ATTR))) {
+                isDescendantOfAnotherAddition = true;
+                break;
+              }
+              parent = parent.parentNode;
+            }
+
+            if (!isDescendantOfAnotherAddition) {
+              // 子孫ノードの追加ではない、ルートノードの追加
+              payload.push({
+                type: "addition",
+                payload: {
+                  xml: new XMLSerializer().serializeToString(node), // 子孫ノードを含むXMLをシリアライズ
+                  id: id,
+                  parentId: mutation.target.getAttribute(CUSTOM_ID_ATTR),
+                  nextSiblingId: mutation.nextSibling
+                    ? mutation.nextSibling.getAttribute(CUSTOM_ID_ATTR)
+                    : null,
+                },
+              });
+            }
+          }
+        }
+      });
+      mutation.removedNodes.forEach((node) => {
+        const id = node.getAttribute(CUSTOM_ID_ATTR);
+        if (node.nodeType === Node.ELEMENT_NODE && id) {
+          payload.push({
+            type: "deletion",
+            payload: { id: id },
+          });
+        }
+      });
+    } else if (mutation.type === "attributes") {
+      const id = mutation.target.getAttribute(CUSTOM_ID_ATTR);
+      const attrName = mutation.attributeName;
+      const newValue = mutation.target.getAttribute(attrName);
+      if (id) {
+        payload.push({
+          type: "attributeChange",
+          payload: {
+            id: id,
+            attr: attrName,
+            value: newValue,
+          },
+        });
+      }
+    } else if (mutation.type === "characterData") {
+      // <- テキストノードの変更処理を追加
+      const targetNode = mutation.target;
+      const parentElement = targetNode.parentNode;
+
+      // 親要素がカスタムIDを持つ ELEMENT_NODE であることを確認
+      if (parentElement && parentElement.nodeType === Node.ELEMENT_NODE) {
+        const id = parentElement.getAttribute(CUSTOM_ID_ATTR);
+        if (id) {
+          // 親要素のtextContent全体を差分として送信
+          payload.push({
+            type: "attributeChange", // 既存の属性変更タイプを流用
+            payload: {
+              id: id,
+              attr: "textContent", // 特別な属性名
+              value: parentElement.textContent,
+            },
+          });
+        }
+      }
+    }
+  }
+
+  totalMutations = [];
+  // console.log("buildDiffPayload:", payload);
+  return payload;
+}
+
+// CustomShowPoiPropertyの実装
+
+let customShowPoiPropertyFunction = null;
+
+async function callCustomShowPoiPropertyFunc(msg) {
+  if (typeof customShowPoiPropertyFunction == "function") {
+    const parser = new DOMParser();
+    const wrappedXml = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">${msg.xml}</svg>`;
+    const targetSvgDoc = parser.parseFromString(wrappedXml, "image/svg+xml");
+    if (targetSvgDoc.getElementsByTagName("parsererror").length > 0) {
+      console.error(
+        "XML parse error:",
+        newSvgDoc.getElementsByTagName("parsererror")[0],
+      );
+      return { src: "" };
+    }
+    const receivedNode = targetSvgDoc.documentElement.firstChild;
+    const slawa_id = receivedNode.getAttribute(CUSTOM_ID_ATTR);
+    const targetNode = svgImage.querySelector(
+      `[${CUSTOM_ID_ATTR}="${slawa_id}"]`,
+    );
+
+    console.log("targetNode:", targetNode);
+
+    customShowPoiPropertyFunction(targetNode);
+  }
+}
+
+/**
+{
+	{
+	console.log("callCustomShowPoiPropertyFunc:",html);
+		if ( typeof html == string){
+			return {src:html};
+		} else {
+			console.warn("S-LaWAではhtmlの文字列だけが対象です");
+			return {src:null};
+		}
+	}
+}
+**/

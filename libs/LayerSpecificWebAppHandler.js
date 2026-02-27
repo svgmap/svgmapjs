@@ -53,6 +53,7 @@
 import { SvgMapGIS } from "../SVGMapLv0.1_GIS_r4_module.js";
 import { UtilFuncs } from "../libs/UtilFuncs.js";
 import { GlobalMessageDisplay } from "./GlobalMessageDisplay.js";
+import { InterWindowMessaging } from "../InterWindowMessaging.js";
 import { LaWAauthoringToolsPatch } from "../SVGMapLv0.1_Authoring_r8_module.js"; // 2026/02/02
 
 class LayerSpecificWebAppHandler {
@@ -84,6 +85,12 @@ class LayerSpecificWebAppHandler {
 	#globalMessageDisplay;
 
 	#iframeOnLoadProcessQueue = {};
+	#popupWindows = {};
+	#handshakeTokens = new Map(); // layerID -> token
+	#pollingIntervals = new Map(); // layerID -> intervalID
+	#iwmsg = null; // 別ウィンドウ/他ドメイン通信用メッセージングインスタンス 2026/01/28
+	#iwmsgs = new Map(); // layerID -> InterWindowMessaging instance (マルチターゲット対応) 2026/02/01
+	#permittedOrigins = new Set(); // ユーザーが許可したドメインを記憶 2026/01/28
 
 	constructor(
 		svgMapObj,
@@ -95,19 +102,36 @@ class LayerSpecificWebAppHandler {
 		this.#proxyManager = proxyManagerObj;
 		this.#svgMapAuthoringTool = svgMapAuthoringToolObj;
 		/**
-		svgMapObj.registLayerUiSetter( 
-			function(opt){
-				this.#initLayerList(opt);
-			}.bind(this) , 
-			function(){
-				this.#updateLayerTable();
-			}.bind(this)
-		);
-		**/
+	                svgMapObj.registLayerUiSetter( 
+	                        function(opt){
+	                                this.#initLayerList(opt);
+	                        }.bind(this) ,
+	                        function(){
+	                                this.#updateLayerTable();
+	                        }.bind(this)
+	                );
+	                **/
 		this.#iframeOnLoadProcessQueue = {};
+		this.#popupWindows = {};
 		this.#svgMapGIStool = new SvgMapGIS(svgMapObj, window.jsts);
 		this.#getLayerStatus = getLayerStatusFunc.bind(this.#svgMap);
 		this.#globalMessageDisplay = new GlobalMessageDisplay();
+
+		// クロスドメイン通信用のメッセージングサービスを初期化 2026/01/28
+		this.#iwmsg = new InterWindowMessaging(
+			this.#getExposedFunctions(),
+			() => {
+				// ターゲットウィンドウは動的に特定されるため getter は null を返すか、
+				// InterWindowMessaging 側で event.source を優先するよう設計。
+				return null;
+			},
+			true, // responseReady
+			[],   // allowedOrigins
+			{
+				alwaysAllowCommands: ["handshakeAck"], // ハンドシェイクACKは常に許可 2026/01/29
+			}
+		);
+
 		console.log(
 			"construct layerUI: svgMapGIStool:",
 			this.#svgMapGIStool,
@@ -115,6 +139,228 @@ class LayerSpecificWebAppHandler {
 			this.#svgMapAuthoringTool,
 		);
 		window.initSvgMapWebAppLayer = this.initSvgMapWebAppLayer; // 2024/07/23
+
+		window.addEventListener("unload", () => {
+			for (var lid in this.#popupWindows) {
+				if (this.#popupWindows[lid] && !this.#popupWindows[lid].closed) {
+					this.#popupWindows[lid].close();
+				}
+				this.#cleanupTargetWindow(lid);
+			}
+		});
+	}
+
+	/**
+	 * For testing purposes only: register a mock popup window for a layer
+	 */
+	setPopupWindowForTesting(layerId, win) {
+		this.#popupWindows[layerId] = win;
+	}
+
+	/**
+	 * 他ドメインのレイヤーUIに露出させる svgMap のメソッド群を定義する
+	 * @returns {Object} 公開関数セット
+	 */
+	#getExposedFunctions() {
+		const self = this;
+		return {
+			refreshScreen: (...args) => this.#svgMap.refreshScreen(...args),
+			getSvgImageProps: function (layerid) {
+				// layerid が指定されていない場合は source ウィンドウから特定を試みる (Task 2.2)
+				const lid = layerid || self.#getLayerIdFromSource(this.source);
+				const props = self.#svgMap.getSvgImagesProps();
+				console.log("getSvgImageProps called for layerid:", lid);
+				if (!lid) {
+					console.warn("getSvgImageProps: layerid could not be identified");
+					return null;
+				}
+				const res = props[lid];
+				if (res === undefined) {
+					console.warn(
+						`getSvgImageProps: No properties found for layerid: ${lid}. Available keys:`,
+						Object.keys(props)
+					);
+				}
+				return res;
+			},
+			getSvgImage: function (layerid) {
+				const lid = layerid || self.#getLayerIdFromSource(this.source);
+				if (!lid) return null;
+				const svg = self.#svgMap.getSvgImages()[lid];
+				if (svg instanceof XMLDocument || svg instanceof Document) {
+					return new XMLSerializer().serializeToString(svg);
+				}
+				return svg;
+			},
+			// 子からの解析結果を受け取って親の状態を更新する (Task 2.2)
+			updateFinalProps: function (props) {
+				const lid = self.#getLayerIdFromSource(this.source);
+				if (!lid) return false;
+				console.log("updateFinalProps received from layer:", lid, props);
+				const currentProps = self.#svgMap.getSvgImagesProps()[lid];
+				if (currentProps) {
+					Object.assign(currentProps, props);
+					return true;
+				}
+				return false;
+			},
+			// 子がフェッチ・構築した SVG XML を親側のデータに反映する (Task 2.2)
+			replaceSvgImage: function (svgXml) {
+				const lid = self.#getLayerIdFromSource(this.source);
+				if (!lid || !svgXml) return false;
+				console.log("replaceSvgImage received from layer:", lid);
+
+				// 1. XMLのパース (IE互換のためのネームスペース処理含む)
+				let resTxt = svgXml;
+				if (resTxt.indexOf("http://www.w3.org/2000/svg") >= 0) {
+					resTxt = resTxt.replace(
+						'xmlns="http://www.w3.org/2000/svg"',
+						'xmlns="http://www.w3.org/"'
+					);
+				}
+
+				const parser = new DOMParser();
+				const svgDoc = parser.parseFromString(resTxt, "application/xml");
+				self.#svgMap.getSvgImages()[lid] = svgDoc;
+
+				// 2. プロパティの更新
+				const props = self.#svgMap.getSvgImagesProps()[lid];
+				if (props) {
+					svgDoc.getElementById = UtilFuncs.getElementByIdUsingQuerySelector;
+					props.CRS = self.#svgMap.getCRS(svgDoc, lid);
+					props.refresh = UtilFuncs.getRefresh(svgDoc);
+				}
+
+				// 3. 描画プロセスの実行
+				let layerDiv = document.getElementById("layer_" + lid);
+				if (!layerDiv) {
+					layerDiv = document.createElement("div");
+					layerDiv.id = "layer_" + lid;
+					// mapcanvas を探して追加
+					const canvas = document.getElementById("mapcanvas");
+					if (canvas) canvas.appendChild(layerDiv);
+				}
+
+				if (typeof self.#svgMap.dynamicLoad === "function") {
+					self.#svgMap.dynamicLoad(lid, layerDiv);
+				}
+
+				return true;
+			},
+			// 同期完了後に画面を更新するトリガー (Task 2.2)
+			finalizeSync: function () {
+				const lid = self.#getLayerIdFromSource(this.source);
+				console.log("finalizeSync triggered by layer:", lid);
+				self.#svgMap.refreshScreen();
+				return true;
+			},
+			transform: (...args) => this.#svgMap.transform(...args),
+			getCanvasSize: () => this.#svgMap.getCanvasSize(),
+			getCORSURL: (...args) => this.#svgMap.getCORSURL(...args),
+			putGlobalMessage: (lid, msg) =>
+				this.#globalMessageDisplay.putGlobalMessageForLayer(lid)(msg),
+			// ハンドシェイクACKを受理するためのコマンドを追加 2026/01/29
+			// InterWindowMessaging から渡される context (this.origin, this.source) を受け取るため通常の関数を使用
+			handshakeAck: function (lid, token) {
+				return self.#handleHandshakeAck(lid, token, this.origin, this.source);
+			},
+		};
+	}
+
+	/**
+	 * 送信元ウィンドウからレイヤIDを特定する
+	 * @param {Window} source
+	 * @returns {string|null}
+	 */
+	#getLayerIdFromSource(source) {
+		if (!source) return null;
+		for (const [id, win] of Object.entries(this.#popupWindows)) {
+			if (win === source) return id;
+		}
+		// IFrameケースの確認
+		const lsuiDoc = this.#layerSpecificUI.ownerDocument;
+		const iframes = lsuiDoc.getElementsByTagName("iframe");
+		for (const ifr of iframes) {
+			if (ifr.contentWindow === source) {
+				// iframeId から layerId を逆引き
+				return ifr.id.replace("layerSpecificUIframe_", "");
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * 子ウィンドウからのハンドシェイクACKを検証する
+	 * @param {string} lid レイヤーID
+	 * @param {string} token 受信したトークン
+	 * @param {string} origin 送信元オリジン
+	 * @param {Window} source 送信元ウィンドウ
+	 */
+	#handleHandshakeAck(lid, token, origin, source) {
+		// lid が null の場合、source ウィンドウから lid を特定する 2026/02/01
+		if (!lid && source) {
+			lid = this.#getLayerIdFromSource(source);
+		}
+
+		if (!lid) {
+			console.warn(
+				"Handshake received but could not identify LayerID from source window."
+			);
+			return false;
+		}
+
+		const expectedToken = this.#handshakeTokens.get(lid);
+		if (expectedToken && token === expectedToken) {
+			console.log(`Handshake established for layer: ${lid}. Origin: ${origin}`);
+			this.#stopPolling(lid);
+			this.#handshakeTokens.delete(lid);
+			console.log("Handshake successful for layer & origin:", lid, origin);
+
+			// 送信元オリジンを信頼リストに追加
+			if (origin && origin !== "null") {
+				this.#permittedOrigins.add(origin);
+				if (this.#iwmsg) {
+					this.#iwmsg.addAllowedOrigin(origin);
+				}
+			}
+
+			// 通信確立後の初期化処理
+			if (!this.#transferCustomEvent2iframe[lid]) {
+				this.#transferCustomEvent2iframe[lid] =
+					this.#transferCustomEvent4layerUi(lid);
+				document.addEventListener(
+					"zoomPanMap",
+					this.#transferCustomEvent2iframe[lid],
+					false
+				);
+				document.addEventListener(
+					"screenRefreshed",
+					this.#transferCustomEvent2iframe[lid],
+					false
+				);
+				document.addEventListener(
+					"zoomPanMapCompleted",
+					this.#transferCustomEvent2iframe[lid],
+					false
+				);
+			}
+
+			return true;
+		}
+		console.warn(
+			`Invalid handshake token for layer: ${lid}. Expected: ${expectedToken}, Received: ${token}`
+		);
+		return false;
+	}
+	/**
+	 * 子ウィンドウへのポーリングを停止する
+	 * @param {string} lid レイヤーID
+	 */
+	#stopPolling(lid) {
+		if (this.#pollingIntervals.has(lid)) {
+			clearInterval(this.#pollingIntervals.get(lid));
+			this.#pollingIntervals.delete(lid);
+		}
 	}
 
 	#syncLayerSpecificUi() {
@@ -154,6 +400,22 @@ class LayerSpecificWebAppHandler {
 
 	setLayerUIobject(layerUiObj) {
 		this.#svgMapLayerUI = layerUiObj;
+	}
+
+	/**
+	 * For testing purposes only: expose the functions that are registered with InterWindowMessaging
+	 * @returns {Object}
+	 */
+	getExposedFunctionsForTesting() {
+		return this.#getExposedFunctions();
+	}
+
+	/**
+	 * For testing purposes only: get the InterWindowMessaging instance
+	 * @returns {InterWindowMessaging}
+	 */
+	getMessagingInstanceForTesting() {
+		return this.#iwmsg;
 	}
 
 	#checkController(svgImageProps, layerId, forceLaunch, cbf) {
@@ -337,22 +599,26 @@ class LayerSpecificWebAppHandler {
 		) {
 			// 基本的にpreDefinedTargetUiが設定されていたら閉じる機能は動かさない ただし、inlineにするなら消せるようにする　2020/12/08
 			this.#lsUIbtn = document.createElement("input");
-			this.#lsUIbtn.type = "button";
-			this.#lsUIbtn.value = "x";
-			this.#lsUIbtn.style.webkitTransform = "translateZ(10)";
-			this.#lsUIbtn.style.zIndex = "3";
-			this.#lsUIbtn.id = "layerSpecificUIclose";
-			this.#lsUIbtn.style.position = "absolute";
-			this.#lsUIbtn.style.right = "0px";
-			this.#lsUIbtn.style.top = "0px";
-			this.#layerSpecificUI.appendChild(this.#lsUIbtn);
-			this.#lsUIbtn.addEventListener(
-				"click",
-				function (event) {
-					this.#layerSpecificUIhide(event);
-				}.bind(this),
-				false,
-			);
+			if (this.#lsUIbtn) {
+				this.#lsUIbtn.type = "button";
+				this.#lsUIbtn.value = "x";
+				this.#lsUIbtn.style.webkitTransform = "translateZ(10)";
+				this.#lsUIbtn.style.zIndex = "3";
+				this.#lsUIbtn.id = "layerSpecificUIclose";
+				this.#lsUIbtn.style.position = "absolute";
+				this.#lsUIbtn.style.right = "0px";
+				this.#lsUIbtn.style.top = "0px";
+				this.#layerSpecificUI.appendChild(this.#lsUIbtn);
+				if (typeof this.#lsUIbtn.addEventListener === "function") {
+					this.#lsUIbtn.addEventListener(
+						"click",
+						function (event) {
+							this.#layerSpecificUIhide(event);
+						}.bind(this),
+						false
+					);
+				}
+			}
 		}
 
 		this.#startLayerLoadingMonitor();
@@ -418,15 +684,16 @@ class LayerSpecificWebAppHandler {
 		var lsuiDoc = this.#layerSpecificUI.ownerDocument;
 		//	console.log("showLayerSpecificUI: catch event ",e,"    e.target.hiddenOnLaunch:",e.target.hiddenOnLaunch);
 		//	var layerId = this.#getLayerId(e);
-		//	var lprops = svgMap.getRootLayersProps();
+		var lprops = this.#svgMap.getRootLayersProps();
 		//	var controllerURL = lprops[layerId].svgImageProps.controller;
 		//	console.log(lprops[layerId],controllerURL,e.target.dataset.url);
 		//	var controllerURL = e.target.dataset.url;
 
 		if (!controllerURL) {
-			const lprops = svgMap.getRootLayersProps();
 			controllerURL = lprops[layerId].svgImageProps.controller;
 		}
+		// 互換性のためオブジェクトまたはStringオブジェクトからURL文字列を抽出 2026/01/24
+		controllerURL = UtilFuncs.getControllerURL(controllerURL);
 
 		/**
 		var loadButHide = false;
@@ -435,6 +702,45 @@ class LayerSpecificWebAppHandler {
 		}
 		**/
 		//	console.log(controllerURL);
+
+		// 分散型レイヤー提供元へのアクセスに対するユーザー同意確保のため、ドメイン検証と確認ダイアログを追加 2026/01/28
+		if (
+			controllerURL &&
+			(controllerURL.startsWith("http://") ||
+				controllerURL.startsWith("https://"))
+		) {
+			try {
+				const url = new URL(controllerURL, window.location.href);
+				if (url.origin !== window.location.origin) {
+					if (!this.#permittedOrigins.has(url.origin)) {
+						if (
+							false
+							// ユーザー確認ダイアログは廃止 2026/02/10
+							// !window.confirm(
+							// 	`レイヤーの提供元ドメイン [${url.origin}] へのアクセスおよび通信を許可しますか？`
+							// )
+						) {
+							console.log(
+								"Access to cross-domain controller denied by user:",
+								url.origin
+							);
+							return;
+						}
+						// ユーザーが許可したドメインを記憶 2026/01/28
+						this.#permittedOrigins.add(url.origin);
+						// ユーザーが許可したドメインを Messaging サービスに動的に追加 2026/01/28
+						if (
+							this.#iwmsg &&
+							typeof this.#iwmsg.addAllowedOrigin === "function"
+						) {
+							this.#iwmsg.addAllowedOrigin(url.origin);
+						}
+					}
+				}
+			} catch (e) {
+				console.warn("Invalid controller URL for domain check:", controllerURL);
+			}
+		}
 
 		var reqSize = { height: -1, width: -1 };
 		// console.log("showLayerSpecificUI:",controllerURL);
@@ -447,6 +753,28 @@ class LayerSpecificWebAppHandler {
 			if (lhash.requiredWidth) {
 				reqSize.width = Number(lhash.requiredWidth);
 			}
+			if (lhash.target == "_blank") {
+				this.#initPopup(
+					layerId,
+					controllerURL,
+					reqSize,
+					hiddenOnLaunch,
+					callBackFunction
+				);
+				return;
+			}
+		}
+
+		// Check for target attribute
+		if (lprops[layerId] && lprops[layerId].target === "_blank") {
+			this.#initPopup(
+				layerId,
+				controllerURL,
+				reqSize,
+				hiddenOnLaunch,
+				callBackFunction
+			);
+			return;
 		}
 
 		if (!hiddenOnLaunch) {
@@ -789,64 +1117,30 @@ class LayerSpecificWebAppHandler {
 		return "<!doctype html><html><body>" + addSrc + "</body></html>";
 	}
 
-	#iframeOnLoadProcess(iframe, lid, reqSize, controllerURL, cbf) {
-		// srcdocだと、xxmsぐらい待たないと、contentWindowへの設定がwindowに保持されないので、初期化されるまでリトライすることに。
-		// xxmsの時間もなんかまちまち・・(on chrome) 2019/11/26
-		// DOMContentLoaded イベントで動作させれば良いんじゃないかな とも思ったがどうだろう
-		// 参考: https://ja.javascript.info/onload-ondomcontentloaded 2019/12/05
-		// https://stackoverflow.com/questions/16960829/detect-domcontentloaded-in-iframe
-		// DOMContentLoadedはiframeでは発行されない。が、力技で解決する手法を作った人がいる。 >iFrameReady
-		// https://stackoverflow.com/questions/24603580/how-can-i-access-the-dom-elements-within-an-iframe/24603642#comment38157462_24603642
-		var iframeId = iframe.id;
-		/**
-		console.log(
-			"initIframe load eventListen : controllerURL:",
-			controllerURL,
-			"  svgMapAuthoringTool:",
-			this.#svgMapAuthoringTool
-		);
-		**/
-		this.#dispatchCutomIframeEvent(
-			LayerSpecificWebAppHandler.#openFrame,
-			iframeId,
-		);
-		if (this.#layerSpecificUiMaxHeight == 0) {
-			this.#layerSpecificUiMaxHeight = this.#layerSpecificUI.offsetHeight;
-		}
-		iframe.contentWindow.layerID = lid;
+	#initializeTargetWindow(targetWin, lid, controllerURL, cbf) {
+		targetWin.layerID = lid;
+		targetWin.controllerSrc = controllerURL;
+		targetWin.svgMap = this.#svgMap;
 
-		iframe.contentWindow.controllerSrc = controllerURL; // Add 2019/11/26 srcdocでロードしたケースでdocPath知りたいとき
-		//	iframe.contentWindow.controllerDir = controllerURL.substring(0,controllerURL.lastIndexOf("/")); // #や?があるのでもちょっとしっかりやった方が良いので後回し 2019
-
-		iframe.contentWindow.svgMap = this.#svgMap;
-		//	console.log("iframe.contentWindow:",iframe.contentWindow);
 		if (typeof this.#svgMapGIStool != "undefined") {
-			//			console.log("add svgMapGIStool to iframe");
-			iframe.contentWindow.svgMapGIStool = this.#svgMapGIStool;
+			targetWin.svgMapGIStool = this.#svgMapGIStool;
 		}
 		if (typeof this.#svgMapAuthoringTool != "undefined") {
-			// added 2016.12.19 AuthoringTools
-			//			console.log("add svgMapAuthoringTool to iframe");
-			iframe.contentWindow.svgMapAuthoringTool =
-				LaWAauthoringToolsPatch.getLayerSpecificAuthoringTools(
-					this.#svgMapAuthoringTool,
-					lid,
-				); // 2026/01/29 オーサリングツールバグパッチ
+			targetWin.svgMapAuthoringTool = this.#svgMapAuthoringTool;
 		}
 		if (typeof svgMapPWA != "undefined") {
-			// 2020/5/14
-			//			console.log("add svgMapPWA to iframe");
-			iframe.contentWindow.svgMapPWA = svgMapPWA;
+			targetWin.svgMapPWA = svgMapPWA;
 		}
 
-		iframe.contentWindow.svgMapLayerUI = this.#svgMapLayerUI;
-		iframe.contentWindow.putGlobalMessage =
-			this.#globalMessageDisplay.putGlobalMessageForLayer(lid); // added 2019/12/05 今後、この種の"そのレイヤーに対するAPI"が増えると思うが、もう少しきれいにまとめたい。(TBD)
+		targetWin.svgMapLayerUI = this.#svgMapLayerUI;
+		targetWin.putGlobalMessage =
+			this.#globalMessageDisplay.putGlobalMessageForLayer(lid);
+
 		var sip = this.#svgMap.getSvgImagesProps()[lid];
-		iframe.contentWindow.svgImageProps = sip;
-		sip.controllerWindow = iframe.contentWindow; // 2020/10/13 svgImagesPropにcontrollerWindowを追加
-		iframe.contentWindow.svgImage = this.#svgMap.getSvgImages()[lid];
-		//		iframe.contentWindow.testIframe("hellow from parent");
+		targetWin.svgImageProps = sip;
+		sip.controllerWindow = targetWin;
+		targetWin.svgImage = this.#svgMap.getSvgImages()[lid];
+
 		if (this.#transferCustomEvent2iframe[lid]) {
 			document.removeEventListener(
 				"zoomPanMap",
@@ -866,35 +1160,25 @@ class LayerSpecificWebAppHandler {
 		} else {
 			this.#transferCustomEvent2iframe[lid] =
 				this.#transferCustomEvent4layerUi(lid);
-			/**
-			console.log(
-				"build transferCustomEvent2iframe for ",
-				lid,
-				this.#transferCustomEvent2iframe[lid]
-			);
-			**/
 		}
+
 		if (sip.svgScript) {
-			// 2022/03/08 svgScriptをlayerUIで動かす大改修
-			this.#arrangeHtmlEmbedScript(sip.svgScript, iframe.contentWindow);
+			this.#arrangeHtmlEmbedScript(sip.svgScript, targetWin);
 		}
-		if (typeof iframe.contentWindow.preRenderFunction == "function") {
-			// 2020/6/8 再描画の前に実行される関数を登録(これで、svg文書のscriptの中のonzoom, onscroll関数のような挙動がだせるかと・・)
-			// console.log("Register preRenderControllerFunction for layerID:", lid);
+		if (typeof targetWin.preRenderFunction == "function") {
 			this.#svgMap.getSvgImagesProps()[lid].preRenderControllerFunction =
-				iframe.contentWindow.preRenderFunction;
+				targetWin.preRenderFunction;
 		}
-		this.#setXHRhooks(iframe.contentWindow); // 2021/06/17
-		iframe.contentWindow.setLoadingFlag = function (stat) {
-			// 2021/09/22 XHR以外でもこれをセットすると同じように動かせる
+		this.#setXHRhooks(targetWin);
+		targetWin.setLoadingFlag = function (stat) {
 			var sipf = this.#svgMap.getSvgImagesProps();
-			console.log("registLoadingFlag:", sipf[lid]);
 			if (stat == true) {
 				this.#registLoadingFlag(lid, sipf);
 			} else if (stat == false) {
 				this.#releaseLoadingFlag(lid, sipf);
 			}
-		};
+		}.bind(this);
+
 		document.addEventListener(
 			"zoomPanMap",
 			this.#transferCustomEvent2iframe[lid],
@@ -911,17 +1195,184 @@ class LayerSpecificWebAppHandler {
 			false,
 		);
 
-		setTimeout(
-			function (iframe, reqSize) {
-				this.#testIframeSize(iframe, reqSize);
-			}.bind(this),
-			1000,
-			iframe,
-			reqSize,
-		);
 		if (cbf) {
-			cbf(iframe.contentWindow);
+			cbf(targetWin);
 		}
+	}
+
+	#cleanupTargetWindow(lid) {
+		console.log("Cleanup target window for:", lid);
+		if (this.#transferCustomEvent2iframe[lid]) {
+			document.removeEventListener(
+				"zoomPanMap",
+				this.#transferCustomEvent2iframe[lid],
+				false
+			);
+			document.removeEventListener(
+				"screenRefreshed",
+				this.#transferCustomEvent2iframe[lid],
+				false
+			);
+			document.removeEventListener(
+				"zoomPanMapCompleted",
+				this.#transferCustomEvent2iframe[lid],
+				false
+			);
+			delete this.#transferCustomEvent2iframe[lid];
+		}
+		this.#globalMessageDisplay.clearGlobalMessage(lid);
+		var sip = this.#svgMap.getSvgImagesProps()[lid];
+		if (sip) {
+			delete sip.controllerWindow;
+			delete sip.preRenderControllerFunction;
+		}
+	}
+
+	#initPopup(lid, controllerURL, reqSize, hiddenOnLaunch, cbf) {
+		if (this.#popupWindows[lid]) {
+			if (!this.#popupWindows[lid].closed) {
+				this.#popupWindows[lid].focus();
+				return;
+			} else {
+				// ウィンドウが閉じられている場合はエントリを削除
+				this.#cleanupTargetWindow(lid);
+				delete this.#popupWindows[lid];
+			}
+		}
+
+		var width = reqSize.width > 0 ? reqSize.width : 400;
+		var height = reqSize.height > 0 ? reqSize.height : 400;
+		var features = `width=${width},height=${height},menubar=no,toolbar=no,location=no,status=no`;
+
+		var legendImage = this.#isLegendImage(controllerURL);
+		var popup;
+		var isDirectURL = controllerURL.charAt(0) != ":" && !legendImage;
+
+		// ハンドシェイク用のトークンを生成 2026/01/29
+		const token = Math.random().toString(36).substring(2, 15);
+		this.#handshakeTokens.set(lid, token);
+
+		// target=_blank が指定されたレイヤでは、ブラウザに正しいオリジンを認識させるため
+		// 直接URLを指定して window.open を呼ぶ 2026/01/28
+		if (isDirectURL) {
+			try {
+				const url = new URL(controllerURL, window.location.href);
+				// ターゲットオリジンを InterWindowMessaging に事前登録 (Requirement 1.0)
+				if (this.#iwmsg && url.origin !== "null") {
+					this.#iwmsg.addAllowedOrigin(url.origin);
+				}
+			} catch (e) {
+				console.warn(
+					"Invalid controller URL for origin registration:",
+					controllerURL
+				);
+			}
+
+			var finalURL = this.#addCacheDisabledQuery(controllerURL);
+			// トークンをパラメータとして付与（親オリジンは秘匿するため付与しない） 2026/02/02
+			const urlObj = new URL(finalURL, window.location.href);
+			urlObj.searchParams.set("svgMapHandshakeToken", token);
+			finalURL = urlObj.toString();
+
+			popup = window.open(finalURL, `svgMapLayerUI_${lid}`, features);
+		} else {
+			popup = window.open("", `svgMapLayerUI_${lid}`, features);
+		}
+
+		if (!popup) {
+			console.error("Popup blocked! Falling back to inline iframe.");
+			this.#initIframe(lid, controllerURL, reqSize, hiddenOnLaunch, cbf);
+			return;
+		}
+
+		this.#popupWindows[lid] = popup;
+
+		// 親からのポーリング（HELO）は要件 1.2 により廃止 2026/02/02
+
+		// ウィンドウクローズ監視 2026/01/24
+		var closeMonitor = setInterval(() => {
+			if (popup.closed) {
+				clearInterval(closeMonitor);
+				console.log("Detect window closed via monitor loop:", lid);
+				if (this.#popupWindows[lid] === popup) {
+					this.#cleanupTargetWindow(lid);
+					delete this.#popupWindows[lid];
+				}
+				if (
+					this.#svgMapLayerUI &&
+					typeof this.#svgMapLayerUI.updateLayerTable == "function"
+				) {
+					this.#svgMapLayerUI.updateLayerTable();
+				}
+			}
+		}, 500);
+
+		if (!isDirectURL) {
+			var sourceDoc;
+			if (legendImage) {
+				sourceDoc = this.#getEmptyHtmlSrc('<img src="' + controllerURL + '">');
+			} else if (this.#svgMap.getSvgImagesProps()[lid].controller) {
+				sourceDoc = this.#svgMap.getSvgImagesProps()[lid].controller.src;
+			} else {
+				sourceDoc = this.#getEmptyHtmlSrc(
+					"<h4>svgScript only layerUI</h4>LayerID:" + lid
+				);
+			}
+			popup.document.write(sourceDoc);
+			popup.document.close();
+		}
+
+		// 初期化処理。他ドメインの場合は popup.document にアクセスできないため、
+		// ポップアップ側からのメッセージ（svgMapLayerLib.js経由）を待つ。
+		var checkLoaded = () => {
+			try {
+				if (popup.document && popup.document.readyState === "complete") {
+					this.#initializeTargetWindow(popup, lid, controllerURL, cbf);
+				} else if (popup.document) {
+					setTimeout(checkLoaded, 10);
+				}
+			} catch (e) {
+				// Cross-origin: popup.document にアクセスできない。
+				// svgMapLayerLib.js からの handshake を待つため、ここでの初期化は不要。
+				console.log(
+					"Cross-origin popup detected, waiting for messaging handshake:",
+					lid
+				);
+			}
+		};
+		checkLoaded();
+	}
+
+	#iframeOnLoadProcess(iframe, lid, reqSize, controllerURL, cbf) {
+	
+		
+		var iframeId = iframe.id;
+		this.#dispatchCutomIframeEvent(
+			LayerSpecificWebAppHandler.#openFrame,
+			iframeId
+		);
+		if (this.#layerSpecificUiMaxHeight == 0) {
+			this.#layerSpecificUiMaxHeight = this.#layerSpecificUI.offsetHeight;
+		}
+
+		this.#initializeTargetWindow(
+			iframe.contentWindow,
+			lid,
+			controllerURL,
+			(win) => {
+				setTimeout(
+					function (iframe, reqSize) {
+						this.#testIframeSize(iframe, reqSize);
+					}.bind(this),
+					1000,
+					iframe,
+					reqSize
+				);
+				if (cbf) {
+					cbf(win);
+				}
+			}
+		);
 	}
 
 	#iFrameReady(iFrame, fn, backupLoadEventEnable) {
@@ -1450,6 +1901,40 @@ class LayerSpecificWebAppHandler {
 				//		} else if ( transferCustomEvent2iframe[layerId] ){
 				//			document.removeEventListener("zoomPanMap", transferCustomEvent2iframe[layerId], false);
 			}
+
+			// ポップアップウィンドウへの転送 2026/01/23
+			if (this.#popupWindows[layerId] && !this.#popupWindows[layerId].closed) {
+				console.log(
+					`Attempting to transfer event ${ev.type} to popup for layer ${layerId}`
+				);
+				try {
+					// 同一ドメインの場合は直接ディスパッチ
+					var popupDoc = this.#popupWindows[layerId].document;
+					var customEvent = popupDoc.createEvent("HTMLEvents");
+					customEvent.initEvent(ev.type, true, false);
+					popupDoc.dispatchEvent(customEvent);
+					console.log(`Direct dispatch successful for layer ${layerId}`);
+				} catch (e) {
+					// 他ドメインの場合は postMessage を使用して転送 2026/01/28
+					// 最新の svgImageProps を同封して Sandbox 側のキャッシュを更新させる 2026/01/30
+					console.log(
+						`Direct dispatch failed, using postMessage for layer ${layerId}. Error: ${e.message}`
+					);
+					if (this.#iwmsg) {
+						const currentProps = this.#svgMap.getSvgImagesProps()[layerId];
+						this.#iwmsg.postMessageTo(this.#popupWindows[layerId], {
+							command: "receiveParentEvent",
+							parameter: [
+								{
+									event: ev.type,
+									data: null,
+									svgImageProps: currentProps,
+								},
+							],
+						});
+					}
+				}
+			}
 		}.bind(this);
 	}
 
@@ -1481,6 +1966,16 @@ class LayerSpecificWebAppHandler {
 		var lsuiDoc = this.#layerSpecificUI.ownerDocument;
 		var visibleIframeId = this.#getVisibleLayerSpecificUIid();
 		var targetIframeId = this.#getIframeId(layerId);
+
+		// ポップアップウィンドウのクローズ 2026/01/23
+		if (visivility == false && this.#popupWindows[layerId]) {
+			if (!this.#popupWindows[layerId].closed) {
+				this.#popupWindows[layerId].close();
+			}
+			this.#cleanupTargetWindow(layerId);
+			delete this.#popupWindows[layerId];
+		}
+
 		if (visivility == false && lsuiDoc.getElementById(targetIframeId)) {
 			if (visibleIframeId == targetIframeId) {
 				this.#layerSpecificUIhide();
@@ -1510,7 +2005,9 @@ class LayerSpecificWebAppHandler {
 			this.#globalMessageDisplay.clearGlobalMessage(layerId);
 			setTimeout(function () {
 				console.log("remove iframe:", targetIframe.id);
-				targetIframe.parentNode.removeChild(targetIframe);
+				if (targetIframe.parentNode) {
+					targetIframe.parentNode.removeChild(targetIframe);
+				}
 			}, 100);
 		}
 	}
@@ -1550,21 +2047,21 @@ class LayerSpecificWebAppHandler {
 	}
 
 	#startLayerLoadingMonitor() {
-		addEventListener(
+		window.addEventListener(
 			"zoomPanMap",
 			function (event) {
 				this.#unloadedLayersUIupdate(event);
 			}.bind(this),
 			false,
 		); // 2020/2/13
-		addEventListener(
+		window.addEventListener(
 			"zoomPanMap",
 			function (event) {
 				this.#zpm_checkLoadingFlag(event);
 			}.bind(this),
 			false,
 		); // 2021/6/21
-		addEventListener(
+		window.addEventListener(
 			"screenRefreshed",
 			function (event) {
 				this.#unloadedLayersUIupdate(event);
@@ -1602,6 +2099,11 @@ class LayerSpecificWebAppHandler {
 	updateLayerSpecificWebAppHandler() {
 		this.#syncLayerSpecificUi(); // 非表示のレイヤーについて、レイヤーwebAppを終了させる
 		this.#checkLayerListAndRegistLayerUI(); // レイヤーの読み込み完了まで　レイヤーリストのチェックを行い、レイヤ固有UIを設置する
+	}
+
+	// テスト用のユーティリティメソッド
+	getHandshakeTokenForTesting(lid) {
+		return this.#handshakeTokens.get(lid);
 	}
 
 	//	checkLayerListAndRegistLayerUI(...params){ return (this.#checkLayerListAndRegistLayerUI(...params))};

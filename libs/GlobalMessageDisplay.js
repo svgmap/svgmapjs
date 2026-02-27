@@ -76,7 +76,7 @@ class GlobalMessageDisplay {
 			GlobalMessageDisplay.#GlobalMessageprefix + layerId,
 		);
 		console.log("globalMessageCell:", gmc);
-		if (gmc) {
+		if (gmc && gmc.parentNode) {
 			console.log("Remove GlobalMessage for layer:", layerId);
 			gmc.parentNode.removeChild(gmc);
 		}

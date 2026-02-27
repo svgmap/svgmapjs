@@ -33,13 +33,13 @@ describe("SvgImageProps", () => {
 	describe("hash setter", () => {
 		it("should set the hash and update the Path", () => {
 			svgImageProps.hash = "#newhash";
-			expect(svgImageProps.Path).toBe("/path#newhash");
+			expect(svgImageProps.Path).toBe("http://example.com/path#newhash");
 			expect(svgImageProps.clearHashChangedFlag()).toBe("#newhash");
 		});
 
 		it("should clear the hash if an empty string is set", () => {
 			svgImageProps.hash = "";
-			expect(svgImageProps.Path).toBe("/path");
+			expect(svgImageProps.Path).toBe("http://example.com/path");
 			expect(svgImageProps.clearHashChangedFlag()).toBe(true);
 		});
 

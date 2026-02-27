@@ -35,43 +35,47 @@ class CustomHitTester {
 		var anses = [];
 		for (var layerId in this.#svgImagesProps) {
 			var sip = this.#svgImagesProps[layerId];
-			if (!sip.controllerWindow) {
-				continue;
-			}
-			var hitTest = sip.controllerWindow.customHitTester;
-			if (typeof hitTest == "function") {
-				var hitted = hitTest(pos);
-				if (hitted) {
-					// boolean,string || element
-					if (Array.isArray(hitted)) {
-					} else {
-						hitted = [hitted];
-					}
-					var layerName = this.#getLayerName(this.#svgMapObj.getLayer(layerId));
-					var hindex = 0;
-					for (var hi of hitted) {
-						var ans = {};
-						ans.layerName = layerName;
-						ans.metaSchema = sip.metaSchema;
-						ans.geoBbox = { x: geop.lng, y: geop.lng, width: 0, height: 0 };
-						ans.hitTestIndex = hindex;
-						if (hi === true) {
-							ans.element = this.#svgImages[layerId].documentElement; // Elementが必要なので文書要素を・・
-							ans.title = layerName;
-							ans.metadata = hindex;
-						} else if (typeof hi == "string") {
-							ans.element = this.#svgImages[layerId].documentElement; // 同上
-							ans.title = hi;
-							ans.metadata = hi;
-						} else if (hi.nodeType === Node.ELEMENT_NODE) {
-							ans.element = hi;
-							ans.title = hi.getAttribute("xlink:title");
-							ans.metadata = hi.getAttribute("content");
+			try {
+				if (!sip.controllerWindow) {
+					continue;
+				}
+				var hitTest = sip.controllerWindow.customHitTester;
+				if (typeof hitTest == "function") {
+					var hitted = hitTest(pos);
+					if (hitted) {
+						// boolean,string || element
+						if (Array.isArray(hitted)) {
+						} else {
+							hitted = [hitted];
 						}
-						anses.push(ans);
-						++hindex;
+						var layerName = this.#getLayerName(this.#svgMapObj.getLayer(layerId));
+						var hindex = 0;
+						for (var hi of hitted) {
+							var ans = {};
+							ans.layerName = layerName;
+							ans.metaSchema = sip.metaSchema;
+							ans.geoBbox = { x: geop.lng, y: geop.lng, width: 0, height: 0 };
+							ans.hitTestIndex = hindex;
+							if (hi === true) {
+								ans.element = this.#svgImages[layerId].documentElement; // Elementが必要なので文書要素を・・
+								ans.title = layerName;
+								ans.metadata = hindex;
+							} else if (typeof hi == "string") {
+								ans.element = this.#svgImages[layerId].documentElement; // 同上
+								ans.title = hi;
+								ans.metadata = hi;
+							} else if (hi.nodeType === Node.ELEMENT_NODE) {
+								ans.element = hi;
+								ans.title = hi.getAttribute("xlink:title");
+								ans.metadata = hi.getAttribute("content");
+							}
+							anses.push(ans);
+							++hindex;
+						}
 					}
 				}
+			} catch (e) {
+				// Access denied for cross-origin window
 			}
 		}
 		return anses;

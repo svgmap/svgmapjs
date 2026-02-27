@@ -6,3 +6,12 @@ package-lock.json
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# For cc-sdd 
+GEMINI.md
+.gemini/
+.kiro/
+
+# For unittests/e2e tests
+*.pem
+demo-content/

@@ -381,6 +381,7 @@ class LayerManager {
 				layersProps[i].hasDocument = false;
 			}
 			layersProps[i].href = layers[i].getAttribute("xlink:href"); // (docPathがないので・・)これは.urlとは違う(ISSUE 2016.10.26)
+			layersProps[i].target = layers[i].getAttribute("target");
 			layersProps[i].svgImageProps = this.#svgImagesProps[layersProps[i].id];
 
 			layersProps[i].title = this.getLayerName(layers[i]);
@@ -601,8 +602,7 @@ class LayerManager {
 			ans = layer.getAttribute("title");
 		} else {
 			ans = layer.getAttribute("xlink:href");
-			if (!optText) {
-				// optTextは存在しないと思う・・・ 2022/05/24
+			if (!ans) {
 				ans = layer.getAttribute("src");
 			}
 		}

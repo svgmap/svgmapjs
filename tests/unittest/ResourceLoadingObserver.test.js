@@ -83,10 +83,10 @@ describe("unittest for ResourceLoadingObserver", () => {
 			let result = resourceloadingobserver.checkLoadCompleted(pattern.forceDel);
 			expect(result).toBe(true);
 			// load完了のためイベント発火する
-			expect(zoomPanEventListener).toBeCalledTimes(
+			expect(zoomPanEventListener).toHaveBeenCalledTimes(
 				pattern.countFireTheZoomPanEvent
 			);
-			expect(screenRefreshedEventListener).toBeCalledTimes(
+			expect(screenRefreshedEventListener).toHaveBeenCalledTimes(
 				pattern.countFireTheScreenFreshedEvent
 			);
 		});
@@ -96,8 +96,8 @@ describe("unittest for ResourceLoadingObserver", () => {
 			let result = resourceloadingobserver.checkLoadCompleted(pattern.forceDel);
 			expect(result).toBe(pattern.isLoadCompleted);
 			// loadが完了してないためイベント発火は起こりえない
-			expect(zoomPanEventListener).toBeCalledTimes(0);
-			expect(screenRefreshedEventListener).toBeCalledTimes(0);
+			expect(zoomPanEventListener).toHaveBeenCalledTimes(0);
+			expect(screenRefreshedEventListener).toHaveBeenCalledTimes(0);
 		});
 
 		it("RootNode doesn't have elements that have toBeDel id", () => {

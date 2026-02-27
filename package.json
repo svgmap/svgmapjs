@@ -1,12 +1,13 @@
 {
 	"devDependencies": {
-		"@playwright/test": "^1.48.2",
-		"@types/node": "^22.8.6",
-		"playwright": "^1.48.2",
-		"@testing-library/dom": "^10.4.0",
-		"jest": "^29.7.0",
-		"jest-environment-jsdom": "^29.7.0",
-		"jsts": "^2.12.1"
+		"@playwright/test": "^1.58.1",
+		"@testing-library/dom": "^10.4.1",
+		"@types/node": "^25.2.0",
+		"http-server": "^14.1.1",
+		"jest": "^30.2.0",
+		"jest-environment-jsdom": "^30.2.0",
+		"jsts": "^2.12.1",
+		"playwright": "^1.58.1"
 	},
 	"name": "svgmaplv0.2",
 	"description": "Modular SVGMap.js alpha",
@@ -38,6 +39,10 @@
 		"testPathIgnorePatterns": [
 			"<rootDir>/node_modules/",
 			"<rootDir>/tests/e2e/"
-		]
+		],
+		"moduleNameMapper": {
+			"^https://localhost:5500/svgMapLv0.2/InterWindowMessaging.js$": "<rootDir>/InterWindowMessaging.js",
+			"^https://cdn.jsdelivr.net/gh/svgmap/svgmapjs@latest/libs/(.*)$": "<rootDir>/libs/$1"
+		}
 	}
 }
