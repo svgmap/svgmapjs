@@ -11,11 +11,10 @@ jest.unstable_mockModule("../../SVGMapLv0.1_GIS_r4_module.js", () => ({
 	SvgMapGIS: jest.fn()
 }));
 
-// Mock InterWindowMessaging to check how it's called
+// Mock InterWindowMessaging to check how it's called (3-argument version)
 const mockInterWindowMessaging = jest.fn().mockImplementation(() => {
 	return {
 		addAllowedOrigin: jest.fn(),
-		postMessageTo: jest.fn(),
 		callRemoteFunc: jest.fn(),
 		getHandshakeTokenForTesting: jest.fn()
 	};
@@ -30,13 +29,14 @@ jest.unstable_mockModule("../../InterWindowMessaging.js", () => {
 const { LayerSpecificWebAppHandler } = await import("../../libs/LayerSpecificWebAppHandler.js");
 const { InterWindowMessaging } = await import("../../InterWindowMessaging.js");
 
-describe("LayerSpecificWebAppHandler Refactoring (Task 4.2)", () => {
+describe("LayerSpecificWebAppHandler Refactoring Integration", () => {
 	let handler;
 	let mockSvgMap;
 	let mockAuthoringTool;
 	let getLayerStatus;
 
 	beforeEach(() => {
+		mockInterWindowMessaging.mockClear();
 		mockSvgMap = {
 			registLayerUiSetter: jest.fn(),
 			getRootLayersProps: jest.fn().mockReturnValue([]),
@@ -62,15 +62,16 @@ describe("LayerSpecificWebAppHandler Refactoring (Task 4.2)", () => {
 		handler = new LayerSpecificWebAppHandler(mockSvgMap, mockAuthoringTool, getLayerStatus);
 	});
 
-	test("should initialize InterWindowMessaging with handshake options", () => {
+	test("should initialize InterWindowMessaging with exactly 3 arguments according to Takagi-spec", () => {
+		// 3引数形式 (functionSet, targetWindow, targetOrigin) の確認
 		expect(InterWindowMessaging).toHaveBeenCalledWith(
 			expect.any(Object),
 			expect.any(Function),
-			true,
-			[],
-			expect.objectContaining({
-				alwaysAllowCommands: expect.arrayContaining(["handshakeAck"])
-			})
+			"*" // 全オリジンからの開始を許可する設定になっていること
 		);
+		
+		// 引数の数が 3つであることを厳密にチェック
+		const callArgs = mockInterWindowMessaging.mock.calls[0];
+		expect(callArgs.length).toBe(3);
 	});
 });

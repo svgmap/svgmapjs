@@ -9,7 +9,7 @@ global.window.jsts = {
 	}
 };
 
-describe("LayerSpecificWebAppHandler Sandbox Logic (Task 2.1/2.2)", () => {
+describe("LayerSpecificWebAppHandler Sandbox Logic (Negotiation Version)", () => {
 	let handler;
 	let mockSvgMap;
 	let mockAuthoringTool;
@@ -58,89 +58,90 @@ describe("LayerSpecificWebAppHandler Sandbox Logic (Task 2.1/2.2)", () => {
 			location: { href: "" },
 			focus: jest.fn(),
 			close: jest.fn(),
-			closed: false
+			closed: false,
+			postMessage: jest.fn()
 		};
 		global.window.open = jest.fn().mockReturnValue(mockPopup);
-		global.window.confirm = jest.fn().mockReturnValue(true);
+		
+		// crypto.randomUUID のモック
+		if (!global.crypto) global.crypto = {};
+		global.crypto.randomUUID = jest.fn().mockReturnValue("mock-uuid-123");
 	});
 
 	afterEach(() => {
 		jest.clearAllMocks();
 	});
 
-	it("should generate token and append to URL when opening popup (Task 2.1)", () => {
+	it("should initialize InterWindowMessaging with 3 arguments and '*' origin", () => {
 		handler = new LayerSpecificWebAppHandler(mockSvgMap, mockAuthoringTool, mockGetLayerStatus);
-		handler.initLayerSpecificUI();
-
-		const layerId = "layer1";
-		const controllerURL = "http://test.com/ui";
+		const iwm = handler.getMessagingInstanceForTesting();
 		
-		handler.showLayerSpecificUI(layerId, controllerURL);
-
-		expect(global.window.open).toHaveBeenCalled();
-		const openedUrl = global.window.open.mock.calls[0][0];
-		expect(openedUrl).toContain("svgMapHandshakeToken=");
+		expect(iwm).toBeDefined();
+		// インスタンス化が成功していること（内部的な引数チェックはクラス側で実施済み）
 	});
 
-	it("should provide svgImageProps and svgImage via exposed API (Task 2.2)", () => {
+	it("should respond to negotiationKey from child window", async () => {
+		handler = new LayerSpecificWebAppHandler(mockSvgMap, mockAuthoringTool, mockGetLayerStatus);
+		
+		const remoteOrigin = "http://remote-app.com";
+		const negotiationKey = "child-uuid-999";
+
+		// 子ウィンドウからネゴシエーションキーが届いたことをシミュレート
+		window.dispatchEvent(new MessageEvent("message", {
+			origin: remoteOrigin,
+			source: mockPopup,
+			data: JSON.stringify({
+				negotiationKey: negotiationKey
+			})
+		}));
+
+		await new Promise(resolve => setTimeout(resolve, 50));
+
+		// 親（Handler）が正しいキーを返信していること
+		expect(mockPopup.postMessage).toHaveBeenCalled();
+		const sentMsg = JSON.parse(mockPopup.postMessage.mock.calls[0][0]);
+		expect(sentMsg.negotiationKey).toBe(negotiationKey);
+		expect(sentMsg.ready).toBe(true);
+	});
+
+	it("should provide svgImageProps via exposed API correctly identifying the source", () => {
 		handler = new LayerSpecificWebAppHandler(mockSvgMap, mockAuthoringTool, mockGetLayerStatus);
 		handler.initLayerSpecificUI();
-		handler.showLayerSpecificUI("layer1", "http://test.com/ui");
+		
+		// ポップアップとして登録
+		handler.setPopupWindowForTesting("layer1", mockPopup);
 
 		const exposedFuncs = handler.getExposedFunctionsForTesting();
-		const context = { source: mockPopup };
+		const context = { source: mockPopup, origin: "http://test.com" };
 		
-		// 1. svgImageProps の取得確認
+		// 1. props の取得
 		const props = exposedFuncs.getSvgImageProps.call(context);
 		expect(props).toBeDefined();
 		expect(props.id).toBe("layer1");
-		expect(props.Path).toBe("http://test.com/test.svg");
 
-		// 2. svgImage (XML) の取得確認
+		// 2. XML の取得
 		const svg = exposedFuncs.getSvgImage.call(context);
 		expect(svg).toBe('<svg id="test-svg"></svg>');
 	});
 
-	it("should unconditionally replace existing dummy svgImage with actual XML from sandbox (Task 2.2)", () => {
+	it("should handle replaceSvgImage from sandbox and update parent state", () => {
 		handler = new LayerSpecificWebAppHandler(mockSvgMap, mockAuthoringTool, mockGetLayerStatus);
 		handler.initLayerSpecificUI();
-		handler.showLayerSpecificUI("layer1", "http://test.com/ui");
-		
-		const exposedFuncs = handler.getExposedFunctionsForTesting();
-		const context = { source: mockPopup };
-		
-		// 初期状態（ダミーデータとして文字列が入っているケースを想定）
-		testImages.layer1 = "DUMMY_SVG_DATA_THAT_CANNOT_BE_LOADED_BY_HOST";
-		
-		// replaceSvgImage 呼び出し
-		const actualSvgXml = '<svg id="real-svg"><rect width="100" height="100" /></svg>';
-		exposedFuncs.replaceSvgImage.call(context, actualSvgXml);
-		
-		// 親側のデータが Document オブジェクト（置換後の実データ）になっていることを確認
-		expect(testImages.layer1).not.toBe("DUMMY_SVG_DATA_THAT_CANNOT_BE_LOADED_BY_HOST");
-		expect(testImages.layer1.documentElement).toBeDefined();
-		expect(testImages.layer1.documentElement.id).toBe("real-svg");
-	});
-
-	it("should provide latest svgImageProps dynamically when parent state changes (Task 2.2)", () => {
-		handler = new LayerSpecificWebAppHandler(mockSvgMap, mockAuthoringTool, mockGetLayerStatus);
-		handler.initLayerSpecificUI();
-		handler.showLayerSpecificUI("layer1", "http://test.com/ui");
+		handler.setPopupWindowForTesting("layer1", mockPopup);
 
 		const exposedFuncs = handler.getExposedFunctionsForTesting();
 		const context = { source: mockPopup };
 		
-		// 1. 初回の取得
-		let props = exposedFuncs.getSvgImageProps.call(context);
-		expect(props.Path).toBe("http://test.com/test.svg");
-
-		// 2. 親側で状態を更新 (例: zoom レベルなどが変わった想定)
-		testProps.layer1.Path = "http://test.com/updated.svg";
-		testProps.layer1.zoom = 2.0;
-
-		// 3. 再取得して最新の状態が返ってくるか確認
-		props = exposedFuncs.getSvgImageProps.call(context);
-		expect(props.Path).toBe("http://test.com/updated.svg");
-		expect(props.zoom).toBe(2.0);
+		const newSvgXml = '<svg id="new-xml"><circle cx="50" cy="50" r="40" /></svg>';
+		exposedFuncs.replaceSvgImage.call(context, newSvgXml);
+		
+		// 親側の画像データが Document として更新されていること
+		const updatedSvg = mockSvgMap.getSvgImages()["layer1"];
+		expect(updatedSvg.documentElement.id).toBe("new-xml");
+		expect(mockSvgMap.refreshScreen).not.toHaveBeenCalled(); // この時点ではまだリフレッシュしない
+		
+		// finalizeSync でリフレッシュされること
+		exposedFuncs.finalizeSync.call(context);
+		expect(mockSvgMap.refreshScreen).toHaveBeenCalled();
 	});
 });

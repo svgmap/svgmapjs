@@ -84,6 +84,7 @@ class InterWindowMessaging {
 	#setMessageListener() {
 		window.addEventListener("message", async (event) => {
 			const origin = event.origin;
+			const source = event.source;
 
 			// --- 統合修正: 同一ドメイン時のパスチェック(混線防止) ---
 			if (origin === window.location.origin) {
@@ -91,7 +92,7 @@ class InterWindowMessaging {
 					const targetWin = this.#getTargetWindow();
 					if (
 						targetWin &&
-						event.source.location.pathname !== targetWin.location.pathname
+						source.location.pathname !== targetWin.location.pathname
 					) {
 						return;
 					}
@@ -115,10 +116,15 @@ class InterWindowMessaging {
 			// 親ウィンドウ（ネゴシエーションモード接続を受ける側）の処理
 			if (!this.#isNegotiating && msg.negotiationKey) {
 				// 子から乱数を受け取ったら、そのまま返信
-				this.#postMessage({
-					ready: true,
-					negotiationKey: msg.negotiationKey,
-				});
+				this.#postMessage(
+					{
+						ready: true,
+						negotiationKey: msg.negotiationKey,
+					},
+					[],
+					source,
+					origin,
+				);
 				return;
 			}
 			// 子ウィンドウ（ネゴシエーションモード接続を発出する側）の処理
@@ -177,21 +183,21 @@ class InterWindowMessaging {
 						: msg.parameter !== null && msg.parameter !== undefined
 							? [msg.parameter]
 							: [];
-					const result = await func(...params);
+					// 呼び出しコンテキストに source と origin を含める 2026/01/29
+					const result = await func.call({ source, origin }, ...params);
 
 					const response = {
 						id: msg.id || null,
 						response: msg.command,
 						content: result,
 					};
-					this.#postMessage(response);
+					this.#postMessage(response, [], source, origin);
 				} else {
+					// 変更点: 未知のコマンドに対しては沈黙する (Task 2.1)
+					// 他のインスタンスのメッセージである可能性があるため
+					// console.warn を出力するに留め、postMessage(error) は行わない
 					console.warn(`Unknown command: ${msg.command}`);
-					this.#postMessage({
-						id: msg.id || null,
-						response: "error",
-						error: "Unknown command",
-					});
+					return;
 				}
 			}
 		});
@@ -214,23 +220,54 @@ class InterWindowMessaging {
 			: this.#targetWindow;
 	}
 
-	#postMessage(messageObject, transferables = []) {
-		const targetWin = this.#getTargetWindow();
+	/**
+	 * 
+	 * @param {*} messageObject 
+	 * @param {*} transferables 
+	 * @param {*} explicitTarget 接続先ウィンドウを明示的に指定する場合に使用 (通常はnullでOK)
+	 * @param {*} explicitOrigin 接続先オリジンを明示的に指定する場合に使用 (通常はnullでOK)
+	 * @returns 
+	 */
+	#postMessage(
+		messageObject,
+		transferables = [],
+		explicitTarget = null,
+		explicitOrigin = null,
+	) {
+		const targetWin = explicitTarget || this.#getTargetWindow();
 		if (!targetWin) {
-			console.warn("Target window not available");
+			console.warn("Target window not available - message aborted");
 			return;
 		}
 
 		// ネゴシエーションモードで初期メッセージを送る場合のみ、ターゲットオリジンを`*`にする
 		const postOrigin =
-			this.#isNegotiating && !this.#targetOrigin ? "*" : this.#targetOrigin;
+			explicitOrigin ||
+			(this.#isNegotiating && !this.#targetOrigin ? "*" : this.#targetOrigin);
 
 		// 移譲可能オブジェクトがある場合
 		if (transferables.length > 0) {
 			targetWin.postMessage(messageObject, postOrigin, transferables);
 		} else {
 			// --- 統合修正: 旧版との互換性を高めるため、基本はJSON文字列で送信 ---
-			targetWin.postMessage(JSON.stringify(messageObject), postOrigin);
+			try {
+				targetWin.postMessage(JSON.stringify(messageObject), postOrigin);
+			} catch (e) {
+				console.error("Failed to serialize message:", e, messageObject);
+				// 代替のエラーメッセージ送信を試みる
+				try {
+					targetWin.postMessage(
+						JSON.stringify({
+							id: messageObject.id || null,
+							response: "error",
+							error: "Serialization failed",
+						}),
+						postOrigin,
+					);
+				} catch (e2) {
+					// 予期せぬ二次エラーの防止
+				}
+			}
 		}
 	}
 

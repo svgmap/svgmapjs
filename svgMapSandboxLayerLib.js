@@ -111,17 +111,10 @@ if (!isSameDomainIFrame) {
 				const event = new Event(payload.event);
 				window.dispatchEvent(event);
 			},
-		};
-
-		// 通信の確立 (Task 3.1, Requirement 1.2)
-		// InterWindowMessaging はコンストラクタ内で自動的に URL トークンを確認し HELO に対する Ack を待つ/送る
-		messaging = new InterWindowMessaging(functions, window.opener, false, [], {
-			handshake: true,
-			onHandshake: async (origin) => {
-				console.log(
-					"svgMapSandboxLayerLib: Handshake established with origin:",
-					origin
-				);
+			// 接続完了通知 (Negotiation 完了後に呼ばれる)
+			connectionReady: async function (isReady) {
+				if (!isReady) return;
+				console.log("svgMapSandboxLayerLib: Connection established via Negotiation.");
 				try {
 					// Step 1: 親から配置情報を取得 (Requirement 2.1)
 					console.log(
@@ -142,8 +135,11 @@ if (!isSameDomainIFrame) {
 						e
 					);
 				}
-			},
-		});
+			}
+		};
+
+		// 接続の確立 (Negotiation モードを使用)
+		messaging = new InterWindowMessaging(functions, window.opener, "negotiation");
 	};
 
 	if (document.readyState === "loading") {

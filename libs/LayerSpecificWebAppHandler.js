@@ -125,11 +125,7 @@ class LayerSpecificWebAppHandler {
 				// InterWindowMessaging 側で event.source を優先するよう設計。
 				return null;
 			},
-			true, // responseReady
-			[],   // allowedOrigins
-			{
-				alwaysAllowCommands: ["handshakeAck"], // ハンドシェイクACKは常に許可 2026/01/29
-			}
+			"*" // 全オリジンからの通信開始を許可
 		);
 
 		console.log(
@@ -1915,24 +1911,10 @@ class LayerSpecificWebAppHandler {
 					popupDoc.dispatchEvent(customEvent);
 					console.log(`Direct dispatch successful for layer ${layerId}`);
 				} catch (e) {
-					// 他ドメインの場合は postMessage を使用して転送 2026/01/28
-					// 最新の svgImageProps を同封して Sandbox 側のキャッシュを更新させる 2026/01/30
+					// 他ドメインへの転送は postMessageTo 廃止のため行わない
 					console.log(
-						`Direct dispatch failed, using postMessage for layer ${layerId}. Error: ${e.message}`
+						`Direct dispatch failed for layer ${layerId}. Cross-domain event transfer is disabled.`
 					);
-					if (this.#iwmsg) {
-						const currentProps = this.#svgMap.getSvgImagesProps()[layerId];
-						this.#iwmsg.postMessageTo(this.#popupWindows[layerId], {
-							command: "receiveParentEvent",
-							parameter: [
-								{
-									event: ev.type,
-									data: null,
-									svgImageProps: currentProps,
-								},
-							],
-						});
-					}
 				}
 			}
 		}.bind(this);

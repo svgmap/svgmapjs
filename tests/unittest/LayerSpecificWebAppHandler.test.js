@@ -5,7 +5,6 @@
 
 import { describe, it, expect, beforeEach, afterEach, jest } from "@jest/globals";
 import { LayerSpecificWebAppHandler } from "../../libs/LayerSpecificWebAppHandler.js";
-import { InterWindowMessaging } from "../../InterWindowMessaging.js";
 
 // Mock JSTS
 global.window.jsts = {
