@@ -1,352 +1,211 @@
-// Description:  window間で、メッセージングによってデータのやり取りをする。
-// Programmed by Satoru Takagi
+// Description:
+// InterWindowMessagingクラス（クロスオリジン版 ＋ 同一ドメインパスチェック統合）
+// クロスオリジンwindow間で、指定した関数をPromise実行、帰り値を得る
+//
+// History:
+// 2022/08/10 1st rel.
+// 2025/07/02 ホワイトリストで別オリジンからのメッセージを受け取りも可能にする
+//
+// 別系統(S-LaWA用InterWindowMessaging:クロスオリジン通信用)
+// 2025/08/04 First implementation
+// 2025/09/08 セキュリティ改善 : "negotioation"機構を構築し、targetOriginに"*"を使用しないで済むようにした
+//
+// リファクタリング
+// 2026/03/02 S-LaWA用をベースに統合 ～ 同一ドメイン時のパスチェック機能とGetter対応を追加
+//
+//  Programmed by Satoru Takagi
 //
 // License: (MPL v2)
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
-//
-// History:
-// 2022/08/10 1st rel.
-// 2025/07/02 ホワイトリストで別オリジンからのメッセージを受け取りも可能にする
-// 2026/02/01 IDベースのメッセージングへのリファクタリング
-// 2026/02/01 ハンドシェイク機能の統合
-// 2026/02/01 自動ハンドシェイク応答機能の追加 (Task 4.3)
 
 class InterWindowMessaging {
-	#targetWindow = null;
-	#targetWindowGetter = null;
-	#targetOrigin = "*";
-	#readyState = false;
-	#readyPromise = null;
-	#readyResolve = null;
-	#allowedOrigins = [];
-	#options = {
-		timeout: 30000,
-		handshakeTimeout: 5000,
-		handshake: false,
-	};
-	#functionSet_int;
-	#pendingRequests = new Map();
-	#handshakeToken = null;
-	#handshakeTimeoutId = null;
-	#isHandshakeComplete = false;
+	constructor(functionSet, targetWindow, targetOrigin) {
+		// functionSet に connectionReady関数が含まれている場合接続が確認したら呼び出される
+		if (!targetWindow) {
+			console.warn("No targetWindow provided.");
+			return;
+		}
+		// --- 統合修正: targetOriginの型判定による互換性維持 ---
+		if (targetOrigin === undefined || targetOrigin === null) {
+			console.log("No targetOrigin provided, regard as same origin. ");
+		}
+		if (typeof functionSet !== "object") {
+			console.warn("functionSet must be an object.");
+			return;
+		}
 
-	/**
-	 * @param {Object} functionSet 露出させる関数セット
-	 * @param {Window|Function} targetWindow_or_itsGetter ターゲットウィンドウまたはそれを返す関数
-	 * @param {boolean} responseReady 準備完了を即座に通知するかどうかのフラグ
-	 * @param {string[]} allowedOrigins 許可するオリジンのリスト
-	 * @param {Object} options 詳細設定オブジェクト (timeout, handshake 等)
-	 */
-	constructor(
-		functionSet,
-		targetWindow_or_itsGetter,
-		responseReady = false,
-		allowedOrigins = [],
-		options = {}
-	) {
-		this.#readyPromise = new Promise((resolve) => {
-			this.#readyResolve = resolve;
-		});
+		this.#functionSet = functionSet;
 
+		// --- 統合修正: Getter関数のサポート ---
+		if (typeof targetWindow === "function") {
+			this.#targetWindowGetter = targetWindow;
+		} else {
+			this.#targetWindow = targetWindow;
+		}
+
+		// --- 統合修正: 引数がboolean(旧版)かstring(n版)かで分岐 ---
+		if (targetOrigin === "negotiation") {
+			//console.log ("InterWindowMessaging construct enter negotiation process");
+			this.#targetOrigin = null;
+			this.#isNegotiating = true;
+			this.#negotiationKey = crypto.randomUUID(); // ネゴシエーション用の乱数を生成
+		} else if (typeof targetOrigin === "string") {
+			//console.log ("InterWindowMessaging construct basic process");
+			this.#targetOrigin = targetOrigin;
+			this.#isNegotiating = false;
+		} else {
+			// 旧版互換: targetOriginにboolean(ready)が渡された場合　もしくは省略されている場合
+			// Same Originとする
+			this.#targetOrigin = window.location.origin;
+			this.#isNegotiating = false;
+			if (targetOrigin === true) this.#readyState = true;
+		}
+
+		//console.log("targetOrigin:", this.#targetOrigin);
 		this.#setMessageListener();
 
-		this.#functionSet_int = functionSet;
-		if (targetWindow_or_itsGetter) {
-			if (typeof targetWindow_or_itsGetter == "object") {
-				this.#targetWindow = targetWindow_or_itsGetter;
-				try {
-					this.#targetOrigin = this.#targetWindow.location.origin;
-				} catch (e) {
-					this.#targetOrigin = "*";
-				}
-			} else {
-				this.#targetWindowGetter = targetWindow_or_itsGetter;
-			}
-		}
-
-		// オプションのマージ
-		Object.assign(this.#options, options);
-
-		// 許可オリジンの設定
-		if (Array.isArray(allowedOrigins)) {
-			this.#allowedOrigins = [...allowedOrigins];
-		}
-
-		// ターゲットオリジンの解決
-		if (this.#targetOrigin === "*" && this.#allowedOrigins.length > 0) {
-			this.#targetOrigin = this.#allowedOrigins[0];
-		}
-
-		// 準備完了の通知
-		if (responseReady === true || this.#options.submitReady === true) {
-			this.#submitReady();
-			this.#setReady();
-		}
-
-		// 自動ハンドシェイク応答 (Task 4.3)
-		this.#checkAutoHandshake();
+		// オブジェクト初期化時に自動でreadyメッセージを送信
+		this.#submitReady(); // 先に立ち上がったほうのReadyは当然受け取れない
 	}
 
-	#checkAutoHandshake() {
-		try {
-			const params = new URLSearchParams(window.location.search);
-			const token = params.get("svgMapHandshakeToken");
-			const parentOrigin = params.get("svgMapParentOrigin");
-			if (token) {
-				console.log(
-					"InterWindowMessaging: Handshake token found in URL. Sending HELO..."
-				);
-				if (parentOrigin && parentOrigin !== "*") {
-					this.#targetOrigin = parentOrigin;
-					this.addAllowedOrigin(parentOrigin); // 親オリジンを信頼リストに追加 (Requirement 5.3)
-				}
-				this.#handshakeToken = token; // Ack検証用にトークンを保持
-				this.#sendHelo(token);
-			}
-		} catch (e) {
-			// location.search にアクセスできない環境（独自スキーマ等）はスキップ
-		}
-	}
-
-	/**
-	 * HELO メッセージを処理し、handshakeAck を返す (Task 1.1)
-	 * @param {Object} msg 受信メッセージ
-	 * @param {Window} source 送信元ウィンドウ
-	 * @param {string} origin 送信元オリジン
-	 */
-	#handleHelo(msg, source, origin) {
-		const [token] = msg.parameter || [];
-		// 自分が開いた（事前に登録された）オリジンからの HELO か確認 (Requirement 1.1)
-		if (token && this.#allowedOrigins.includes(origin)) {
-			console.log(
-				`InterWindowMessaging: HELO received from trusted origin: ${origin} with token: ${token}. Sending handshakeAck.`
-			);
-			const ackMsg = {
-				command: "handshakeAck",
-				parameter: [null, token],
-				id: msg.id,
-			};
-			source.postMessage(this.#safeStringify(ackMsg), origin);
-
-			// ハンドシェイク成功としてオリジンを承認
-			this.addAllowedOrigin(origin);
-			this.#isHandshakeComplete = true;
-		} else {
-			console.warn(
-				`InterWindowMessaging: HELO blocked from untrusted origin: ${origin} or missing token.`
-			);
-		}
-	}
-
-	#sendHelo(token) {
-		const targetWin = this.#getTargetWindow();
-		if (targetWin) {
-			const heloMsg = {
-				command: "HELO",
-				parameter: [token],
-			};
-			targetWin.postMessage(this.#safeStringify(heloMsg), this.#targetOrigin);
-		}
-	}
-
-	#sendHandshakeAck(token) {
-		const targetWin = this.#getTargetWindow();
-		if (targetWin) {
-			const ackMsg = {
-				command: "handshakeAck",
-				parameter: [null, token], // lid は null でも可（ホスト側で event.source から特定可能）
-			};
-			targetWin.postMessage(this.#safeStringify(ackMsg), this.#targetOrigin);
-		}
-	}
-
-	// #startHandshake() {
-	// 	this.#handshakeToken = Math.random().toString(36).substring(2, 15);
-	// 	this.#handshakeTimeoutId = setTimeout(() => {
-	// 		if (!this.#isHandshakeComplete) {
-	// 			console.warn("InterWindowMessaging: Handshake timeout.");
-	// 			this.#handshakeToken = null;
-	// 			if (typeof this.#options.onHandshakeTimeout === "function") {
-	// 				this.#options.onHandshakeTimeout();
-	// 			}
-	// 		}
-	// 	}, this.#options.handshakeTimeout);
-	// }
-
-	#setReady() {
-		if (!this.#readyState) {
-			this.#readyState = true;
-			this.#readyResolve();
-		}
-	}
-
-	#safeStringify(obj) {
-		const seen = new WeakSet();
-		const sanitize = (val) => {
-			if (val === null || typeof val !== "object") return val;
-			if (seen.has(val)) return undefined;
-			try {
-				if (
-					typeof val === "object" &&
-					val !== null &&
-					"window" in val &&
-					val.window === val
-				)
-					return undefined;
-				seen.add(val);
-			} catch (e) {
-				return undefined;
-			}
-			if (Array.isArray(val)) {
-				return val.map(sanitize);
-			}
-			const sanitizedObj = {};
-			for (const key in val) {
-				try {
-					const sanitizedValue = sanitize(val[key]);
-					if (sanitizedValue !== undefined) sanitizedObj[key] = sanitizedValue;
-				} catch (e) {}
-			}
-			return sanitizedObj;
-		};
-
-		try {
-			return JSON.stringify(sanitize(obj));
-		} catch (e) {
-			console.error("InterWindowMessaging: Serialization failed:", e);
-			return JSON.stringify({
-				error: "serialization failed",
-				detail: e.message,
-			});
-		}
-	}
+	#targetWindow = null;
+	#targetWindowGetter = null;
+	#readyState = false;
+	#functionSet = {};
+	#targetOrigin = null;
+	#pendingResponses = new Map();
+	// ネゴシエーション機能のためのプロパティ
+	#isNegotiating = false;
+	#negotiationKey = null;
+	#isNegotiatingCount = 0;
 
 	#setMessageListener() {
 		window.addEventListener("message", async (event) => {
+			const origin = event.origin;
+
+			// --- 統合修正: 同一ドメイン時のパスチェック(混線防止) ---
+			if (origin === window.location.origin) {
+				try {
+					const targetWin = this.#getTargetWindow();
+					if (
+						targetWin &&
+						event.source.location.pathname !== targetWin.location.pathname
+					) {
+						return;
+					}
+				} catch (e) {
+					// クロスオリジン時はエラーになるため無視
+				}
+			}
+
+			//console.log("Recieve message", event, " from ", event.origin, " on ", location.origin);
 			let msg;
 			try {
-				msg = JSON.parse(event.data);
+				// messageのdataが文字列の場合はJSON.parse、それ以外はそのまま
+				msg =
+					typeof event.data === "string" ? JSON.parse(event.data) : event.data;
 			} catch (e) {
+				console.warn("Invalid message data format:", event.data);
 				return;
 			}
+			//console.log("Recieve message", msg, " from ", event.origin, " on ", location.origin);
 
-			const targetWin = this.#getTargetWindow();
-
-			// 送信元ウィンドウが指定されている場合、一致しなければ無視する（他のインスタンス向けのメッセージである可能性があるため）
-			if (targetWin && event.source !== targetWin) {
+			// 親ウィンドウ（ネゴシエーションモード接続を受ける側）の処理
+			if (!this.#isNegotiating && msg.negotiationKey) {
+				// 子から乱数を受け取ったら、そのまま返信
+				this.#postMessage({
+					ready: true,
+					negotiationKey: msg.negotiationKey,
+				});
 				return;
 			}
-
-			const isHandshakeAck =
-				msg.command === "handshakeAck" || msg.response === "handshakeAck";
-			const isAlwaysAllowed =
-				this.#options.alwaysAllowCommands &&
-				this.#options.alwaysAllowCommands.includes(msg.command);
-			const isHELO = msg.command === "HELO";
-
-			const isOriginAllowed =
-				this.#allowedOrigins.includes(event.origin) ||
-				event.origin === window.location.origin ||
-				isAlwaysAllowed ||
-				isHELO ||
-				(isHandshakeAck && this.#handshakeToken); // ハンドシェイクACKは検証前でもオリジンを問わずパースを許可
-
-			// ターゲットオリジンの確定（* の場合）
-			if (
-				targetWin &&
-				event.source === targetWin &&
-				this.#targetOrigin === "*"
-			) {
-				this.#targetOrigin = event.origin;
-			}
-
-			// (親)HELO への応答 (ハンドシェイク確立を助ける) - Task 1.1 対応
-			if (isHELO) {
-				this.#handleHelo(msg, event.source, event.origin);
-				return;
-			}
-
-			// (子)Handshake ACK の処理 - Task 1.1 対応
-			if (isHandshakeAck) {
-				const [lid, token] = msg.parameter || [];
-				if (token && this.#handshakeToken && token === this.#handshakeToken) {
-					console.log(
-						`InterWindowMessaging: Handshake established. Origin: ${event.origin}`
-					);
-					if (this.#handshakeTimeoutId) {
-						clearTimeout(this.#handshakeTimeoutId);
-						this.#handshakeTimeoutId = null;
-					}
-					this.addAllowedOrigin(event.origin);
-					this.#isHandshakeComplete = true;
-					this.#setReady(); // ハンドシェイク完了をもって準備完了とする 2026/02/04
-					this.#handshakeToken = null; // 使い捨て
-					if (typeof this.#options.onHandshake === "function") {
-						this.#options.onHandshake(event.origin);
-					}
+			// 子ウィンドウ（ネゴシエーションモード接続を発出する側）の処理
+			if (this.#isNegotiating && !this.#targetOrigin) {
+				if (msg.ready === true && msg.negotiationKey === this.#negotiationKey) {
+					this.#targetOrigin = origin;
+					this.#isNegotiating = false;
+					this.#completeConnection();
 					return;
 				}
-				// 自身のトークンと一致しない場合は、コマンドハンドラ(functionSet)に任せるためここでは return しない 2026/02/22
-			}
-
-			if (!isOriginAllowed) {
-				// 自分が関与すべきメッセージ（コマンドが functionSet にある）でなければ静かに無視する 2026/02/22
-				if (!msg.command || !this.#functionSet_int[msg.command]) {
-					return;
-				}
-				console.warn(
-					`InterWindowMessaging: Message blocked from untrusted origin: ${event.origin}`
-				);
-				return;
-			}
-
-			// ハンドシェイク未完了時の制限
-			if (
-				this.#options.handshake &&
-				!this.#isHandshakeComplete &&
-				!isAlwaysAllowed
-			) {
-				// 自分が関与すべきメッセージでなければ無視
-				if (!msg.command || !this.#functionSet_int[msg.command]) {
-					return;
-				}
-				console.warn(
-					"InterWindowMessaging: Message blocked before handshake completion."
-				);
-				return;
-			}
-
-			// 以下、信用済みオリジンからのメッセージ処理
-			if (msg.id && this.#pendingRequests.has(msg.id)) {
-				const { resolve } = this.#pendingRequests.get(msg.id);
-				this.#pendingRequests.delete(msg.id);
-				resolve(event.data);
-				return;
-			}
-
-			if (msg.command) {
-				if (this.#functionSet_int && this.#functionSet_int[msg.command]) {
-					const ans = await this.#functionSet_int[msg.command].call(
-						{ origin: event.origin, source: event.source },
-						...(msg.parameter || [])
-					);
-					const resp = { id: msg.id, response: msg.command, content: ans };
-					const replyOrigin =
-						this.#targetOrigin === "*" ? event.origin : this.#targetOrigin;
-					
-					if (replyOrigin && replyOrigin !== "null") {
-						event.source.postMessage(this.#safeStringify(resp), replyOrigin);
-					}
+				if (this.#isNegotiatingCount < 2) {
+					//console.log("Retry Negotiation because of negotiating side launches faster");
+					this.#submitReady(); // 先にNegotioationしないほうが立ち上がった場合は1度はチャレンジする
 				} else {
-					// 自分の担当外のコマンドは完全に無視する（他のインスタンスへ処理を譲る）
-					return;
+					console.warn(
+						"Ignoring message during negotiation phase from:",
+						origin,
+						" msg:",
+						msg,
+					);
 				}
-			} else if (msg.ready === true) {
-				this.#setReady();
+				return;
+			}
+
+			if (this.#targetOrigin != "*" && this.#targetOrigin != origin) {
+				console.warn(
+					`Message from disallowed origin: ${origin} (Allowed:${this.#targetOrigin})`,
+				);
+				return;
+			}
+
+			// Transferable Objectsを含むメッセージの処理
+			if (msg.transferable) {
+				msg.parameter = msg.parameter || [];
+				msg.parameter[msg.transferable.index] = event.data;
+			}
+
+			if (msg.response && msg.id && this.#pendingResponses.has(msg.id)) {
+				this.#pendingResponses.get(msg.id).resolve(msg);
+				this.#pendingResponses.delete(msg.id);
+				return;
+			}
+
+			if (msg.ready === true) {
+				if (!this.#readyState) {
+					this.#completeConnection();
+				}
+				return;
+			}
+
+			if (msg.command && typeof msg.command === "string") {
+				const func = this.#functionSet[msg.command];
+				if (typeof func === "function") {
+					const params = Array.isArray(msg.parameter)
+						? msg.parameter
+						: msg.parameter !== null && msg.parameter !== undefined
+							? [msg.parameter]
+							: [];
+					const result = await func(...params);
+
+					const response = {
+						id: msg.id || null,
+						response: msg.command,
+						content: result,
+					};
+					this.#postMessage(response);
+				} else {
+					console.warn(`Unknown command: ${msg.command}`);
+					this.#postMessage({
+						id: msg.id || null,
+						response: "error",
+						error: "Unknown command",
+					});
+				}
 			}
 		});
+	}
+
+	#completeConnection() {
+		console.log(
+			`Connection successful. Target origin set to: ${this.#targetOrigin}`,
+		);
+		this.#readyState = true;
+		this.#submitReady();
+		if (typeof this.#functionSet["connectionReady"] === "function") {
+			this.#functionSet["connectionReady"](true);
+		}
 	}
 
 	#getTargetWindow() {
@@ -355,88 +214,59 @@ class InterWindowMessaging {
 			: this.#targetWindow;
 	}
 
-	#postMessagePromise(messageJson) {
-		const msg = JSON.parse(messageJson);
-		const id = Math.random().toString(36).substring(2, 15);
-		msg.id = id;
-		const updatedJson = JSON.stringify(msg);
+	#postMessage(messageObject, transferables = []) {
+		const targetWin = this.#getTargetWindow();
+		if (!targetWin) {
+			console.warn("Target window not available");
+			return;
+		}
+
+		// ネゴシエーションモードで初期メッセージを送る場合のみ、ターゲットオリジンを`*`にする
+		const postOrigin =
+			this.#isNegotiating && !this.#targetOrigin ? "*" : this.#targetOrigin;
+
+		// 移譲可能オブジェクトがある場合
+		if (transferables.length > 0) {
+			targetWin.postMessage(messageObject, postOrigin, transferables);
+		} else {
+			// --- 統合修正: 旧版との互換性を高めるため、基本はJSON文字列で送信 ---
+			targetWin.postMessage(JSON.stringify(messageObject), postOrigin);
+		}
+	}
+
+	async callRemoteFunc(command, parameter = [], transferables = []) {
+		await this.getReady();
+
+		const id = crypto.randomUUID();
+		const message = {
+			id,
+			command,
+			parameter,
+		};
 
 		return new Promise((resolve, reject) => {
-			let timeoutId = null;
-			const timeout = this.#options.timeout || 0;
-			if (timeout > 0) {
-				timeoutId = setTimeout(() => {
-					if (this.#pendingRequests.has(id)) {
-						this.#pendingRequests.delete(id);
-						reject(
-							new Error(
-								`InterWindowMessaging: Response timeout for command: ${msg.command}`
-							)
-						);
-					}
-				}, timeout);
-			}
-
-			this.#pendingRequests.set(id, {
-				resolve: (data) => {
-					if (timeoutId) clearTimeout(timeoutId);
-					resolve(data);
-				},
-				reject: (error) => {
-					if (timeoutId) clearTimeout(timeoutId);
-					reject(error);
-				},
-			});
-
-			const send = () => {
-				const targetWin = this.#getTargetWindow();
-				if (targetWin && (this.#readyState || msg.ready)) {
-					targetWin.postMessage(updatedJson, this.#targetOrigin);
-				} else {
-					setTimeout(send, 50);
-				}
-			};
-			send();
-		});
-	}
-
-	postMessageTo(targetWin, message) {
-		if (!targetWin) return;
-		const messageJson =
-			typeof message === "string" ? message : this.#safeStringify(message);
-		targetWin.postMessage(messageJson, this.#targetOrigin);
-	}
-
-	async callRemoteFunc(fName, paramArray) {
-		const messageObj = { command: fName, parameter: paramArray };
-		const retJson = await this.#postMessagePromise(JSON.stringify(messageObj));
-		const ret = JSON.parse(retJson);
-		return ret.response === fName ? ret.content : null;
+			this.#pendingResponses.set(id, { resolve, reject });
+			this.#postMessage(message, transferables);
+		}).then((msg) => msg.content);
 	}
 
 	#submitReady() {
-		const targetWin = this.#getTargetWindow();
-		if (targetWin) {
-			targetWin.postMessage(
-				this.#safeStringify({ ready: true }),
-				this.#targetOrigin
-			);
+		let message;
+		if (this.#isNegotiating) {
+			// ネゴシエーション用の初期メッセージ
+			message = { ready: true, negotiationKey: this.#negotiationKey };
+			this.#isNegotiatingCount++;
+		} else {
+			// 通常のreadyメッセージ
+			message = { ready: true };
 		}
+		this.#postMessage(message);
 	}
 
 	async getReady() {
-		await this.#readyPromise;
-		console.log("Ready!");
-	}
-
-	addAllowedOrigin(origin) {
-		if (origin && !this.#allowedOrigins.includes(origin)) {
-			this.#allowedOrigins.push(origin);
+		while (!this.#readyState) {
+			await new Promise((res) => setTimeout(res, 5));
 		}
-	}
-
-	getHandshakeTokenForTesting() {
-		return this.#handshakeToken;
 	}
 }
 

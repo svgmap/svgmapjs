@@ -544,15 +544,22 @@ class CesiumWindow {
 		//	console.log("Coverage is rendered by special inplemantaion  :", geom.coordinates[0].lng , geom.coordinates[0].lat, geom.coordinates[1].lng , geom.coordinates[1].lat, geom.href);
 
 		var imageUrl = geom.href;
-		imageUrl = await this.#getCORSresolvedURL(imageUrl);
-		console.log("orig:", geom.href, "  imageUrl:", imageUrl);
-		if (imageUrl.startsWith("https://") || imageUrl.startsWith("http://")) {
-		} else if (imageUrl.startsWith("/")) {
-			// imageUrl = imageUrl;
+		
+		if (imageUrl.startsWith("data:")) { // 2026/03/03 debug
+			console.log("Using dataURL directly:", imageUrl);  
 		} else {
-			imageUrl = (await this.#getReldir2imageUrl()) + imageUrl;
+			imageUrl = await this.#getCORSresolvedURL(imageUrl);
+			console.log("orig:", geom.href, "  imageUrl:", imageUrl);
+			
+			// dataURLでない場合のみURL処理を行う  
+			if (imageUrl.startsWith("https://") || imageUrl.startsWith("http://")) {
+			} else if (imageUrl.startsWith("/")) {
+				// imageUrl = imageUrl;
+			} else {
+				imageUrl = (await this.#getReldir2imageUrl()) + imageUrl;
+			}
 		}
-		console.log("CORSimageUrl:", imageUrl);
+		console.log("Final imageUrl:", imageUrl);
 
 		//	console.log("geom rect:",geom.coordinates[0].lng , geom.coordinates[0].lat, geom.coordinates[1].lng , geom.coordinates[1].lat);
 		var coverageImagery = this.#viewer.imageryLayers.addImageryProvider(
