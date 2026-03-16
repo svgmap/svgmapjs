@@ -34,7 +34,7 @@ class CustomModal {
 		buttonMessages,
 		callback,
 		callbackParam,
-		options
+		options,
 	) {
 		// added 2017/1/25
 		console.log(
@@ -43,7 +43,7 @@ class CustomModal {
 			buttonMessages,
 			Array.isArray(buttonMessages),
 			"options:",
-			options
+			options,
 		);
 		let position = { top: 0, left: 0 };
 		if (options && options.position) {

@@ -30,15 +30,15 @@ class ShowPoiProperty {
 		var meta = this.getMetadataObject(
 			vMeta.metadata,
 			vMeta.metaSchema,
-			vMeta.title
+			vMeta.title,
 		);
 		var geolocMin = this.#svgMapObject.screen2Geo(
 			targetBbox.x,
-			targetBbox.y + targetBbox.height
+			targetBbox.y + targetBbox.height,
 		);
 		var geolocMax = this.#svgMapObject.screen2Geo(
 			targetBbox.x + targetBbox.width,
-			targetBbox.y
+			targetBbox.y,
 		);
 
 		var contentMeta = targetElement.getAttribute("content"); // useの場合 use先のメタデータにはたいてい意味がない
@@ -88,8 +88,8 @@ class ShowPoiProperty {
 			this.#svgMapObject.getLayer(
 				this.#svgImagesProps[
 					element.ownerDocument.firstChild.getAttribute("about")
-				].rootLayer
-			)
+				].rootLayer,
+			),
 		);
 		if (element.ownerDocument.firstChild.getAttribute("property")) {
 			metaSchema = element.ownerDocument.firstChild.getAttribute("property");
@@ -206,7 +206,7 @@ class ShowPoiProperty {
 			} else {
 				console.warn(
 					" Skip. The result of the hit test is not an Element, so it is necessary to setShowPoiProperty. :",
-					target
+					target,
 				);
 			}
 		}
@@ -454,21 +454,21 @@ class ShowPoiProperty {
 			function (event) {
 				UtilFuncs.MouseWheelListenerFunc(event);
 			},
-			false
+			false,
 		); // chrome
 		modalDiv.addEventListener(
 			"mousewheel",
 			function (event) {
 				UtilFuncs.MouseWheelListenerFunc(event);
 			},
-			false
+			false,
 		); // chrome
 		modalDiv.addEventListener(
 			"DOMMouseScroll",
 			function (event) {
 				UtilFuncs.MouseWheelListenerFunc(event);
 			},
-			false
+			false,
 		); // firefox
 
 		// Modal divをbodyに追加

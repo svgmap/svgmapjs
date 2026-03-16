@@ -97,18 +97,18 @@ class SvgMapCustomLayersManager {
 				mergeSettings: this.#mergeSettings.bind(this),
 				// svgMapObjectを呼び出すもの
 				getGeoViewBox: this.#svgMapObject.getGeoViewBox.bind(
-					this.#svgMapObject
+					this.#svgMapObject,
 				),
 				setGeoViewPort: this.#svgMapObject.setGeoViewPort.bind(
-					this.#svgMapObject
+					this.#svgMapObject,
 				),
 				getResume: this.#svgMapObject.getResume.bind(this.#svgMapObject),
 				setResume: this.#svgMapObject.setResume.bind(this.#svgMapObject),
 				refreshScreen: this.#svgMapObject.refreshScreen.bind(
-					this.#svgMapObject
+					this.#svgMapObject,
 				),
 			},
-			this.#getLayersCustomizer
+			this.#getLayersCustomizer,
 		);
 	}
 
@@ -134,11 +134,11 @@ class SvgMapCustomLayersManager {
 		}
 		var originalPath = new URL(
 			this.#svgMapObject.getSvgImagesProps()["root"].Path,
-			location.href
+			location.href,
 		).href;
 		var lpOriginal = await this.#getDetailedLayersPropertySetFromPath(
 			originalPath,
-			true
+			true,
 		);
 		this.#setOriginalLayersPropertySet(lpOriginal);
 	}
@@ -156,7 +156,7 @@ class SvgMapCustomLayersManager {
 			"registCustomLayer:",
 			customLayerObject,
 			applyImmediately,
-			customLayerMetadata
+			customLayerMetadata,
 		);
 		/**
 		if ( !customLayersObject ){ // GLOBALを廃止する 2021/7/26
@@ -242,7 +242,7 @@ class SvgMapCustomLayersManager {
 		if (!currentSettingKey) {
 			console.warn(
 				"customLayersObject's currentSettingKey is not assigned. : customLayersObject:",
-				customLayersObject
+				customLayersObject,
 			);
 			return;
 		}
@@ -302,7 +302,7 @@ class SvgMapCustomLayersManager {
 							rootContainer,
 							plt.title,
 							plt.group,
-							lp[i].href
+							lp[i].href,
 						).getAttribute("iid"); // 2021/07/21
 						// console.log(plt,targetLayerId);
 
@@ -314,14 +314,14 @@ class SvgMapCustomLayersManager {
 								this.#getElementByAttr(
 									rootContainer,
 									targetLayerId,
-									"iid"
-								).getAttribute("xlink:href")
+									"iid",
+								).getAttribute("xlink:href"),
 							);
 						}
 						this.#editLayer(
 							targetLayerId,
 							customLayersSet[layerTitle],
-							rootContainer
+							rootContainer,
 						);
 					}
 					this.#editLayerProperty(i, customLayersSet[layerTitle], lp);
@@ -335,7 +335,7 @@ class SvgMapCustomLayersManager {
 						customLayersSet[layerTitle].href,
 						" vs ",
 						lp[i].href,
-						"  SKIP IT"
+						"  SKIP IT",
 					);
 					matched[i] = "href is unmatched:" + layerTitle;
 				}
@@ -367,12 +367,12 @@ class SvgMapCustomLayersManager {
 								rootContainer,
 								plt.title,
 								plt.group,
-								lp[i].href
+								lp[i].href,
 							).getAttribute("iid");
 							this.#editLayer(
 								targetLayerId,
 								customLayersSet[layerTitle],
-								rootContainer
+								rootContainer,
 							);
 						}
 						this.#editLayerProperty(i, customLayersSet[layerTitle], lp);
@@ -398,7 +398,7 @@ class SvgMapCustomLayersManager {
 					var afl = this.#findLayer(
 						afterLayer.afterTitle,
 						afterLayer.afterHref,
-						lp
+						lp,
 					);
 					if (afl && afl.level == "all") {
 						// 厳密一致させないとまずいと思われる
@@ -460,7 +460,7 @@ class SvgMapCustomLayersManager {
 					this.#addLayer(
 						layerTitle,
 						customLayersSet[layerTitle],
-						rootContainer
+						rootContainer,
 					);
 				}
 				appliedCLS[layerTitle] = true;
@@ -469,7 +469,7 @@ class SvgMapCustomLayersManager {
 				console.error(
 					"Already exists the same title layer : ",
 					layerTitle,
-					"  SKIP..."
+					"  SKIP...",
 				);
 			}
 		}
@@ -588,20 +588,20 @@ class SvgMapCustomLayersManager {
 			afterLayer = this.#getElementByTitleGroupXlink(
 				rootContainer,
 				atg.title,
-				atg.group
+				atg.group,
 			);
 			if (!afterLayer) {
 				afterLayer = this.#getElementByAttr(
 					rootContainer,
 					prop.add.afterHref,
-					"xlink:href"
+					"xlink:href",
 				);
 				if (afterLayer) {
 					console.error(
 						"Can't find afterLayer element titled:",
 						atg,
 						"  but found ",
-						afterLayer
+						afterLayer,
 					);
 				}
 			}
@@ -611,7 +611,7 @@ class SvgMapCustomLayersManager {
 					prop.add,
 					"   for ",
 					atg,
-					"layer."
+					"layer.",
 				);
 			}
 		}
@@ -649,7 +649,7 @@ class SvgMapCustomLayersManager {
 			} else if (key == "class") {
 				layersProperty[idx].detail = this.#getClassDetail(
 					targetLayerProp.class,
-					{}
+					{},
 				);
 			}
 
@@ -692,7 +692,7 @@ class SvgMapCustomLayersManager {
 			var afl = this.#findLayer(
 				targetLayerProp.add.afterTitle,
 				targetLayerProp.add.afterHref,
-				layersProperty
+				layersProperty,
 			);
 			if (afl) {
 				afterIndex = afl.index;
@@ -701,7 +701,7 @@ class SvgMapCustomLayersManager {
 				console.error(
 					"Can't find afterLayer ...:",
 					targetLayerProp.add,
-					"  then add top.."
+					"  then add top..",
 				);
 			}
 		}
@@ -742,7 +742,7 @@ class SvgMapCustomLayersManager {
 		// originalLayersProperty : 編集前のlayerProp.
 		if (!originalLayersProperty && this.#originalLayersPropertySet) {
 			originalLayersProperty = this.#deepCopy(
-				this.#originalLayersPropertySet
+				this.#originalLayersPropertySet,
 			).layersProperty;
 		}
 
@@ -756,7 +756,7 @@ class SvgMapCustomLayersManager {
 			"buildCustomLayersSetting:",
 			editedLayersProperty,
 			originalLayersProperty,
-			this.#originalLayersPropertySet
+			this.#originalLayersPropertySet,
 		);
 		console.log("buildCustomLayersSetting:", difObj);
 		// 削除されたレイヤーを登録する
@@ -802,7 +802,7 @@ class SvgMapCustomLayersManager {
 		// 属性が変更されたレイヤー(レイヤーtitleの変更も含む)を登録する
 		for (var i = 0; i < difObj.attrChangedIndex.length; i++) {
 			var title = this.#getGroupedTitle(
-				editedLayersProperty[difObj.attrChangedIndex[i].edited]
+				editedLayersProperty[difObj.attrChangedIndex[i].edited],
 			);
 			var href = editedLayersProperty[difObj.attrChangedIndex[i].edited].href;
 			var attributes = difObj.attrChangedIndex[i].attributes;
@@ -855,7 +855,7 @@ class SvgMapCustomLayersManager {
 			};
 		} else {
 			console.warn(
-				"Can't get root container live document from this windows's svgMap "
+				"Can't get root container live document from this windows's svgMap ",
 			);
 			return { rootContainerDoc: null, rootContainerHref: null };
 		}
@@ -864,7 +864,7 @@ class SvgMapCustomLayersManager {
 	#getDetailedLayersPropertySet(
 		rootContainerDoc,
 		rootContainerHref_in,
-		ignoreIid
+		ignoreIid,
 	) {
 		// getDetailedLayersPropertySetを、svgMapオブジェクトがない環境で構築する
 		// rootContainerDoc: ルートのSVGMapコンテンツ文書
@@ -1243,7 +1243,7 @@ class SvgMapCustomLayersManager {
 	#getRootContainer() {
 		if (!this.#hasSvgMapObj) {
 			console.warn(
-				"Can't get root container live document from this windows's svgMap "
+				"Can't get root container live document from this windows's svgMap ",
 			);
 			return null;
 		}
@@ -1261,7 +1261,7 @@ class SvgMapCustomLayersManager {
 	#getRootContainerHref() {
 		if (!this.#hasSvgMapObj) {
 			console.warn(
-				"Can't get root container live document from this windows's svgMap "
+				"Can't get root container live document from this windows's svgMap ",
 			);
 			return null;
 		}
@@ -1279,7 +1279,7 @@ class SvgMapCustomLayersManager {
 		**/
 		var rootPath = new URL(
 			this.#svgMapObject.getSvgImagesProps()["root"].Path,
-			window.location.href
+			window.location.href,
 		).pathname;
 		//console.warn("Get root container document from this window's svgMap");
 		return rootPath;
@@ -1315,7 +1315,7 @@ class SvgMapCustomLayersManager {
 			ret = JSON.parse(
 				window.localStorage[
 					this.#getLocalStorageKey(SvgMapCustomLayersManager.#customLayersKey)
-				]
+				],
 			);
 		}
 
@@ -1333,7 +1333,7 @@ class SvgMapCustomLayersManager {
 						"rootContainerHref mismatch:",
 						rootContainerHref,
 						" vs ",
-						ret.rootContainerHref
+						ret.rootContainerHref,
 					);
 				}
 				if (ret.settingRevision != SvgMapCustomLayersManager.#settingRevision) {
@@ -1341,7 +1341,7 @@ class SvgMapCustomLayersManager {
 						"settingRevision mismatch:",
 						SvgMapCustomLayersManager.#settingRevision,
 						" vs ",
-						ret.settingRevision
+						ret.settingRevision,
 					);
 				}
 			}
@@ -1368,16 +1368,16 @@ class SvgMapCustomLayersManager {
 		if (
 			window.localStorage[
 				this.#getLocalStorageKey(
-					SvgMapCustomLayersManager.#customGeoViexboxesKey
+					SvgMapCustomLayersManager.#customGeoViexboxesKey,
 				)
 			]
 		) {
 			ret = JSON.parse(
 				window.localStorage[
 					this.#getLocalStorageKey(
-						SvgMapCustomLayersManager.#customGeoViexboxesKey
+						SvgMapCustomLayersManager.#customGeoViexboxesKey,
 					)
-				]
+				],
 			);
 		} else {
 			ret = {
@@ -1395,7 +1395,7 @@ class SvgMapCustomLayersManager {
 		geoViewBoxX,
 		geoViewBoxY,
 		geoViewBoxWidth,
-		geoViewBoxHeight
+		geoViewBoxHeight,
 	) {
 		if (!key) {
 			key = "V_" + new Date().getTime();
@@ -1576,12 +1576,12 @@ class SvgMapCustomLayersManager {
 		var tempDLPS = this.#getDetailedLayersPropertySet(
 			rootContainerDoc,
 			rootContainerPath,
-			true
+			true,
 		);
 		// var tempDif = getDif(lpEdit.layersProperty, tempDLPS.layersProperty); // 下の関数に組込 2021/7/20
 		var tempCls = this.#buildCustomLayersSetting(
 			lpEdit.layersProperty,
-			tempDLPS.layersProperty
+			tempDLPS.layersProperty,
 		);
 		var tempLayersSetting = {
 			currentSettingKey: "L_0",

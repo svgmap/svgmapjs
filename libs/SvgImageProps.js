@@ -37,7 +37,7 @@ class SvgImageProps {
 				return;
 			} else if (val == "#") {
 				console.warn(
-					"At least one string of characters in addition to the # is required."
+					"At least one string of characters in addition to the # is required.",
 				);
 				return;
 			}

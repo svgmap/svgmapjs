@@ -357,6 +357,7 @@ class SvgMap {
 			this,
 			this.#svgMapAuthoringTool,
 			this.#getLayerStatus,
+			this.#proxyManager,
 		);
 		this.#svgMapLayerUI = new SvgMapLayerUI(
 			this,
@@ -2030,6 +2031,7 @@ class SvgMap {
 	}.bind(this);
 
 	#getCrs(svgDoc, docId) {
+		// console.log("getCrs:", new Error().stack);
 		var isSVG2 = false;
 		var crs = null;
 		var globalView = UtilFuncs.getElementByIdNoNS(svgDoc, "globe");
@@ -3078,6 +3080,21 @@ class SvgMap {
 
 	/**
 	 *
+	 * @param  {Number} x : x値
+	 * @param  {Number} y : y値
+	 * @param  {Object} options : パン量指定オプション
+	 *   optionsのunit
+	 *     無指定ではピクセル量(0,0で移動なし)
+	 *     "%"|"percent"が指定されていると画面サイズに対する相対量でパン
+	 *     "canvas"が指定されていると画面上の指定座標を画面中心に持ってくるようにパン
+	 * @returns {undefined}
+	 */
+	panMap(x, y, options) {
+		return this.#zoomPanManager.panMap(x, y, options);
+	}
+
+	/**
+	 *
 	 * @param  {String} csv
 	 * @returns {Array}
 	 */
@@ -3146,6 +3163,15 @@ class SvgMap {
 	}
 
 	/**
+	 * 自動中心ヒットテストの設定を変更する
+	 * @param {Boolean} enable
+	 * @returns {undefined} lat/lngのキーを含むhashを戻す
+	 */
+	setCenterHitTest(enable) {
+		this.#mapTicker.setCenterHitTest(enable);
+	}
+
+	/**
 	 *
 	 * @param {String|Document} messageHTML
 	 * @param {Array} buttonMessages // どういう中身かまでわかっていない
@@ -3155,6 +3181,23 @@ class SvgMap {
 	 */
 	setCustomModal(...params) {
 		return this.#customModal.setCustomModal(...params);
+	}
+
+	/**
+	 * カーソル位置を中心としたズームモードを設定する
+	 * @param {Boolean} enable
+	 */
+	setCursorCenterZooming(enable) {
+		if (this.#zoomPanManager) {
+			this.#zoomPanManager.setCursorCenterZooming(enable);
+		} else {
+			setTimeout(
+				function () {
+					this.setCursorCenterZooming(enable);
+				}.bind(this),
+				10,
+			);
+		}
 	}
 
 	/**

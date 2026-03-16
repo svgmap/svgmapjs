@@ -97,7 +97,7 @@ class SvgMapLayerUI {
 			// 第二引数に、レイヤーリストUIを更新する関数を設置
 			function () {
 				this.#updateLayerTable();
-			}.bind(this)
+			}.bind(this),
 		);
 		this.#layerSpecificWebAppHandler = layerSpecificWebAppHandlerObj;
 		// console.log("construct layerUI:");
@@ -197,7 +197,7 @@ class SvgMapLayerUI {
 				lps[i].id,
 				lps[i].visible,
 				false,
-				lps[i].groupName
+				lps[i].groupName,
 			);
 			if (lps[i].groupName) {
 				// グループがある場合の処理
@@ -245,7 +245,7 @@ class SvgMapLayerUI {
 			function () {
 				this.#setLayerTableStep2();
 			}.bind(this),
-			30
+			30,
 		);
 	}
 
@@ -315,7 +315,7 @@ class SvgMapLayerUI {
 			"change",
 			function (event) {
 				this.#toggleLayer(event);
-			}.bind(this)
+			}.bind(this),
 		);
 		lcbtd.appendChild(lcb);
 		tr.appendChild(lcbtd);
@@ -359,7 +359,7 @@ class SvgMapLayerUI {
 				var layerId = this.#getLayerId(event);
 				this.#layerSpecificWebAppHandler.showLayerSpecificUI(layerId); // hiddenもcbfも不要でレイヤ固有UI表示
 			}.bind(this),
-			false
+			false,
 		);
 		if (visible) {
 			btn.disabled = false;
@@ -393,11 +393,11 @@ class SvgMapLayerUI {
 			function (event) {
 				console.log(
 					"レイヤスタイルカスタマイザを起動するイベントが出ました : id:",
-					id
+					id,
 				);
 				this.#layerStyleCustomizer.openCustomizerUI(id);
 			}.bind(this),
-			false
+			false,
 		);
 		lscBtn.addEventListener("mouseover", () => {
 			lscBtn.style.backgroundColor = "#ddd";
@@ -423,7 +423,7 @@ class SvgMapLayerUI {
 		} else {
 			console.log(
 				"Could not find launcher button: setLayerSpecificWebAppLaunchUiEnable:",
-				layerId
+				layerId,
 			);
 		}
 	}
@@ -486,7 +486,7 @@ class SvgMapLayerUI {
 				function (event) {
 					this.#toggleBatch(event);
 				}.bind(this),
-				false
+				false,
 			);
 
 			batchCheckBoxTd.appendChild(batchCheckBox);
@@ -513,7 +513,7 @@ class SvgMapLayerUI {
 			function (event) {
 				this.#toggleGroupFold(event);
 			}.bind(this),
-			false
+			false,
 		);
 		if (!gfolded) {
 			foldButton.innerHTML =
@@ -644,7 +644,7 @@ class SvgMapLayerUI {
 				}
 			}.bind(this),
 			30,
-			llUItop
+			llUItop,
 		);
 	}
 
@@ -654,7 +654,7 @@ class SvgMapLayerUI {
 		uiOpenBtn.disabled = true;
 		uiOpenBtn.style.display = "none";
 		var layersCustomizerBtn = document.getElementById(
-			"layersCustomizerImageButton"
+			"layersCustomizerImageButton",
 		);
 		layersCustomizerBtn.style.right = "5px";
 	}
@@ -665,21 +665,21 @@ class SvgMapLayerUI {
 			function (event) {
 				UtilFuncs.MouseWheelListenerFunc(event);
 			}.bind(this),
-			false
+			false,
 		); // added 2019/04/15
 		this.#layerList.addEventListener(
 			"mousewheel",
 			function (event) {
 				UtilFuncs.MouseWheelListenerFunc(event);
 			}.bind(this),
-			false
+			false,
 		);
 		this.#layerList.addEventListener(
 			"DOMMouseScroll",
 			function (event) {
 				UtilFuncs.MouseWheelListenerFunc(event);
 			}.bind(this),
-			false
+			false,
 		);
 		this.#layerList.style.zIndex = "20";
 		this.#layerListMaxHeightStyle = this.#layerList.style.height;
@@ -720,7 +720,7 @@ class SvgMapLayerUI {
 			"click",
 			function (event) {
 				this.#layerListOpenClose(event);
-			}.bind(this)
+			}.bind(this),
 		);
 		layerListUiTopElem.appendChild(llUIbutton);
 	}
@@ -741,9 +741,9 @@ class SvgMapLayerUI {
 					this.#layersCustomizer = window.open(
 						layersCustomizerPath,
 						"layersCustomizer",
-						"toolbar=yes,menubar=yes,scrollbars=yes"
+						"toolbar=yes,menubar=yes,scrollbars=yes",
 					);
-				}.bind(this)
+				}.bind(this),
 			);
 			layersCustomizerIcon.addEventListener("mouseover", () => {
 				layersCustomizerIcon.style.backgroundColor = "#ddd";

@@ -29,7 +29,7 @@ class SVGMapSerializer {
 		var sse = this.#mapTicker.initModal("txtArea");
 		var body = document.getElementById("txtAreaBody");
 		body.innerHTML = UtilFuncs.escape(
-			this.svgPoi2csv(poi.ownerDocument.documentElement)
+			this.svgPoi2csv(poi.ownerDocument.documentElement),
 		);
 		document.getElementById("txtArea").addEventListener(
 			"click",
@@ -37,13 +37,13 @@ class SVGMapSerializer {
 				switch (e.target.id) {
 					case "txtAreaCSV": // 値設定決定用
 						body.innerHTML = UtilFuncs.escape(
-							this.svgPoi2csv(poi.ownerDocument.documentElement)
+							this.svgPoi2csv(poi.ownerDocument.documentElement),
 						);
 						break;
 					case "txtAreaSVGMap": // 値設定決定用
 						body.innerHTML = UtilFuncs.escape(
 							'<?xml version="1.0" encoding="UTF-8"?>\n' +
-								this.xml2Str(poi.ownerDocument.documentElement)
+								this.xml2Str(poi.ownerDocument.documentElement),
 						);
 						break;
 					case "txtAreaClose": // 値設定決定用
@@ -51,7 +51,7 @@ class SVGMapSerializer {
 						break;
 				}
 			},
-			false
+			false,
 		);
 	}
 

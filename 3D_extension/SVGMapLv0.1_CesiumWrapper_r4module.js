@@ -59,16 +59,16 @@ class SvgMapCesiumWrapper {
 		} else {
 			var reldir2imageUrl = new URL(
 				this.#svgMapObject.getSvgImagesProps().root.Path,
-				window.location
+				window.location,
 			).pathname;
 			reldir2imageUrl = reldir2imageUrl.substring(
 				0,
-				reldir2imageUrl.lastIndexOf("/") + 1
+				reldir2imageUrl.lastIndexOf("/") + 1,
 			);
 			this.#cesiumWindow = window.open(
 				this.#cesiumWindowHtmlLocation,
 				"sub",
-				"width=800,height=600"
+				"width=800,height=600",
 			);
 			this.#iwmsg = new InterWindowMessaging(
 				{
@@ -81,7 +81,7 @@ class SvgMapCesiumWrapper {
 						return ans;
 					}.bind(this),
 				},
-				this.#cesiumWindow
+				this.#cesiumWindow,
 			);
 		}
 
@@ -105,7 +105,7 @@ class SvgMapCesiumWrapper {
 			"getGeoJson  is cesiumWindow?:",
 			this.#cesiumWindow,
 			"   is complex:",
-			complex
+			complex,
 		);
 		if (complex == "true") {
 			this.#svgMapObject.captureGISgeometries(this.#jsonPropComp);
@@ -189,7 +189,7 @@ class SvgMapCesiumWrapper {
 				"change",
 				function (event) {
 					this.#calcExtent(event, json);
-				}.bind(this)
+				}.bind(this),
 			); // この関数を呼ぶことで、選択したプロパティの値域が算出される
 			sel.id = "sel_" + lId;
 			var opt = document.createElement("option");
@@ -225,7 +225,7 @@ class SvgMapCesiumWrapper {
 			"click",
 			function (event) {
 				this.#jsonPropCompPh2(json);
-			}.bind(this)
+			}.bind(this),
 		); // このボタンを押すことでCESIUMへデータが渡される
 		propDiv.appendChild(btn);
 
@@ -237,7 +237,7 @@ class SvgMapCesiumWrapper {
 			function (event) {
 				var propDiv = document.getElementById("svg2cesiumProp");
 				propDiv.style.display = "none";
-			}.bind(this)
+			}.bind(this),
 		);
 		propDiv.appendChild(cancelBtn);
 	}.bind(this);
@@ -419,7 +419,7 @@ class SvgMapCesiumWrapper {
 				this.#cesiumWindowHtmlLocation = this.#icon3d.getAttribute("data-app");
 				console.log(
 					"set cesiumWindowHtmlLocation:",
-					this.#cesiumWindowHtmlLocation
+					this.#cesiumWindowHtmlLocation,
 				);
 			}
 			if (!this.#icon3d.title) {
@@ -464,13 +464,11 @@ class SvgMapCesiumWrapper {
 		this.#btnDiv.setAttribute("style", this.#btnDivStyle);
 
 		// シンプルな3D化ボタン
-		/**
 		console.log(
 			"buildUI : style1,2:",
 			this.#svg2cesiumBtn1style,
-			this.#svg2cesiumBtn2style
+			this.#svg2cesiumBtn2style,
 		);
-		**/
 		var cButton1 = document.createElement("input");
 		cButton1.id = "svg2cesiumBtn1";
 		cButton1.type = "button";
@@ -480,7 +478,7 @@ class SvgMapCesiumWrapper {
 			"click",
 			function () {
 				this.#getGeoJson();
-			}.bind(this)
+			}.bind(this),
 		);
 		cButton1.setAttribute("style", this.#svg2cesiumBtn1style);
 
@@ -493,7 +491,7 @@ class SvgMapCesiumWrapper {
 			"click",
 			function () {
 				this.#getGeoJson("true");
-			}.bind(this)
+			}.bind(this),
 		);
 		cButton2.setAttribute("style", this.#svg2cesiumBtn2style);
 
@@ -514,7 +512,7 @@ class SvgMapCesiumWrapper {
 		cpDiv.id = "svg2cesiumProp";
 		cpDiv.setAttribute(
 			"style",
-			"left :80px; top: 80px; position: absolute; background-color: white;opacity:0.8;display:none;z-index:1000"
+			"left :80px; top: 80px; position: absolute; background-color: white;opacity:0.8;display:none;z-index:1000",
 		);
 
 		document.body.appendChild(this.#btnDiv);

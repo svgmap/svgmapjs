@@ -48,7 +48,7 @@ class SvgMapCustomLayersManagerApp {
 				console.log("buildSettingList");
 				await this.#svgMapCustomLayersManagerClient.getDetailedOriginalLayersPropertySet();
 				console.log("on load process done");
-			}.bind(this)
+			}.bind(this),
 		);
 		this.#svgMapCustomLayersManagerClient =
 			new SvgMapCustomLayersManagerClient();
@@ -95,7 +95,7 @@ class SvgMapCustomLayersManagerApp {
 			.getElementById("saveButton")
 			.addEventListener(
 				"click",
-				this.#buildCustomLayersSettingFromUI.bind(this)
+				this.#buildCustomLayersSettingFromUI.bind(this),
 			);
 	}
 	#setOthersPanelEvent() {
@@ -137,7 +137,7 @@ class SvgMapCustomLayersManagerApp {
 			var appliedLP =
 				await this.#svgMapCustomLayersManagerClient.applyCustomLayers(
 					customLayersObject,
-					baseLayersPropertySet
+					baseLayersPropertySet,
 				);
 			appliedLPset = { layersProperty: appliedLP };
 			console.log("appliedLP:", appliedLP);
@@ -157,7 +157,7 @@ class SvgMapCustomLayersManagerApp {
 				await this.#svgMapCustomLayersManagerClient.getDetailedLayersPropertySet(
 					window,
 					null,
-					true
+					true,
 				); // 2021/7/12
 			console.log("this.#lpEdit:", this.#lpEdit);
 			this.#buildLayerTable();
@@ -170,7 +170,7 @@ class SvgMapCustomLayersManagerApp {
 		this.#removeChildren(layerTable);
 		layerTable.insertAdjacentHTML(
 			"afterbegin",
-			"<tr><td></td><td>Title</td><td>xlink:href</td><td>Visibility</td><td>Opacity</td><td>Group</td><td><input type='button' id='topLayerAdd' value='add Layer'></input></td></tr>"
+			"<tr><td></td><td>Title</td><td>xlink:href</td><td>Visibility</td><td>Opacity</td><td>Group</td><td><input type='button' id='topLayerAdd' value='add Layer'></input></td></tr>",
 		);
 
 		document
@@ -189,7 +189,7 @@ class SvgMapCustomLayersManagerApp {
 			var rmvTd = document.createElement("td");
 			//rmvTd.setAttriute("data-prop","remove");
 			rmvTd.appendChild(
-				this.#getButton("remove", this.#removeLayer, "remove_" + i)
+				this.#getButton("remove", this.#removeLayer, "remove_" + i),
 			);
 			tr.appendChild(rmvTd);
 
@@ -245,7 +245,7 @@ class SvgMapCustomLayersManagerApp {
 			// Insert↓ Layer Button
 			var insTd = document.createElement("td");
 			insTd.appendChild(
-				this.#getButton("insert↓", this.#insertLayer, "insert_" + i)
+				this.#getButton("insert↓", this.#insertLayer, "insert_" + i),
 			);
 			tr.appendChild(insTd);
 
@@ -441,13 +441,13 @@ class SvgMapCustomLayersManagerApp {
 		//var df = svgMapCustomLayersManager.getDif(lpEdit.layersProperty); // 2021/7/20 下の関数がdif自体取るように
 		var cls =
 			await this.#svgMapCustomLayersManagerClient.buildCustomLayersSetting(
-				this.#lpEdit.layersProperty
+				this.#lpEdit.layersProperty,
 			);
 		console.log("buildCustomLayersSettingFromUI:", cls);
 		await this.#svgMapCustomLayersManagerClient.registCustomLayer(cls);
 		if (window.opener) {
 			await this.#svgMapCustomLayersManagerClient.applyCustomLayersSettingsToCurrentMapView(
-				this.#lpEdit
+				this.#lpEdit,
 			);
 		}
 		await this.#buildSettingList(true);
@@ -496,7 +496,7 @@ class SvgMapCustomLayersManagerApp {
 		customLayersObject.currentSettingKey = customSettingKey;
 		await this.#generateLayerTableFromCustomSetting(
 			setting,
-			customLayersObject
+			customLayersObject,
 		);
 		await this.#changeCustomLayersSetting(customSettingKey, this.#lpEdit);
 	}
@@ -512,18 +512,18 @@ class SvgMapCustomLayersManagerApp {
 		// localStorageに選択を反映する
 		if (setting) {
 			await this.#svgMapCustomLayersManagerClient.setCustomLayerSettingIndex(
-				customSettingKey
+				customSettingKey,
 			);
 		} else {
 			await this.#svgMapCustomLayersManagerClient.setCustomLayerSettingIndex(
-				null
+				null,
 			);
 		}
 
 		// 現在表示中の地図に、その選択を反映させる
 		if (window.opener) {
 			await this.#svgMapCustomLayersManagerClient.applyCustomLayersSettingsToCurrentMapView(
-				lpEdit
+				lpEdit,
 			);
 		}
 	}
@@ -550,7 +550,7 @@ class SvgMapCustomLayersManagerApp {
 		}
 
 		await this.#svgMapCustomLayersManagerClient.deleteCustomLayerSetting(
-			customSettingKey
+			customSettingKey,
 		);
 		customLayersObject.currentSettingKey = null;
 		await this.#generateLayerTableFromCustomSetting(null, customLayersObject);
@@ -600,7 +600,7 @@ class SvgMapCustomLayersManagerApp {
 					customSettingKey
 				].metadata.title = tval;
 				await this.#svgMapCustomLayersManagerClient.storeCustomLayerSettings(
-					customLayersObject
+					customLayersObject,
 				);
 				await this.#buildSettingList(true);
 			}
@@ -771,7 +771,7 @@ class SvgMapCustomLayersManagerApp {
 					x,
 					y,
 					width,
-					height
+					height,
 				);
 			//		console.log(vs);
 			key = vs.key;
@@ -785,7 +785,7 @@ class SvgMapCustomLayersManagerApp {
 		// TBD
 		console.log("customViewObj:", customViewObj);
 		await this.#svgMapCustomLayersManagerClient.storeCustomGeoViewboxes(
-			customViewObj
+			customViewObj,
 		);
 		return customViewObj;
 	}
@@ -812,7 +812,7 @@ class SvgMapCustomLayersManagerApp {
 					width: setting.width,
 					height: setting.height,
 				},
-				selectedSetting
+				selectedSetting,
 			);
 		}
 		this.#customVBoptionAvailable(false);
@@ -908,7 +908,7 @@ class SvgMapCustomLayersManagerApp {
 			cvb.y,
 			cvb.x,
 			cvb.height,
-			cvb.width
+			cvb.width,
 		);
 	}
 
@@ -1033,7 +1033,7 @@ class SvgMapCustomLayersManagerApp {
 				"customLayerSet_" +
 					location.host.replaceAll(".", "_") +
 					layerSet.rootContainerHref.replaceAll(".", "_").replaceAll("/", "_") +
-					".json"
+					".json",
 			);
 
 		document.getElementById("downloadAnchor").click();
@@ -1048,9 +1048,8 @@ class SvgMapCustomLayersManagerApp {
 		fr.onload = async function (e) {
 			var loadJson = JSON.parse(e.target.result);
 			console.log(loadJson);
-			var result = await this.#svgMapCustomLayersManagerClient.mergeSettings(
-				loadJson
-			);
+			var result =
+				await this.#svgMapCustomLayersManagerClient.mergeSettings(loadJson);
 			if (result != true) {
 				this.#showModal(result, 400, 100);
 			} else {

@@ -41,7 +41,7 @@ class EssentialUIs {
 		mapTicker,
 		matUtil,
 		hideAllTileImgs,
-		getRootSvg2Canvas
+		getRootSvg2Canvas,
 	) {
 		this.#svgMapObj = svgMapObj;
 		this.#mapViewerProps = mapViewerProps;
@@ -84,7 +84,7 @@ class EssentialUIs {
 		mapCanvas.appendChild(childMapCanvas);
 		mapCanvas.setAttribute(
 			"style",
-			"position: absolute; overflow: hidden; top: 0px; left: 0px; width: 100%; height: 100%;"
+			"position: absolute; overflow: hidden; top: 0px; left: 0px; width: 100%; height: 100%;",
 		);
 		this.#mapViewerProps.mapCanvas = childMapCanvas;
 		this.#mapViewerProps.mapCanvasWrapper = mapCanvas;
@@ -116,7 +116,7 @@ class EssentialUIs {
 				if (clp) {
 					this.#customLayersPath = new URL(
 						clp,
-						new URL(customLayersRootPath, location)
+						new URL(customLayersRootPath, location),
 					).href;
 				}
 			} else if (
@@ -150,7 +150,7 @@ class EssentialUIs {
 					"customLayersPath:",
 					this.#customLayersPath,
 					" initialCustomLayers:",
-					this.initialCustomLayers
+					this.initialCustomLayers,
 				);
 			} catch (e) {
 				console.warn("can't load customLayers json", e);
@@ -275,7 +275,7 @@ class EssentialUIs {
 				function (e) {
 					e.preventDefault();
 				},
-				false
+				false,
 			);
 			UtilFuncs.addEvent(
 				this.#mapViewerProps.mapCanvas,
@@ -283,7 +283,7 @@ class EssentialUIs {
 				function (e) {
 					e.preventDefault();
 				},
-				false
+				false,
 			);
 		}
 		var that = this;
@@ -349,7 +349,7 @@ class EssentialUIs {
 			function (event) {
 				that.#testWheel(event);
 			},
-			{ passive: false }
+			{ passive: false },
 		);
 	}
 
@@ -365,14 +365,14 @@ class EssentialUIs {
 				function () {
 					this.#refreshWindowSize();
 				}.bind(this),
-				50
+				50,
 			);
 			return;
 		}
 
 		var prevS2C = this.#getRootSvg2Canvas(
 			this.#mapViewerProps.rootViewBox,
-			this.#mapViewerProps.mapCanvasSize
+			this.#mapViewerProps.mapCanvasSize,
 		);
 		var pervCenterX =
 			this.#mapViewerProps.rootViewBox.x +
@@ -401,16 +401,25 @@ class EssentialUIs {
 	}
 
 	#wheelTimerID;
+	#wheelZoomingAnimationId; // 2026/02/18 カタカタ物理ホイールのスムースズーム対応
 	#wheelZooming;
+
+	#wheelTh = 100; // ホイールイベントがタッチ系かカタカタ物理ホイール系かの閾値(概ね100ぐらいでいいかな?)
+	#wheelAmimInterval = 20;
+	#wheelZoomingTimeout = 200;
+
+	#wheelAmimClientY = 0; // カタカタ物理ホイール系アニメーションのアニメ中ClientY値
 
 	#testWheel(evt) {
 		if (this.#wheelZooming == 0) {
-			// console.log("start wheel");
+			//			console.log("start wheel : ", evt.deltaY);
 			this.#zoomPanManager.startPan({
 				type: "wheelDummy",
 				button: 2,
 				clientX: 0,
 				clientY: 0,
+				dummyClientX: evt.clientX,
+				dummyClientY: evt.clientY,
 			});
 			this.#zoomPanManager.wheelZooming = true;
 		}
@@ -418,9 +427,14 @@ class EssentialUIs {
 		// https://groups.google.com/a/chromium.org/g/chromium-dev/c/VhSKxAJFCs0
 		// たしかに、パッドでピンチするとctrlはtrueになってる
 		if (evt.ctrlKey) {
+			// パッドでピンチしたケース
 			zf = 3;
+		} else {
+			// パッドで２本指ドラッグやホイール
+			//			console.log("Wheel zooming (not pad pinch)");
 		}
 		this.#wheelZooming -= (evt.deltaX + evt.deltaY + evt.deltaZ) * zf;
+		//		console.log("this.#wheelZooming:", this.#wheelZooming, " zf:",zf, "  eventAll:",evt);
 		/**
 		console.log(
 			"wheel Zooming ",
@@ -431,21 +445,47 @@ class EssentialUIs {
 			evt.ctrlKey
 		);
 		**/
-		this.#zoomPanManager.showPanning({
-			type: "wheelDummy",
-			buttons: 1,
-			clientX: 0,
-			clientY: this.#wheelZooming,
-		});
+		if (Math.abs(evt.deltaY) >= this.#wheelTh) {
+			// カタカタ物理ホイール判定
+			// アニメーションを50fpsぐらいで発動させる
+			clearInterval(this.#wheelZoomingAnimationId);
+			const wheelAnimClientYincliment =
+				(this.#wheelZooming - this.#wheelAmimClientY) /
+				(this.#wheelZoomingTimeout / this.#wheelAmimInterval);
+			this.#wheelZoomingAnimationId = setInterval(
+				function () {
+					this.#wheelAmimClientY += wheelAnimClientYincliment;
+					//				console.log("wheelZoomingAnimation func :  pseudo this.#wheelZooming:",this.#wheelAmimClientY, " target wheelZooming:",this.#wheelZooming);
+					this.#zoomPanManager.showPanning({
+						type: "wheelDummy",
+						buttons: 1,
+						clientX: 0,
+						clientY: this.#wheelAmimClientY,
+					});
+				}.bind(this),
+				this.#wheelAmimInterval,
+			);
+		} else {
+			// それ以外のピンチ・ドラッグタッチ系
+			this.#zoomPanManager.showPanning({
+				type: "wheelDummy",
+				buttons: 1,
+				clientX: 0,
+				clientY: this.#wheelZooming,
+			});
+		}
 		clearTimeout(this.#wheelTimerID);
+
 		this.#wheelTimerID = setTimeout(
 			function () {
-				// console.log("wheel終了", this.#wheelTimerID, this.#wheelZooming);
+				//				console.log("wheel終了", this.#wheelTimerID, this.#wheelZooming);
 				this.#zoomPanManager.endPan();
 				this.#zoomPanManager.wheelZooming = false;
 				this.#wheelZooming = 0;
+				this.#wheelAmimClientY = 0;
+				clearInterval(this.#wheelZoomingAnimationId);
 			}.bind(this),
-			200
+			this.#wheelZoomingTimeout,
 		);
 		evt.preventDefault();
 	}
@@ -544,7 +584,7 @@ class EssentialUIs {
 		var geoCentral = this.#matUtil.SVG2Geo(
 			rscx,
 			rscy,
-			this.#mapViewerProps.rootCrs
+			this.#mapViewerProps.rootCrs,
 		);
 		return geoCentral;
 	}
@@ -579,7 +619,7 @@ class EssentialUIs {
 		var geoPoint = this.#matUtil.SVG2Geo(
 			rscx,
 			rscy,
-			this.#mapViewerProps.rootCrs
+			this.#mapViewerProps.rootCrs,
 		);
 		return geoPoint;
 	}
@@ -598,7 +638,7 @@ class EssentialUIs {
 		var rootXY = this.#matUtil.Geo2SVG(
 			latitude,
 			longitude,
-			this.#mapViewerProps.rootCrs
+			this.#mapViewerProps.rootCrs,
 		);
 
 		return {
@@ -639,12 +679,12 @@ class EssentialUIs {
 				var p0 = this.#matUtil.transform(
 					lng,
 					lat - radius / 2.0,
-					this.#mapViewerProps.rootCrs
+					this.#mapViewerProps.rootCrs,
 				);
 				var p1 = this.#matUtil.transform(
 					lng,
 					lat + radius / 2.0,
-					this.#mapViewerProps.rootCrs
+					this.#mapViewerProps.rootCrs,
 				);
 				vh = Math.abs(p0.y - p1.y);
 			}
@@ -693,8 +733,8 @@ class EssentialUIs {
 				lng,
 				latSpan,
 				lngSpan,
-				this.ignoreMapAspect
-			)
+				this.ignoreMapAspect,
+			),
 		);
 
 		//	var s2c = getRootSvg2Canvas( rootViewBox , mapCanvasSize );
@@ -706,8 +746,8 @@ class EssentialUIs {
 			this.setGeoViewBox(
 				this.#matUtil.getTransformedBox(
 					this.#mapViewerProps.rootViewBox,
-					this.#mapViewerProps.root2Geo
-				)
+					this.#mapViewerProps.root2Geo,
+				),
 			); // setGeoViewPortだけではgeoViewBox設定されずバグ 2016.12.13 --> 2017.1.31 ここに移設
 		}
 		return true;
@@ -717,7 +757,7 @@ class EssentialUIs {
 		var svgNE = this.#matUtil.Geo2SVG(
 			lat + latSpan,
 			lng + lngSpan,
-			this.#mapViewerProps.rootCrs
+			this.#mapViewerProps.rootCrs,
 		);
 		// upper values are not cared aspect...
 
@@ -733,7 +773,7 @@ class EssentialUIs {
 		} else {
 			ans = UtilFuncs.getrootViewBoxFromRootSVG(
 				vb,
-				this.#mapViewerProps.mapCanvasSize
+				this.#mapViewerProps.mapCanvasSize,
 			);
 		}
 		return ans;

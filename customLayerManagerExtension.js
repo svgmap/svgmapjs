@@ -46,7 +46,7 @@ async function uploadCurrentCustomLayers() {
 	var currentKey = layerSet.currentSettingKey;
 	if (!currentKey) {
 		alert(
-			"現在の地図表示としてカスタムレイヤーが選択されていません。選択してから操作してください"
+			"現在の地図表示としてカスタムレイヤーが選択されていません。選択してから操作してください",
 		);
 	} else {
 		var currentLayerset = layerSet.customLayersSettings[currentKey];

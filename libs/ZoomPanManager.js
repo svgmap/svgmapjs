@@ -10,11 +10,15 @@
 //
 // History:
 // 2022/08/16 SVGMap.jsから切り出し
+// 2025/12/26 smoothZoomにPan機能を拡張
+// 2026/02/02 カーソル位置中心ズーム機能
 
 class ZoomPanManager {
 	#panning = false;
 	#mouseX0;
 	#mouseY0; // マウスの初期値
+	#mouseX0_dummy;
+	#mouseY0_dummy; // ホイールズームモードにおける初期カーソル位置
 
 	// import Func
 	#hideTicker;
@@ -28,6 +32,8 @@ class ZoomPanManager {
 	//#uaProps;
 	#mapViewerProps;
 	#svgMapObj;
+
+	#cursorCenterZooming = false;
 
 	constructor(
 		hideTickerFunc,
@@ -84,7 +90,13 @@ class ZoomPanManager {
 		var mx, my;
 		if (!this.#mapViewerProps.uaProps.isIE) {
 			if (evt.type.indexOf("touch") >= 0) {
-				if (evt.touches.length > 0) {
+				if (evt.touches.length > 1) {
+					mx = (evt.touches[0].pageX + evt.touches[1].pageX) / 2;
+					my = (evt.touches[0].pageY + evt.touches[1].pageY) / 2;
+				} else if (evt.changedTouches.length > 1) {
+					mx = (evt.changedTouches[0].pageX + evt.changedTouches[1].pageX) / 2;
+					my = (evt.changedTouches[0].pageY + evt.changedTouches[1].pageY) / 2;
+				} else if (evt.touches.length > 0) {
 					mx = evt.touches[0].pageX;
 					my = evt.touches[0].pageY;
 				} else if (evt.changedTouches.length > 0) {
@@ -99,14 +111,20 @@ class ZoomPanManager {
 			mx = event.clientX;
 			my = event.clientY;
 		}
-		return {
+		var ans = {
 			x: mx,
 			y: my,
 		};
+		if (evt.dummyClientX) {
+			// ホイールズームイベント時のマウスポインタ位置
+			ans.dummyX = evt.dummyClientX;
+			ans.dummyY = evt.dummyClientY;
+		}
+		return ans;
 	}.bind(this);
 
 	startPan = function (evt) {
-		//	console.log("startPan:", evt , " mouse:" + evt.button + " testClicked?:"+testClicked,  "  caller:",startPan.caller);
+		// console.log("startPan:", evt);
 		this.#prevX = 0;
 		this.#prevY = 0;
 		if (evt && evt.button && evt.button == 2) {
@@ -120,8 +138,18 @@ class ZoomPanManager {
 			shiftZoom = true;
 		}
 		var mxy = this.getMouseXY(evt);
-		this.#mouseX0 = mxy.x;
-		this.#mouseY0 = mxy.y;
+		if (mxy.dummyX) {
+			this.#mouseX0_dummy = mxy.dummyX;
+			this.#mouseY0_dummy = mxy.dummyY;
+			this.#mouseX0 = 0;
+			this.#mouseY0 = 0;
+		} else {
+			this.#mouseX0_dummy = 0;
+			this.#mouseY0_dummy = 0;
+			this.#mouseX0 = mxy.x;
+			this.#mouseY0 = mxy.y;
+		}
+
 		this.#initialTouchDisance = 0;
 		if (
 			!this.#mapViewerProps.uaProps.isIE &&
@@ -206,10 +234,26 @@ class ZoomPanManager {
 
 				if (this.#zoomingTransitionFactor != -1) {
 					// zoom
-					this.zoom(1 / this.#zoomingTransitionFactor);
+					var zoomCenterXY = null;
+					if (this.#cursorCenterZooming) {
+						if (this.#mouseX0_dummy) {
+							zoomCenterXY = {
+								x: this.#mouseX0_dummy,
+								y: this.#mouseY0_dummy,
+							};
+						} else {
+							zoomCenterXY = {
+								x: this.#mouseX0,
+								y: this.#mouseY0,
+							};
+						}
+					}
+					this.zoom(1 / this.#zoomingTransitionFactor, zoomCenterXY);
 					this.#zoomingTransitionFactor = -1;
 				} else {
 					// pan
+					this.pan(this.#difX, this.#difY); // 2025/12/25 関数化
+					/**
 					this.#tempolaryZoomPanImages(1, this.#difX, this.#difY);
 					var s2c = this.#getRootSvg2Canvas();
 					var rootViewBox = this.#svgMapObj.getRootViewBox();
@@ -217,6 +261,7 @@ class ZoomPanManager {
 					rootViewBox.y -= this.#difY / s2c.d;
 					this.#svgMapObj.setRootViewBox(rootViewBox);
 					this.#svgMapObj.refreshScreen();
+					**/
 				}
 			} else {
 				//			console.log("endPan,getObjectAtPoint",mouseX0, mouseY0);
@@ -234,6 +279,7 @@ class ZoomPanManager {
 
 	showPanning = function (evt) {
 		// ここではズームパンアニメーション自体を行うことはしていない(difX,Y,zTFなどの変化をさせているだけ)
+		//console.log("showPanning:",evt);
 		if (this.#panning) {
 			if (this.wheelZooming && evt.type != "wheelDummy") {
 				return false;
@@ -330,10 +376,35 @@ class ZoomPanManager {
 	}.bind(this);
 
 	#panningAnim = function () {
-		// ズームパンアニメーションの実体はこちら setTimeoutで定期的に呼ばれる
+		// ズームパンアニメーションの実体はこちら requestAnimationFrame(setTimeout)で定期的に呼ばれる
 		//	console.log("call panAnim    panningFlg:",panning);
 		if (this.#panning) {
-			this.#shiftMap(this.#difX, this.#difY, this.#zoomingTransitionFactor);
+			if (this.#zoomingTransitionFactor != -1) {
+				// ズーム
+				var dx = 0,
+					dy = 0;
+				if (this.#cursorCenterZooming) {
+					var canSize = this.#svgMapObj.getCanvasSize();
+					var mx, my;
+					if (this.#mouseX0_dummy) {
+						mx = this.#mouseX0_dummy;
+						my = this.#mouseY0_dummy;
+					} else {
+						mx = this.#mouseX0;
+						my = this.#mouseY0;
+					}
+					var mcx = mx - canSize.x - canSize.width / 2;
+					var mcy = my - canSize.y - canSize.height / 2;
+
+					// console.log("panningAnim:",this.#mouseX0,this.#mouseY0,this.#zoomingTransitionFactor, " dmy:", this.#mouseX0_dummy, this.#mouseY0_dummy, " difXY:",this.#difX,this.#difY);
+					dx = mcx * (1 - this.#zoomingTransitionFactor);
+					dy = mcy * (1 - this.#zoomingTransitionFactor);
+				}
+				this.#shiftMap(dx, dy, this.#zoomingTransitionFactor);
+			} else {
+				// パン
+				this.#shiftMap(this.#difX, this.#difY, this.#zoomingTransitionFactor);
+			}
 			//		console.log( difX , difY );
 			//			var that = this;
 			if (typeof requestAnimationFrame == "function") {
@@ -390,10 +461,11 @@ class ZoomPanManager {
 	}
 
 	#shiftMap(x, y, zoomF) {
+		// zoomF ==-1の場合はパン
 		if (this.#mapViewerProps.uaProps.verIE > 8) {
 			var tr;
 			if (zoomF != -1) {
-				tr = { a: zoomF, b: 0, c: 0, d: zoomF, e: 0, f: 0 };
+				tr = { a: zoomF, b: 0, c: 0, d: zoomF, e: x, f: y };
 				//			console.log( tr );
 			} else {
 				tr = { a: 1, b: 0, c: 0, d: 1, e: x, f: y };
@@ -405,7 +477,8 @@ class ZoomPanManager {
 		}
 	}
 
-	zoom = function (pow) {
+	zoom = function (pow, centerXY) {
+		// console.log("zoomFinal:",pow,centerXY);
 		var rootViewBox = this.#svgMapObj.getRootViewBox();
 		var svgRootCenterX = rootViewBox.x + 0.5 * rootViewBox.width;
 		var svgRootCenterY = rootViewBox.y + 0.5 * rootViewBox.height;
@@ -416,19 +489,44 @@ class ZoomPanManager {
 		rootViewBox.x = svgRootCenterX - rootViewBox.width / 2;
 		rootViewBox.y = svgRootCenterY - rootViewBox.height / 2;
 
+		var dx = 0,
+			dy = 0;
+		if (centerXY) {
+			var s2c = this.#getRootSvg2Canvas();
+			var canSize = this.#svgMapObj.getCanvasSize();
+			var mcx = centerXY.x - canSize.x - canSize.width / 2; // 伸縮の中心座標
+			var mcy = centerXY.y - canSize.y - canSize.height / 2;
+			dx = mcx * (1 - pow); // 拡大後の中心座標からのシフト量(画面座標)
+			dy = mcy * (1 - pow);
+			rootViewBox.x += dx / (s2c.a * pow); // 同rootSVG座標
+			rootViewBox.y += dy / (s2c.d * pow);
+		}
+
 		this.#svgMapObj.setRootViewBox(rootViewBox);
 
-		this.#tempolaryZoomPanImages(1 / pow, 0, 0);
+		this.#tempolaryZoomPanImages(1 / pow, -dx / pow, -dy / pow);
 		this.#svgMapObj.refreshScreen();
 
 		//getLayers();
 	}.bind(this);
+
+	pan = function (dx, dy) {
+		// pan
+		this.#tempolaryZoomPanImages(1, dx, dy);
+		var s2c = this.#getRootSvg2Canvas();
+		var rootViewBox = this.#svgMapObj.getRootViewBox();
+		rootViewBox.x -= dx / s2c.a;
+		rootViewBox.y -= dy / s2c.d;
+		this.#svgMapObj.setRootViewBox(rootViewBox);
+		this.#svgMapObj.refreshScreen();
+	};
 
 	#smoothZoomTransitionTime = 300;
 
 	#additionalZoom = 0;
 
 	#smoothZoomInterval = 20;
+	#smoothZooming = false; // false|"zoom"|"pan"
 
 	//ズームイン／アウト時の遷移時間
 	setSmoothZoomTransitionTime = function (zoomTransitionTime) {
@@ -450,19 +548,37 @@ class ZoomPanManager {
 
 	#smoothZoom(zoomFactor, startDate, doFinish, startZoom) {
 		// 2013.9.4 外部呼び出し時は、zoomFactorだけでOK
-		//	console.log("called smoothZoom:",zoomFactor,startDate,doFinish,startZoom);
+		// 2025/12/25 パン機能も付与（zoomFactorが[x,y]の二次元配列になっているときに発動）
+		// console.log("called smoothZoom:",zoomFactor,startDate,doFinish,startZoom);
 
-		if (!startZoom) {
-			startZoom = 1;
+		let zoomPanMode;
+		if (Array.isArray(zoomFactor)) {
+			// パンモード(無理やりｗ)
+			zoomPanMode = "pan";
+			if (!startZoom) {
+				startZoom = [0, 0];
+			}
+		} else {
+			zoomPanMode = "zoom";
+			if (!startZoom) {
+				startZoom = 1;
+			}
 		}
 		if (!startDate) {
-			if (this.#zoomingTransitionFactor != -1) {
-				// まだズーム中
+			if (this.#zoomingTransitionFactor != -1 || this.#smoothZooming) {
+				if (this.#smoothZooming && this.#smoothZooming != zoomPanMode) {
+					// 異種モードの連呼は無視する
+					console.warn(
+						"Now performing different type of smooth zoom/pan action. Exit.",
+					);
+					return;
+				}
+				// まだズーム中の場合、一つだけ追加する（関数連呼）
 				this.#additionalZoom = zoomFactor;
-				//			console.log( "more Zoom", additionalZoom);
+				// console.log( "more Zoom", this.#additionalZoom);
 				return;
 			}
-
+			this.#smoothZooming = zoomPanMode;
 			startDate = new Date();
 		}
 
@@ -472,12 +588,21 @@ class ZoomPanManager {
 		if (!doFinish) {
 			//		console.log( "time: elapsed",elapsedTime , "  limit:" ,smoothZoomTime);
 			if (elapsedTime < this.#smoothZoomTransitionTime) {
-				this.#zoomingTransitionFactor =
-					1 / startZoom +
-					(1 / zoomFactor - 1 / startZoom) *
-						(elapsedTime / this.#smoothZoomTransitionTime);
+				if (zoomPanMode == "pan") {
+					this.#zoomingTransitionFactor = -1;
+					var etr = elapsedTime / this.#smoothZoomTransitionTime;
+					this.#difX = startZoom[0] + (zoomFactor[0] - startZoom[0]) * etr;
+					this.#difY = startZoom[1] + (zoomFactor[1] - startZoom[1]) * etr;
+				} else {
+					this.#difX = 0;
+					this.#difY = 0;
+					this.#zoomingTransitionFactor =
+						1 / startZoom +
+						(1 / zoomFactor - 1 / startZoom) *
+							(elapsedTime / this.#smoothZoomTransitionTime);
+				}
 
-				this.#shiftMap(0, 0, this.#zoomingTransitionFactor);
+				this.#shiftMap(this.#difX, this.#difY, this.#zoomingTransitionFactor);
 				if (typeof requestAnimationFrame == "function") {
 					requestAnimationFrame(
 						function () {
@@ -498,7 +623,11 @@ class ZoomPanManager {
 				}
 			} else {
 				//			console.log("to end zoom", 1/ zoomFactor);
-				this.#shiftMap(0, 0, 1 / zoomFactor);
+				if (zoomPanMode == "pan") {
+					this.#shiftMap(zoomFactor[0], zoomFactor[1], -1);
+				} else {
+					this.#shiftMap(0, 0, 1 / zoomFactor);
+				}
 				if (typeof requestAnimationFrame == "function") {
 					requestAnimationFrame(
 						function () {
@@ -521,8 +650,18 @@ class ZoomPanManager {
 		} else {
 			// フィニッシュ処理
 			if (this.#additionalZoom != 0) {
+				// 関数連打ケースはフィニッシュ延期
 				//			console.log("do additional Zoom2: ", zoomFactor * additionalZoom, " zf:",zoomFactor," az:",additionalZoom);
-				var azf = zoomFactor * this.#additionalZoom;
+				let azf;
+				if (zoomPanMode == "pan") {
+					// スクロール 2025/12/26
+					azf = [
+						zoomFactor[0] + this.#additionalZoom[0],
+						zoomFactor[1] + this.#additionalZoom[1],
+					];
+				} else {
+					azf = zoomFactor * this.#additionalZoom;
+				}
 				if (typeof requestAnimationFrame == "function") {
 					requestAnimationFrame(function () {
 						that.#smoothZoom(azf, new Date(), false, zoomFactor);
@@ -553,8 +692,13 @@ class ZoomPanManager {
 					f: 0,
 				});
 				this.#zoomingTransitionFactor = -1;
+				this.#smoothZooming = false;
 				this.#checkLoadCompleted(true); // 読み込み中にズームパンしたときはテンポラリの画像を強制撤去する20130801
-				this.zoom(zoomFactor);
+				if (zoomPanMode == "pan") {
+					this.pan(zoomFactor[0], zoomFactor[1]);
+				} else {
+					this.zoom(zoomFactor);
+				}
 			}
 		}
 	}
@@ -658,15 +802,55 @@ class ZoomPanManager {
 	setZoomRatio(ratio) {
 		this.#zoomRatio = ratio;
 	}
-	zoomup = function () {
+	zoomup = function (ratio) {
 		//	zoom( 1.0/zoomRatio );
-		this.#smoothZoom(1.0 / this.#zoomRatio);
+		if (!ratio) {
+			ratio = this.#zoomRatio;
+		}
+		this.#smoothZoom(1.0 / ratio);
 	}.bind(this);
 
-	zoomdown = function () {
+	zoomdown = function (ratio) {
 		//	zoom( zoomRatio );
-		this.#smoothZoom(this.#zoomRatio);
+		if (!ratio) {
+			ratio = this.#zoomRatio;
+		}
+		this.#smoothZoom(ratio);
 	}.bind(this);
+
+	panMap = function (x, y, options) {
+		// 指定された量だけ地図のパンをスムースに行う(added 2025/12/26)
+		if (
+			options?.unit == "%" ||
+			options?.unit == "percent" ||
+			options?.unit == "ratio"
+		) {
+			var percent = 1 / 100;
+			if (options.unit == "ratio") {
+				percent = 1;
+			}
+			const canvasSize = this.#svgMapObj.getCanvasSize();
+			x = -canvasSize.width * x * percent;
+			y = -canvasSize.height * y * percent;
+		} else if (options?.unit == "canvas") {
+			const canvasSize = this.#svgMapObj.getCanvasSize();
+			x = canvasSize.width / 2 - x;
+			y = canvasSize.height / 2 - y;
+		} else {
+			x = -x;
+			y = -y;
+		}
+		this.#smoothZoom([Math.floor(x), Math.floor(y)]);
+	};
+
+	setCursorCenterZooming(enable) {
+		if (enable == true) {
+			this.#cursorCenterZooming = true;
+		} else if (enable == false) {
+			this.#cursorCenterZooming = false;
+		}
+		return this.#cursorCenterZooming;
+	}
 }
 
 export { ZoomPanManager };

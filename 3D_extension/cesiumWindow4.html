@@ -29,19 +29,15 @@
 	
 	import { CesiumWindow } from './cesiumWindow4_module.js';
 
-	/**
-	const accessTokens={
+	
+	var accessTokens={
 		bing:'SET YOUR BING MAPS TOKEN',
 		ion:'SET YOUR CESIUM ION TOKEN'
 	}
-	**/
-	const accessTokens=null;
-	
-	//const options={disableLayers:["stamen","esri"]};
-	const options=null;
+	//var accessTokens=null;
 	
 	window.addEventListener("load",function(){
-		var cesiumWindow = new CesiumWindow( window.Cesium, window.opener, accessTokens, options ); // cesiumWindowの初期化処理呼び出し
+		var cesiumWindow = new CesiumWindow( window.Cesium, window.opener, accessTokens ); // cesiumWindowの初期化処理呼び出し
 	});
 	</script>
 </head>
