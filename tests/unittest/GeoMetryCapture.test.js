@@ -7,6 +7,7 @@ import {
 	SVGMapGISgeometry,
 } from "../../libs/GeometryCapture.js";
 import { SvgMapElementType } from "../../libs/SvgMapElementType.js";
+import { mock_svgmapObj } from "./resources/mockParamerters";
 import { jest } from "@jest/globals";
 
 const GeometryPatterns = [
@@ -62,10 +63,11 @@ const GeometryPatterns = [
 describe("unittest for GeometryCapture", () => {
 	describe.each(GeometryPatterns)("target $description", (pattern) => {
 		let geometorycap;
-		let mock_svgmapObj, mock_getImageUrl;
+		let mock_svgmapObjInstance, mock_getImageUrl;
 		let mock_cbFunc = jest.fn();
 		beforeAll(() => {
-			mock_svgmapObj = {
+			mock_svgmapObjInstance = {
+				...mock_svgmapObj,
 				refreshScreen: jest.fn(),
 				getSvgImagesProps: jest.fn().mockReturnValue({
 					CRS: [100.0, 0.0, 0.0, -100.0, 0.0, 0.0],
@@ -73,7 +75,7 @@ describe("unittest for GeometryCapture", () => {
 				}),
 			};
 			mock_getImageUrl = jest.fn();
-			geometorycap = new GeometryCapture(mock_svgmapObj, mock_getImageUrl);
+			geometorycap = new GeometryCapture(mock_svgmapObjInstance, mock_getImageUrl);
 		});
 		it("captureGISgeometries", () => {
 			// addGeometry試験と順序関係あり

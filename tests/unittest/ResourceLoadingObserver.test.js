@@ -5,6 +5,7 @@
 import { ResourceLoadingObserver } from "../../libs/ResourceLoadingObserver";
 import { jest } from "@jest/globals";
 import { ZoomPanManager } from "../../libs/ZoomPanManager";
+import { TestResetUtility } from "./TestResetUtility";
 
 const statusPattern = [
 	{
@@ -34,6 +35,9 @@ const statusPattern = [
 ];
 
 describe("unittest for ResourceLoadingObserver", () => {
+    afterEach(() => {
+        TestResetUtility.resetAll();
+    });
 	describe.each(statusPattern)("$description pattern ", (pattern) => {
 		let resourceloadingobserver;
 		let mock_mapViewerProps,
@@ -42,8 +46,8 @@ describe("unittest for ResourceLoadingObserver", () => {
 			mock_refreshScreen,
 			mock_viewBoxChanged;
 		let mock_imgRenderer, mock_mapTicker, mock_geometryCapturer;
-		const zoomPanEventListener = jest.fn();
-		const screenRefreshedEventListener = jest.fn();
+		let zoomPanEventListener, screenRefreshedEventListener;
+
 		beforeAll(() => {
 			document.addEventListener("zoomPanMap", (msg) => {
 				zoomPanEventListener(msg);
@@ -52,14 +56,18 @@ describe("unittest for ResourceLoadingObserver", () => {
 				screenRefreshedEventListener(msg);
 			});
 		});
+
 		beforeEach(() => {
+			zoomPanEventListener = jest.fn();
+			screenRefreshedEventListener = jest.fn();
+
 			let canvasNode = document.createElement("canvas");
 			mock_mapViewerProps = { mapCanvas: canvasNode, uaProps: { Edge: false } };
 			mock_svgImagesProps = {};
 			mock_svgImages = {};
 			mock_refreshScreen = jest.fn();
 			mock_viewBoxChanged = jest.fn().mockReturnValue(pattern.isViewBoxChanged);
-			mock_mapTicker = { pathHitTester: { enable: false } }; // HitTestは常時無効でいいのかなぁ？
+			mock_mapTicker = { pathHitTester: { enable: false } };
 			mock_geometryCapturer = { removeDocGeometries: jest.fn() };
 			resourceloadingobserver = new ResourceLoadingObserver(
 				mock_mapViewerProps,
@@ -74,30 +82,25 @@ describe("unittest for ResourceLoadingObserver", () => {
 				mock_geometryCapturer
 			);
 			resourceloadingobserver.setLoadCompleted(pattern.isLoadCompleted);
-			zoomPanEventListener.mockClear();
-			screenRefreshedEventListener.mockClear();
 		});
 
 		it("loadingImgs object have empty.", () => {
-			// resourceloadingobserver.loadingImgs = {}; （ロード中のタイルなしと同義）
 			let result = resourceloadingobserver.checkLoadCompleted(pattern.forceDel);
 			expect(result).toBe(true);
-			// load完了のためイベント発火する
-			expect(zoomPanEventListener).toBeCalledTimes(
+			expect(zoomPanEventListener).toHaveBeenCalledTimes(
 				pattern.countFireTheZoomPanEvent
 			);
-			expect(screenRefreshedEventListener).toBeCalledTimes(
+			expect(screenRefreshedEventListener).toHaveBeenCalledTimes(
 				pattern.countFireTheScreenFreshedEvent
 			);
 		});
 
 		it("loadingImgs object have something.", () => {
-			resourceloadingobserver.loadingImgs["iid10"] = true; //ロード中のタイルあり
+			resourceloadingobserver.loadingImgs["iid10"] = true;
 			let result = resourceloadingobserver.checkLoadCompleted(pattern.forceDel);
 			expect(result).toBe(pattern.isLoadCompleted);
-			// loadが完了してないためイベント発火は起こりえない
-			expect(zoomPanEventListener).toBeCalledTimes(0);
-			expect(screenRefreshedEventListener).toBeCalledTimes(0);
+			expect(zoomPanEventListener).toHaveBeenCalledTimes(0);
+			expect(screenRefreshedEventListener).toHaveBeenCalledTimes(0);
 		});
 
 		it("RootNode doesn't have elements that have toBeDel id", () => {
@@ -111,6 +114,5 @@ describe("unittest for ResourceLoadingObserver", () => {
 			resourceloadingobserver.requestRemoveTransition(imgElement, null);
 			expect(rootNode.childNodes.length).toBe(2);
 		});
-		//TODO:toBeDelフラグがついた要素があった場合の試験は今後
 	});
 });
