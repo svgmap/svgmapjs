@@ -85,6 +85,7 @@ describe("unittest for ResourceLoadingObserver", () => {
 		});
 
 		it("loadingImgs object have empty.", () => {
+			// loadingImgsオブジェクトが空のとき、ロード完了とみなす
 			let result = resourceloadingobserver.checkLoadCompleted(pattern.forceDel);
 			expect(result).toBe(true);
 			expect(zoomPanEventListener).toHaveBeenCalledTimes(
@@ -96,6 +97,7 @@ describe("unittest for ResourceLoadingObserver", () => {
 		});
 
 		it("loadingImgs object have something.", () => {
+			// loadingImgsオブジェクトに何か入っているとき、ロード完了とみなさない
 			resourceloadingobserver.loadingImgs["iid10"] = true;
 			let result = resourceloadingobserver.checkLoadCompleted(pattern.forceDel);
 			expect(result).toBe(pattern.isLoadCompleted);
@@ -104,15 +106,20 @@ describe("unittest for ResourceLoadingObserver", () => {
 		});
 
 		it("RootNode doesn't have elements that have toBeDel id", () => {
-			let rootNode = document.createElement("canvas");
+			let rootNode = document.createElement("div");
 			let imgElement = document.createElement("img");
 			let imgElementOtherID = document.createElement("img");
 			let imgElementToBeDel = document.createElement("img");
-			imgElementOtherID.setAttribute("id", "notDel#1");
+			imgElement.setAttribute("id", "img1");
+			imgElementOtherID.setAttribute("id", "img2");
+			imgElementToBeDel.setAttribute("id", "img3");
 			rootNode.appendChild(imgElement);
 			rootNode.appendChild(imgElementOtherID);
-			resourceloadingobserver.requestRemoveTransition(imgElement, null);
-			expect(rootNode.childNodes.length).toBe(2);
+			rootNode.appendChild(imgElementToBeDel);
+			expect(rootNode.childNodes.length).toBe(3); // 正しく子ノードが追加されたことを確認
+			resourceloadingobserver.requestRemoveTransition(imgElementToBeDel, null);
+			expect(rootNode.querySelector("#toBeDel0 #img3")).not.toBeNull(); // 削除タグが新設され配下にimg3が移動したことを確認
+			rootNode = null;
 		});
 	});
 });
