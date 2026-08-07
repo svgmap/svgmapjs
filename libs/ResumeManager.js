@@ -99,13 +99,13 @@ class ResumeManager {
 		// console.log(initialCustomLayersObj);
 		if (!initialCustomLayersObj || typeof initialCustomLayersObj != "object") {
 			console.warn(
-				"setInitialCustomLayers: initialCustomLayersObj is not object exit.",
+				"setInitialCustomLayers: initialCustomLayersObj is not object exit."
 			);
 			return;
 		}
 		if (initialCustomLayersObj.customLayersSettings) {
 			console.warn(
-				"setInitialCustomLayers: initialCustomLayersObj is cookie CustomLayersObj, use default setting",
+				"setInitialCustomLayers: initialCustomLayersObj is cookie CustomLayersObj, use default setting"
 			);
 			// クッキー(ローカルストレージ)の内容がそのまま保存されている・・・
 			if (!initialCustomLayersObj.currentSettingKey) {
@@ -168,7 +168,7 @@ class ResumeManager {
 		if (this.resumeFirstTime) {
 			var cook = this.#getCookies();
 			var rootProps = this.#svgMapObject.getSvgImagesProps()["root"];
-			
+
 			//console.log("ResumeManager: cooks:",cook);
 			if (
 				(lh && (lh.visibleLayer || lh.hiddenLayer)) ||
@@ -182,8 +182,15 @@ class ResumeManager {
 				this.#parseSVGfunc(documentElement, symbols);
 			}
 			// パースを試みてもまだ未解決なら、LaWAの初期化待ちと判断して適用を保留 2026/04/27
-			if (rootProps && rootProps.CRS && rootProps.CRS.unresolved && rootProps.CRS.transformFunctionName) {
-				console.log("Root CRS is unresolved. Deferring ResumeManager initialization.");
+			if (
+				rootProps &&
+				rootProps.CRS &&
+				rootProps.CRS.unresolved &&
+				rootProps.CRS.transformFunctionName
+			) {
+				console.log(
+					"Root CRS is unresolved. Deferring ResumeManager initialization."
+				);
 				return; // resumeFirstTime = true のまま待機
 			}
 			var lp = this.#svgMapObject.getRootLayersProps();
@@ -196,10 +203,10 @@ class ResumeManager {
 				try {
 					console.log(
 						"applyCustomLayers using initialCustomLayers information : ",
-						this.#initialCustomLayers,
+						this.#initialCustomLayers
 					);
 					this.#svgMapCustomLayersManager.applyCustomLayers(
-						this.#initialCustomLayers,
+						this.#initialCustomLayers
 					);
 					this.#parseSVGfunc(documentElement, symbols); // iidを設定する
 					lp = this.#svgMapObject.getRootLayersProps();
@@ -209,7 +216,7 @@ class ResumeManager {
 				} catch (e) {
 					console.error(
 						"svgMapCustomLayersManager.applyCustomLayers by initialCustomLayers step error:",
-						e,
+						e
 					);
 				}
 			} else if (cook.customLayers && this.#svgMapCustomLayersManager) {
@@ -221,7 +228,7 @@ class ResumeManager {
 				} catch (e) {
 					console.error(
 						"svgMapCustomLayersManager.applyCustomLayers step by cookie error:",
-						e,
+						e
 					);
 				}
 			}
@@ -231,7 +238,7 @@ class ResumeManager {
 					initialCustomViewBox.x,
 					initialCustomViewBox.height,
 					initialCustomViewBox.width,
-					true,
+					true
 				); // set geoviewport without refresh
 			} else if (cook.customGeoViewboxes) {
 				// 2021/4/2 add customViewbox function
@@ -246,7 +253,7 @@ class ResumeManager {
 							cvb.x,
 							cvb.height,
 							cvb.width,
-							true,
+							true
 						); // set geoviewport without refresh
 					}
 				}
@@ -272,7 +279,7 @@ class ResumeManager {
 				if (lh && (lh.hiddenLayer || lh.visibleLayer)) {
 					// skip
 					console.log(
-						"hiddenLayer or visibleLayer hash is. Skip layer visibility resume.",
+						"hiddenLayer or visibleLayer hash is. Skip layer visibility resume."
 					);
 				} else {
 					var lprev = resumeObj.layersProperties;
@@ -298,7 +305,7 @@ class ResumeManager {
 									lprev[key].href,
 									" : ",
 									lp[i].href,
-									"  SKIP IT",
+									"  SKIP IT"
 								);
 							}
 						}
@@ -313,7 +320,7 @@ class ResumeManager {
 									this.#svgMapObject.setRootLayersProps(
 										lp[i].id,
 										visible,
-										false,
+										false
 									);
 									matched[i] = true;
 									console.log("layer title may be changed, but set visibility");
@@ -332,7 +339,7 @@ class ResumeManager {
 					vbLng,
 					vbLatSpan,
 					vbLngSpan,
-					true,
+					true
 				); // set geoviewport without refresh
 			}
 		}
@@ -344,6 +351,18 @@ class ResumeManager {
 		if (this.resumeFirstTime) {
 			// hashで指定した値はResumeもオーバーライドする 2017.1.31
 			if (lh) {
+				if (lh.layerListOpen) {
+					this.#uiOptions.layerListOpen = true;
+				}
+				if (lh.hiddenFilter) {
+					this.#uiOptions.hiddenFilter = true;
+				}
+				if (lh.filterKeepLayer) {
+					var keepOpts = this.#getLayerOptionsFromHash(lh.filterKeepLayer);
+					this.#uiOptions.filterKeepLayerIds = keepOpts.map(function (o) {
+						return o.id;
+					});
+				}
 				var vb;
 				if (lh.svgView) {
 					vb = UtilFuncs.getFragmentView(lhash); // getUrlHash結果の利用は未実装 2017.1.30
@@ -378,34 +397,26 @@ class ResumeManager {
 							this.#svgMapObject.setRootLayersProps(layerId, false, false);
 						}
 					} else {
-						var hl = decodeURIComponent(lh.hiddenLayer).split(",");
-						for (var i = 0; i < hl.length; i++) {
-							hl[i] = this.#getUrlOptions(hl[i]);
-							var layerId = this.#svgMapObject.getLayerId(hl[i].name);
-							if (layerId) {
-								this.#svgMapObject.setRootLayersProps(
-									layerId,
-									false,
-									false,
-									hl[i].hash,
-								);
-							}
+						var hiddenOpts = this.#getLayerOptionsFromHash(lh.hiddenLayer);
+						for (var i = 0; i < hiddenOpts.length; i++) {
+							this.#svgMapObject.setRootLayersProps(
+								hiddenOpts[i].id,
+								false,
+								false,
+								hiddenOpts[i].hash
+							);
 						}
 					}
 				}
 				if (lh.visibleLayer) {
-					var vl = decodeURIComponent(lh.visibleLayer).split(",");
-					for (var i = 0; i < vl.length; i++) {
-						vl[i] = this.#getUrlOptions(vl[i]);
-						var layerId = this.#svgMapObject.getLayerId(vl[i].name); // "*"が入ったままだとおかしなことが起きるかも？？
-						if (layerId) {
-							this.#svgMapObject.setRootLayersProps(
-								layerId,
-								true,
-								false,
-								vl[i].hash,
-							);
-						}
+					var visibleOpts = this.#getLayerOptionsFromHash(lh.visibleLayer);
+					for (var i = 0; i < visibleOpts.length; i++) {
+						this.#svgMapObject.setRootLayersProps(
+							visibleOpts[i].id,
+							true,
+							false,
+							visibleOpts[i].hash
+						);
 					}
 				}
 				if (vb && vb.global) {
@@ -414,7 +425,7 @@ class ResumeManager {
 						vb.x,
 						vb.height,
 						vb.width,
-						true,
+						true
 					); // set geoviewport without refresh
 				} else if (vb) {
 					// 後ほどね・・・
@@ -533,7 +544,7 @@ class ResumeManager {
 		var hiddenDif = [];
 		var visibleDif = [];
 		var initialLayersProperties = this.#getBasicLayersPropsObject(
-			this.#initialRootLayersProps,
+			this.#initialRootLayersProps
 		);
 		//console.log(resumeObj,initialLayersProperties,svgMap.getSvgImagesProps());
 		for (var layerName in initialLayersProperties) {
@@ -570,13 +581,22 @@ class ResumeManager {
 		}
 
 		var vbHash = `xywh=global:${resumeObj.vbLng.toFixed(
-			6,
+			6
 		)},${resumeObj.vbLat.toFixed(6)},${resumeObj.vbLngSpan.toFixed(
-			6,
+			6
 		)},${resumeObj.vbLatSpan.toFixed(6)}`;
 
 		var permaLink = new URL(location.pathname, location.origin);
 		var plHash = vbHash + visHash + hidHash;
+
+		const layerUI = this.#svgMapObject.getSvgMapLayerUI();
+		if (layerUI && typeof layerUI.getLayerListHashOptions === "function") {
+			const uiHash = layerUI.getLayerListHashOptions();
+			if (uiHash) {
+				plHash += uiHash; // 生成されたUIのハッシュ（&layerListOpen=true等）を連結
+			}
+		}
+
 		permaLink.hash = plHash;
 		if (copyLinkTextToClipboard == true) {
 			try {
@@ -586,7 +606,7 @@ class ResumeManager {
 				this.#svgMapObject.showModal(
 					`<textarea style="font-size:11px;width:390px;height:130px;">Link URL : \n${permaLink.href}</textarea>`,
 					400,
-					150,
+					150
 				);
 			}
 		}
@@ -624,6 +644,26 @@ class ResumeManager {
 	 */
 	getResume() {
 		return this.#resume;
+	}
+
+	#uiOptions = {};
+
+	getUIOptions() {
+		return this.#uiOptions;
+	}
+
+	// レイヤー名のカンマ区切り文字列から、IDとハッシュのオブジェクト配列を生成する共通関数
+	#getLayerOptionsFromHash(hashString) {
+		var results = [];
+		var names = decodeURIComponent(hashString).split(",");
+		for (var i = 0; i < names.length; i++) {
+			var opt = this.#getUrlOptions(names[i]);
+			var layerId = this.#svgMapObject.getLayerId(opt.name);
+			if (layerId) {
+				results.push({ id: layerId, hash: opt.hash });
+			}
+		}
+		return results;
 	}
 }
 export { ResumeManager };

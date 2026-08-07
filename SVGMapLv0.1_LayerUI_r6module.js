@@ -629,6 +629,18 @@ class SvgMapLayerUI {
 					this.#layerList.getAttribute("data-customizer");
 			}
 			//console.log("#layerListOptions:",this.#layerListOptions);
+			if (initOptions) {
+				if (initOptions.layerListOpen) {
+					this.#layerListOptions.initOpen = true;
+				}
+				if (initOptions.hiddenFilter || initOptions.filterKeepLayerIds) {
+					this.#layerListOptions.hiddenFilterUI = true;
+					this.#layerListOptions.initHiddenFilter = true; // 起動時に有効化するフラグ
+				}
+				if (initOptions.filterKeepLayerIds) {
+					this.#layerListOptions.filterKeepLayerIds = initOptions.filterKeepLayerIds;
+				}
+			}
 
 			this.#initLayerListElem();
 
@@ -650,10 +662,16 @@ class SvgMapLayerUI {
 		window.setTimeout(
 			function (llUItop) {
 				this.#initLayerListStep2(llUItop);
+				// 初期化時にhiddenFilterを有効にする
+				if (this.#layerListOptions.initHiddenFilter) {
+					this.#toggleHiddenFilter(true);
+					delete this.#layerListOptions.initHiddenFilter;
+				}
 				if (this.#layerListOptions.fixed) {
 					this.#setLayerListFixed();
 				} else if (this.#layerListOptions.initOpen) {
 					this.#setLayerListOpenClose(true);
+					delete this.#layerListOptions.initOpen;
 				}
 			}.bind(this),
 			30,
@@ -862,18 +880,7 @@ class SvgMapLayerUI {
 		img.style.cursor = "pointer";
 		img.style.marginRight = "4px";
 		img.addEventListener("click", () => {
-			if (img.src == BuiltinIcons.visibleIcon) {
-				img.src = BuiltinIcons.hiddenIcon;
-				// 有効状態のツールチップに書き換え
-				img.title = "Toggling layers in this mode will not change the list items."; 
-//				img.title = "この状態でレイヤのチェックを操作してもリスト項目は変化しません。"; 
-				this.#applyListFilter({ hidden: true });
-			} else {
-				img.src = BuiltinIcons.visibleIcon;
-				// 初期状態のツールチップに戻す
-				img.title = "Toggle between showing only the layer currently displayed or all layers";
-				this.#applyListFilter({});
-			}
+			this.#toggleHiddenFilter(img.src == BuiltinIcons.visibleIcon);
 		});
 		img.addEventListener("mouseover", () => {
 			img.style.backgroundColor = "#ddd";
@@ -896,12 +903,71 @@ class SvgMapLayerUI {
 					visibleIds.push(lps[i].id);
 				}
 			}
+			// フィルタ有効時でも非表示のままリストに残すレイヤーをマージ
+			if (this.#layerListOptions.filterKeepLayerIds) {
+				for (let j = 0; j < this.#layerListOptions.filterKeepLayerIds.length; j++) {
+					const keepId = this.#layerListOptions.filterKeepLayerIds[j];
+					if (!visibleIds.includes(keepId)) {
+						visibleIds.push(keepId);
+					}
+				}
+				delete this.#layerListOptions.filterKeepLayerIds;
+			}
 			this.#layerListOptions.filteredVisibleLayerIds = visibleIds;
 		} else {
 			delete this.#layerListOptions.hiddenFilter;
 			delete this.#layerListOptions.filteredVisibleLayerIds;
 		}
 		this.#updateLayerTable();
+	}
+	
+	// 現在のUI状態をパーマリンク用のハッシュ文字列として取得するメソッド
+	#getLayerListHashOptions() {
+		let hashStr = "";
+		// ① layerListが開いているかどうかの判定
+		// 折りたたみ時の高さと現在の高さが異なれば「開いている」と判定
+		if (this.#layerList && this.#layerList.style.height !== (this.#layerListFoldedHeight + "px")) { 
+			hashStr += "&layerListOpen=true";
+		}
+		// ② & ③ hiddenFilterの状態と維持されている非表示レイヤーの抽出
+		const img = document.getElementById("svgMapHiddenFilterButton");
+		if (img && img.src == BuiltinIcons.hiddenIcon) {
+			hashStr += "&hiddenFilter=true";
+			if (this.#layerListOptions.filteredVisibleLayerIds) {
+				const lps = this.#svgMap.getRootLayersProps();
+				const keepNames = [];
+				for (let i = 0; i < this.#layerListOptions.filteredVisibleLayerIds.length; i++) {
+					const layerId = this.#layerListOptions.filteredVisibleLayerIds[i];
+					const layerProp = lps.find(l => l.id === layerId);
+					// フィルタ維持リストに存在しているが、実際は非表示(visible = false)のレイヤー ＝ 維持レイヤー
+					if (layerProp && !layerProp.visible) {
+						// パーマリンクには name を最優先とし、なければ title を使用
+						const layerName = layerProp.name || layerProp.title || layerId;
+						keepNames.push(layerName);
+					}
+				}
+				if (keepNames.length > 0) {
+					// 名前をURLエンコードしてカンマ区切りで結合
+					hashStr += "&filterKeepLayer=" + keepNames.map(encodeURIComponent).join(",");
+				}
+			}
+		}
+		return hashStr;
+	}
+	
+	#toggleHiddenFilter(forceEnable) {
+		const img = document.getElementById("svgMapHiddenFilterButton");
+		if (!img) return;
+
+		if (forceEnable) {
+			img.src = BuiltinIcons.hiddenIcon;
+			img.title = "Toggling layers in this mode will not change the list items."; 
+			this.#applyListFilter({ hidden: true });
+		} else {
+			img.src = BuiltinIcons.visibleIcon;
+			img.title = "Toggle between showing only the layer currently displayed or all layers";
+			this.#applyListFilter({});
+		}
 	}
 
 	// 公開するAPI
@@ -917,6 +983,9 @@ class SvgMapLayerUI {
 		// console.log("getLayersCustomizer:",ans);
 		return ans;
 	}.bind(this);
+	getLayerListHashOptions() {
+		return this.#getLayerListHashOptions();
+	}
 }
 
 export { SvgMapLayerUI };

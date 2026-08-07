@@ -898,10 +898,13 @@ class SvgMap {
 
 		if (docId == "root") {
 			if (typeof this.#setLayerUI == "function") {
-				this.#setLayerUI({
+				this.#setLayerUI(
+					this.#resumeManager.getUIOptions()
+					//{
 					// updateLayerListUITiming : "setRootLayersProps", // 2021/10/29 ->2024/2/7 obsoluted
 					// getLayerStatus : this.#getLayerStatus, // 2022/03/11 =>LayerSpecificWebAppHandlerに移動したので不要 2024/2/5
-				}); // add 2013/1 moved from  handleResult 2014/08
+					//}
+				); // add 2013/1 moved from  handleResult 2014/08
 				this.#layerSpecificWebAppHandler.initLayerSpecificUI();
 				//this.#layerSpecificWebAppHandler.startLayerLoadingMonitor();
 				this.#setLayerUI = null; // added 2016/10/13 最初にロードされた直後のみ呼び出すようにした（たぶんこれでＯＫ？）
