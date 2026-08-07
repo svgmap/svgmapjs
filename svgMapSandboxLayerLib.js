@@ -14,9 +14,11 @@ import {
 	MatrixUtil,
 	GenericMatrix,
 	Mercator,
-} from "https://cdn.jsdelivr.net/gh/svgmap/svgmapjs@latest/libs/TransformLib.js";
+} from "./libs/TransformLib.js";
 
-import { UtilFuncs } from "https://cdn.jsdelivr.net/gh/svgmap/svgmapjs@latest/libs/UtilFuncs.js";
+import { UtilFuncs } from "./libs/UtilFuncs.js";
+import { SVGMapVectorFileRenderer } from "./libs/SVGMapVectorFileRenderer.js";
+import { KMLParser } from "./libs/KMLParser.js";
 
 let messaging;
 window.addEventListener("DOMContentLoaded", initSandboxLayer); // 直接これを呼んだ場合はこちらが発動
@@ -115,9 +117,27 @@ function readyInitialization() {
 	window.dispatchEvent(svgMapEvent);
 }
 
+function assignSlawaIds(node) {
+	if (!node) return;
+	if (node.nodeType === 1) { // Node.ELEMENT_NODE
+		if (!node.getAttribute(CUSTOM_ID_ATTR)) {
+			node.setAttribute(CUSTOM_ID_ATTR, `slawa-id-${nextId++}`);
+		}
+	}
+	let child = node.firstElementChild;
+	while (child) {
+		assignSlawaIds(child);
+		child = child.nextElementSibling;
+	}
+}
+
 function setSvgImage(svgImageXml) {
 	const xmlDom = new DOMParser().parseFromString(svgImageXml, "text/xml");
 	window.svgImage = xmlDom;
+
+	// 静的DOMの既存要素すべてに対して再帰的に自動付番を行う
+	assignSlawaIds(window.svgImage.documentElement);
+
 	const originalSvgImageCreateElement = window.svgImage.createElement;
 	window.svgImage.createElement = function (tagName) {
 		// 元のcreateElementを呼び出し、要素を作成
@@ -148,6 +168,12 @@ class SandboxSvgMap {
 	constructor() {
 		this.#mu = new MatrixUtil();
 	}
+	getSvgImages = function () {
+		return { [window.layerID]: window.svgImage };
+	};
+	getSvgImagesProps = function () {
+		return { [window.layerID]: window.svgImageProps };
+	};
 	refreshScreenReplace = async function () {
 		//console.log("refreshScreenReplace:");
 		const serializer = new XMLSerializer();
@@ -260,6 +286,85 @@ class SvgImageProps {
 window.svgImageProps = new SvgImageProps();
 
 window.svgMap = new SandboxSvgMap(); // APIの互換性のために、S-LaWAで使えるものもsvgMapというグローバルオブジェクトということにする（中身は違うが）
+
+class SandboxSvgMapGIS {
+	constructor(svgMap) {
+		this.svgMap = svgMap;
+		this.renderer = new SVGMapVectorFileRenderer(svgMap);
+	}
+	drawGeoJson(
+		geojson,
+		targetSvgDocId,
+		strokeColor,
+		strokeWidth,
+		fillColor,
+		POIiconId,
+		poiTitle,
+		parentMetadata,
+		parentElm,
+		metaDictionary,
+		options
+	) {
+		try {
+			const forcedTargetId = window.layerID;
+			this.renderer.drawGeoJson(
+				geojson,
+				forcedTargetId,
+				strokeColor,
+				strokeWidth,
+				fillColor,
+				POIiconId,
+				poiTitle,
+				parentMetadata,
+				parentElm,
+				metaDictionary,
+				options
+			);
+		} catch (e) {
+			console.error("Error drawing GeoJSON in SandboxSvgMapGIS:", e);
+		}
+	}
+	drawKml(
+		kmlDoc,
+		targetSvgDocId,
+		strokeColor,
+		strokeWidth,
+		fillColor,
+		POIiconId,
+		poiTitle,
+		parentMetadata,
+		parentElm,
+		metaDictionary
+	) {
+		try {
+			const forcedTargetId = window.layerID;
+			this.renderer.drawKml(
+				kmlDoc,
+				forcedTargetId,
+				strokeColor,
+				strokeWidth,
+				fillColor,
+				POIiconId,
+				poiTitle,
+				parentMetadata,
+				parentElm,
+				metaDictionary
+			);
+		} catch (e) {
+			console.error("Error drawing KML in SandboxSvgMapGIS:", e);
+		}
+	}
+	kml2GeoJson(kmlDoc) {
+		try {
+			return KMLParser.kmlToGeoJson(kmlDoc);
+		} catch (e) {
+			console.error("Error converting KML to GeoJSON in SandboxSvgMapGIS:", e);
+			return null;
+		}
+	}
+}
+
+window.svgMapGIStool = new SandboxSvgMapGIS(window.svgMap);
 
 // 差分更新機能
 

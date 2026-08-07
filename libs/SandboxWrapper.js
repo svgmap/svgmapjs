@@ -384,7 +384,11 @@ export class SandboxWrapper {
 						if (payload.attr === "textContent") {
 							node.textContent = payload.value;
 						} else {
-							node.setAttribute(payload.attr, payload.value);
+							if (payload.value === null || payload.value === undefined || payload.value === "null" || payload.value === "undefined") {
+								node.removeAttribute(payload.attr);
+							} else {
+								node.setAttribute(payload.attr, payload.value);
+							}
 						}
 					}
 				} else if (type === "addition") {
