@@ -4,6 +4,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 import { GPS } from "../../libs/GPS";
 import { jest } from "@jest/globals";
+import { mock_svgmapObj } from "./resources/mockParamerters";
 
 const userAgentPatterns = [
 	{
@@ -57,6 +58,7 @@ describe("unittest for GPS", () => {
 
 		beforeAll(() => {
 			mock_svgMapObj = {
+				...mock_svgmapObj,
 				getUaProp: jest.fn().mockReturnValue(ua.uaProps),
 				setGeoCenter: jest.fn(),
 				gpsCallback: jest.fn(),
