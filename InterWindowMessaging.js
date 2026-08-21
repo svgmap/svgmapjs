@@ -16,6 +16,7 @@
 //   - 複数インスタンス動作時のクロストーク対策
 //   - getReady()のビジーウェイト廃止 → Promiseベースの待機に変更
 //   - #pendingResponsesのメモリリーク対策（タイムアウト付きreject）
+// 2026/07/22 transferablesをサポート
 //
 //  Programmed by Satoru Takagi
 //
@@ -374,12 +375,17 @@ class InterWindowMessaging {
 						});
 						return;
 					}
-
+					// 2027/7/22 戻り値が transferables 配列を持つ場合の転送
+					let transferables = [];
+					if (result && Array.isArray(result.transferables)) {
+						transferables = result.transferables;
+						result = result.data; // 実データのみを抽出
+					}
 					this.#postMessage({
 						id: msg.id || null,
 						response: msg.command,
 						content: result,
-					});
+					}, transferables);
 				} else {
 					console.warn(`Unknown command: ${msg.command}`);
 					this.#postMessage({

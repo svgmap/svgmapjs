@@ -14,6 +14,7 @@ import {
 	MatrixUtil,
 	GenericMatrix,
 	Mercator,
+	LUTGenerator,
 } from "./libs/TransformLib.js";
 
 import { UtilFuncs } from "./libs/UtilFuncs.js";
@@ -88,6 +89,41 @@ function initSandboxLayer() {
 				//console.log("getCustomShowPoiPropertySrc:",msg);
 				callCustomShowPoiPropertyFunc(msg);
 			},
+			// 2027/7/22  LUTデータ要求用RPC
+			requestLutData: async function(msg) {
+				const { sourceBox, sourceBoxType, grid, parentCrs } = msg;
+				
+				// CRSオブジェクトの取得 (S-LaWAコンテキストの変数を使用)
+				let crsObj = window.svgImageProps.CRS; 
+				
+				// 親から届いた parentCrs を使って、手元の crsObj の関数名と変換関数（順変換・逆変換）を補完
+				if (parentCrs && parentCrs.transformFunctionName) {
+					if (!crsObj) {
+						crsObj = {};
+						window.svgImageProps.CRS = crsObj;
+					}
+					crsObj.transformFunctionName = parentCrs.transformFunctionName;
+					
+					const tfName = crsObj.transformFunctionName;
+					if (typeof window[tfName] === "function") {
+						const crsResult = window[tfName](); // 関数を実行して {transform, inverse} を取得
+						if (crsResult) {
+							crsObj.transform = crsResult.transform || window[tfName];
+							crsObj.inverse = crsResult.inverse; // TransformLibが要求する逆変換をセット
+							crsObj.unresolved = false;
+						}
+					}
+				}
+				
+				// TransformLib の共通メソッドで生成
+				const f32Lut = LUTGenerator.generateFloat32Array(crsObj, sourceBox, sourceBoxType, grid);
+				if (!f32Lut) return null;
+				// InterWindowMessaging の拡張仕様に従い、transferablesを返却
+				return {
+					data: { buffer: f32Lut.buffer },
+					transferables: [f32Lut.buffer]
+				};
+			}
 		},
 		window.parent,
 		"negotiation" //2025/09/02 セキュリティ改善
@@ -111,7 +147,12 @@ function processPreRenderFunction() {
 	}
 }
 
-function readyInitialization() {
+let slawaConfigLoaded = false;
+async function readyInitialization() {
+	if (!slawaConfigLoaded) {
+		await loadSlawaConfig();
+		slawaConfigLoaded = true;
+	}
 	startObserving(); // この段階でsvgImage DOMの監視を開始
 	const svgMapEvent = new Event("layerWebAppReady");
 	window.dispatchEvent(svgMapEvent);
@@ -155,8 +196,28 @@ function setSvgImageProps(receivedPropsJSONtext) {
 	for (let key in receivedProps) {
 		if (key == "hash") {
 			window.svgImageProps._int_hashVal = receivedProps[key];
+		} else if (key === "CRS") {
+			if (window.svgImageProps.CRS && typeof window.svgImageProps.CRS.transform === "function") {
+				continue; 
+			}
+			window.svgImageProps[key] = receivedProps[key];
 		} else {
 			window.svgImageProps[key] = receivedProps[key]; // あ、これhashをセットするとセッターが動いてえらいことにならない？
+		}
+	}
+	
+	// コアから受け取った関数名を使って、S-LaWA自身のwindow上でCRSを解決する
+	const crs = window.svgImageProps.CRS;
+	if (crs && crs.unresolved && crs.transformFunctionName) {
+		const tfName = crs.transformFunctionName.startsWith("controller.") 
+			? crs.transformFunctionName.substring(11) 
+			: crs.transformFunctionName;
+
+		if (typeof window[tfName] === "function") {
+			window.svgImageProps.CRS = window[tfName]();
+			if (window.svgImageProps.CRS) {
+				window.svgImageProps.CRS.isSVG2 = crs.isSVG2;
+			}
 		}
 	}
 	window.CRS = window.svgImageProps.CRS; // 2025/11/19
@@ -520,7 +581,7 @@ async function callCustomShowPoiPropertyFunc(msg) {
 		if (targetSvgDoc.getElementsByTagName("parsererror").length > 0) {
 			console.error(
 				"XML parse error:",
-				newSvgDoc.getElementsByTagName("parsererror")[0]
+				targetSvgDoc.getElementsByTagName("parsererror")[0]
 			);
 			return { src: "" };
 		}
@@ -536,11 +597,67 @@ async function callCustomShowPoiPropertyFunc(msg) {
 	}
 }
 
+// ====== プロキシ設定のカスケード読み込み関数 ======
+// S-LaWA用設定ファイル(slawa-config.json)をLaWA相対パスとオリジンルートから並列探索します。
+// 相対パスを優先し、取得できたproxy設定をsetCORSproxy()へ自動適用します。相対パスに空ファイルや{}を置くとオリジンルート側設定を無視できます。
+async function loadSlawaConfig() {
+	const configName = "slawa-config.json";
+	const localUrl = new URL("./" + configName, location.href).href;
+	const rootUrl = new URL("/" + configName, location.origin).href;
+
+	// LaWAがルート直下にある場合、URLが同じになるので重複を排除
+	const urlsToFetch = localUrl === rootUrl ? [localUrl] : [localUrl, rootUrl];
+
+	try {
+		// すべてのフェッチを同時に開始。エラー時はnullを返してPromise.allが全体でクラッシュするのを防ぐ
+		const fetchPromises = urlsToFetch.map(url => 
+			fetch(url).catch(err => null)
+		);
+
+		// 並列で待機
+		const responses = await Promise.all(fetchPromises);
+
+		let targetResponse = null;
+
+		// 優先順位 1: ディレクトリ相対パス (responses[0])
+		if (responses[0] && responses[0].ok) {
+			targetResponse = responses[0];
+		} 
+		// 優先順位 2: オリジンルートパス (responses[1])
+		else if (responses.length > 1 && responses[1] && responses[1].ok) {
+			targetResponse = responses[1];
+		}
+
+		// 取得成功時のみテキストとして読み取り
+		if (targetResponse) {
+			const text = await targetResponse.text();
+			
+			// 完全に空(空白のみ含む)の場合は、明示的に素通し(null)として適用
+			if (text.trim() === "") {
+				window.svgMap.setCORSproxy(null, false);
+				console.log("[S-LaWA] Config applied from:", targetResponse.url, "(bypass proxy / empty file)");
+			} else {
+				const config = JSON.parse(text);
+				
+				// フラットなキー名で取得
+				const pPath = config.proxyPath !== undefined ? config.proxyPath : null;
+				const pEncodeUri = !!config.proxyEncodeUri; // proxyEncodeUri一択
+				
+				window.svgMap.setCORSproxy(pPath, pEncodeUri);
+				console.log("[S-LaWA] Config applied from:", targetResponse.url, pPath ? `(proxy path: ${pPath})` : "(bypass proxy)");
+			}
+		}
+	} catch (e) {
+		// JSONパースエラー等時のフェイルセーフ
+		console.warn("[S-LaWA] Failed to apply config, continuing with defaults.", e);
+	}
+}
+
 /**
 {
 	{
 	console.log("callCustomShowPoiPropertyFunc:",html);
-		if ( typeof html == string){
+		if ( typeof html == "string"){
 			return {src:html};
 		} else {
 			console.warn("S-LaWAではhtmlの文字列だけが対象です");
