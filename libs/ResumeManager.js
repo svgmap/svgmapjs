@@ -171,7 +171,7 @@ class ResumeManager {
 
 			//console.log("ResumeManager: cooks:",cook);
 			if (
-				(lh && (lh.visibleLayer || lh.hiddenLayer)) ||
+				(lh && (lh.visibleLayer || lh.hiddenLayer || lh.filterKeepLayer )) ||
 				cook.resume ||
 				cook.customLayers ||
 				this.#initialCustomLayers ||
