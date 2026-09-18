@@ -59,7 +59,7 @@ class MapTicker {
 			this.#ticker.style.display = "none";
 			this.#ticker.style.opacity = "0.5";
 			this.#ticker.id = "ticker";
-			this.#ticker.style.cursor = "pointer";
+			//this.#ticker.style.cursor = "pointer";
 			this.#ticker.style.overflowX = "hidden";
 			this.#ticker.style.overflowY = "auto";
 			this.#ticker.addEventListener(
@@ -390,10 +390,19 @@ class MapTicker {
 		} else {
 			spn.innerHTML = title;
 		}
+		td.style.cursor = "pointer"; // タッチデバイスでのフィーリング改善 2026/9/8
 		td.appendChild(spn);
 		tr.appendChild(td);
 		table.appendChild(tr);
-		spn.addEventListener("mousedown", callBack, false);
+//		spn.addEventListener("mousedown", callBack, false);
+		td.addEventListener("click", function(e) {
+			callBack();
+			 // 2026/9/8 明確な視覚フィードバックを設置
+			td.style.backgroundColor = "rgba(0, 0, 0, 0.2)";
+			setTimeout(function() {
+				td.style.backgroundColor = "";
+			}, 150);
+		}, false);
 	}
 
 	// 2D Vector及び、ラスターのPOI(html img要素)のための、クリックなどによるオブジェクト検索機能。 関数名を除き、すべての機能をcheckTickerに集約した 2018.1.31

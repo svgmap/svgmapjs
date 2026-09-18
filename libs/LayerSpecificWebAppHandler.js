@@ -84,16 +84,19 @@ class LayerSpecificWebAppHandler {
 	#layerSpecificUiMaxHeight = 0;
 
 	#getLayerStatus;
+	#setupRootMapProperties;
 
 	#globalMessageDisplay;
 
 	#iframeOnLoadProcessQueue = {};
+	#slawaAdapters = new Map();
 
 	constructor(
 		svgMapObj,
 		svgMapAuthoringToolObj,
 		getLayerStatusFunc,
 		proxyManagerObj,
+		setupRootMapPropertiesFunc,
 	) {
 		this.#svgMap = svgMapObj;
 		this.#proxyManager = proxyManagerObj;
@@ -111,6 +114,7 @@ class LayerSpecificWebAppHandler {
 		this.#iframeOnLoadProcessQueue = {};
 		this.#svgMapGIStool = new SvgMapGIS(svgMapObj, window.jsts);
 		this.#getLayerStatus = getLayerStatusFunc.bind(this.#svgMap);
+		this.#setupRootMapProperties = setupRootMapPropertiesFunc;
 		this.#globalMessageDisplay = new GlobalMessageDisplay();
 		console.log(
 			"construct layerUI: svgMapGIStool:",
@@ -726,6 +730,7 @@ class LayerSpecificWebAppHandler {
 				this.#layerSpecificUiDefaultStyle,
 			);
 			iframe = adapter.create(controllerURL); // 内部で SandboxWrapper も起動する
+			this.#slawaAdapters.set(lid, adapter);
 		} else {
 			// LaWAを起動する
 			iframe = lsuiDoc.createElement("iframe");
@@ -976,6 +981,8 @@ class LayerSpecificWebAppHandler {
 			this.#transferCustomEvent2iframe[lid],
 			false,
 		);
+		
+		this.#resolveDeferredCrs(lid, iframe.contentWindow);
 
 		setTimeout(
 			function (iframe, reqSize) {
@@ -1181,15 +1188,55 @@ class LayerSpecificWebAppHandler {
 		}
 		
 		// *2RS : スクリプトの評価完了（CRS関数の準備完了）をフックし、保留された初期化を回収する　2026/04/27
-		if (controllerWindow.svgImageProps.CRS && controllerWindow.svgImageProps.CRS.unresolved) {
-			console.log("CRS script evaluated. Force refreshScreen to apply deferred configs.");
-			// refreshScreen内部の queueMicrotask により、スタックの末尾に積まれて実行されるはず
-			this.#svgMap.refreshScreen();
-		}
+		this.#resolveDeferredCrs(controllerWindow.layerID, controllerWindow);
 		
 		controllerWindow.svgImageProps.script.onloadFunction(
 			this.#getLayerStatus(controllerWindow.layerID),
 		);
+	}
+
+	// T-LaWAのiframeコンテキストが準備完了した直後に、遅延していたCRS関数を即時解決する 2026/8/18
+	#resolveDeferredCrs(layerID, controllerWindow) {
+		const props = this.#svgMap.getSvgImagesProps()[layerID];
+		if (props && props.CRS && props.CRS.unresolved) {
+			let resolved = false;
+
+			// 1. svgScript経由の関数の解決
+			if (props.script && typeof props.script.transformFunction === 'function') {
+				const genericCRS = props.script.transformFunction();
+				if (genericCRS) {
+					genericCRS.isSVG2 = props.CRS.isSVG2;
+					props.CRS = genericCRS; // 実体化されたオブジェクトで上書き
+					resolved = true;
+				}
+			}
+			// 2. data-controller(外部HTML)経由の関数の解決
+			else if (props.CRS.transformFunctionName) {
+				let tfName = props.CRS.transformFunctionName;
+				if (tfName.startsWith("controller.")) {
+					tfName = tfName.substring(11);
+				}
+				if (typeof controllerWindow[tfName] === 'function') {
+					const genericCRS = controllerWindow[tfName]();
+					if (genericCRS) {
+						genericCRS.isSVG2 = props.CRS.isSVG2;
+						props.CRS = genericCRS; // 実体化されたオブジェクトで上書き
+						resolved = true;
+					}
+				}
+			}
+
+			if (resolved) {
+				//console.log(`[LayerSpecificWebAppHandler] CRS resolved for layer ${layerID}. Triggering refreshScreen.`);
+				// ★Rootの場合は保持したメソッドを呼び出してシステム全体の基準を再計算させる
+				if (layerID === "root" && typeof this.#setupRootMapProperties === 'function') {
+					//console.log("[LayerSpecificWebAppHandler] Re-setup root map properties.");
+					this.#setupRootMapProperties();
+				}
+				
+				this.#svgMap.refreshScreen(); // 解決後、LUT生成ゲートへ向かわせる
+			}
+		}
 	}
 
 	#setXHRhooks(ifWin) {
@@ -1700,6 +1747,13 @@ class LayerSpecificWebAppHandler {
 			parentElem,
 			parentSvgDocId,
 		);
+	}
+
+	// 【S-LaWA】 LUTデータRPC要求をIframeAdapter4SLaWAに委譲する
+	async requestLutDataForLayer(docId, sourceBox, sourceBoxType, grid = 16) {
+		const adapter = this.#slawaAdapters.get(docId);
+		if (!adapter) return null; 
+		return adapter.requestLutData(sourceBox, sourceBoxType, grid);
 	}
 
 	//	checkLayerListAndRegistLayerUI(...params){ return (this.#checkLayerListAndRegistLayerUI(...params))};

@@ -53,6 +53,21 @@ export class IframeAdapter4SLaWA {
 		//		this.#realIframe.style.height = "calc(100% - 50px)";
 		this.#realIframe.style.border = "none";
 		this.#realIframe.style.display = "block";
+		
+		// --- S-LaWA強制(isolated)時のサンドボックス化処理 ---
+		// このアダプタが呼ばれている時点でS-LaWAとしての動作が確定している。
+		// その上で対象URLが同一オリジンである場合、isolated指定による強制S-LaWAと自己判定し、
+		// Opaque Origin化のためのsandbox属性を付与して隔離する。
+		try {
+			const targetUrlObj = new URL(crossOriginUrl, window.location.href);
+			if (targetUrlObj.origin === window.location.origin) {
+				this.#realIframe.setAttribute("sandbox", "allow-scripts");
+				// console.info(`[S-LaWA ${this.#layerID}] Same-origin S-LaWA detected. Applied sandbox='allow-scripts'.`);
+			}
+		} catch (e) {
+			console.warn(`[S-LaWA ${this.#layerID}] Invalid URL for sandbox check:`, e);
+		}
+		
 		this.#virtualIframe.appendChild(this.#realIframe);
 
 		// 実際のS-LaWA処理を担当する SandboxWrapper を初期化
@@ -70,6 +85,15 @@ export class IframeAdapter4SLaWA {
 		this.#sandboxWrapper.initLaWA();
 
 		return this.#virtualIframe;
+	}
+
+	/**
+	 * このS-LaWAレイヤーに対してLUTデータ生成をRPC要求する。
+	 * SandboxWrapperの存在・通信手段はここで隠蔽する。
+	 */
+	async requestLutData(sourceBox, sourceBoxType, grid = 16) {
+		if (!this.#sandboxWrapper) return null;
+		return this.#sandboxWrapper.requestLutData(sourceBox, sourceBoxType, grid);
 	}
 
 	// --------------------------------------------------------

@@ -1,5 +1,5 @@
 // Description:
-// ImgRenderer Class for SVGMap.js
+// ImgRenderer Class for SVGMap.js (Web Worker + Grid-Interpolated Fast CPU Version)
 // Programmed by Satoru Takagi
 //
 // License: (MPL v2)
@@ -7,22 +7,27 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+// 2026/08/06 LUTによる座標変換機能実装に伴い、リファクタリング Workerを用いたマルチスレッド化他
+
 import { UtilFuncs } from "./UtilFuncs.js";
+import { MatrixUtil } from "./TransformLib.js";
 import { SvgMapElementType } from "./SvgMapElementType.js";
 
 class ImgRenderer {
 	#svgMapObj;
 	#loadingImgs;
 	#proxyManager;
-	//#rootCrs;
 	#loadingTransitionTimeout;
-	//#mapCanvasSize;
 	#svgImagesProps;
 	#matUtil;
 	#checkLoadCompleted;
 	#loadErrorStatistics;
-	//#uaProps;
 	#mapViewerProps;
+
+	// Worker管理用
+	#worker;
+	#workerCallbacks;
+	#jobCounter;
 
 	constructor(
 		svgMapObj,
@@ -32,7 +37,7 @@ class ImgRenderer {
 		mapViewerProps,
 		matUtil,
 		checkLoadCompletedFunc,
-		loadErrorStatistics,
+		loadErrorStatistics
 	) {
 		this.#svgMapObj = svgMapObj;
 		this.#loadingImgs = loadingImgs;
@@ -40,11 +45,101 @@ class ImgRenderer {
 		this.#loadingTransitionTimeout = loadingTransitionTimeout;
 		this.#mapViewerProps = mapViewerProps;
 		this.#matUtil = matUtil;
-		this.#checkLoadCompleted = checkLoadCompletedFunc; // これは予備元でbind済み
+		this.#checkLoadCompleted = checkLoadCompletedFunc;
 		this.#loadErrorStatistics = loadErrorStatistics;
-
 		this.#svgImagesProps = this.#svgMapObj.getSvgImagesProps();
+
+		this.#initWorker();
 	}
+
+	// =========================================================================
+	// Worker 初期化 (インラインBlobを用いた自己完結型Worker)
+	// =========================================================================
+	#initWorker() {
+		this.#jobCounter = 0;
+		this.#workerCallbacks = new Map();
+
+		const workerCode = `
+		self.onmessage = function(e) {
+			const { srcBuffer, mapGridXBuffer, mapGridYBuffer, ciw, cih, diw, dih, STEP, gridW, gridH, jobId } = e.data;
+
+			const srcData32 = new Uint32Array(srcBuffer);
+			const dstBuffer = new ArrayBuffer(diw * dih * 4);
+			const dstData32 = new Uint32Array(dstBuffer);
+			const mapGridX = new Float32Array(mapGridXBuffer);
+			const mapGridY = new Float32Array(mapGridYBuffer);
+
+			const getSrcPixel = (x, y) => {
+				let clampedX = x < 0 ? 0 : (x >= ciw ? ciw - 1 : x);
+				let clampedY = y < 0 ? 0 : (y >= cih ? cih - 1 : y);
+				return srcData32[clampedY * ciw + clampedX];
+			};
+
+			for (let gy = 0; gy < gridH - 1; gy++) {
+				const y0 = gy * STEP;
+				const y1 = Math.min((gy + 1) * STEP, dih);
+				const rowLength = y1 - y0;
+
+				for (let gx = 0; gx < gridW - 1; gx++) {
+					const x0 = gx * STEP;
+					const x1 = Math.min((gx + 1) * STEP, diw);
+					const colLength = x1 - x0;
+
+					const i00 = gy * gridW + gx;
+					const i10 = i00 + 1;
+					const i01 = i00 + gridW;
+					const i11 = i01 + 1;
+
+					const cx00 = mapGridX[i00], cy00 = mapGridY[i00];
+					const cx10 = mapGridX[i10], cy10 = mapGridY[i10];
+					const cx01 = mapGridX[i01], cy01 = mapGridY[i01];
+					const cx11 = mapGridX[i11], cy11 = mapGridY[i11];
+
+					if (cx00 < 0 || cx10 < 0 || cx01 < 0 || cx11 < 0) continue;
+
+					for (let dy = 0; dy < rowLength; dy++) {
+						const py = y0 + dy;
+						const v = dy / STEP;
+						const invV = 1.0 - v;
+						const rowStart = py * diw;
+
+						for (let dx = 0; dx < colLength; dx++) {
+							const px = x0 + dx;
+							const u = dx / STEP;
+							const invU = 1.0 - u;
+
+							const srcX = (cx00 * invU + cx10 * u) * invV + (cx01 * invU + cx11 * u) * v;
+							const srcY = (cy00 * invU + cy10 * u) * invV + (cy01 * invU + cy11 * u) * v;
+
+							if (srcX >= -0.5 && srcX < ciw + 0.5 && srcY >= -0.5 && srcY < cih + 0.5) {
+								const ix = Math.floor(srcX);
+								const iy = Math.floor(srcY);
+								dstData32[rowStart + px] = getSrcPixel(ix, iy);
+							}
+						}
+					}
+				}
+			}
+			// ゼロコピー転送でメインスレッドに結果を戻す
+			self.postMessage({ jobId, dstBuffer }, [dstBuffer]);
+		};
+		`;
+
+		const blob = new Blob([workerCode], { type: "application/javascript" });
+		this.#worker = new Worker(URL.createObjectURL(blob));
+
+		this.#worker.onmessage = (e) => {
+			const { jobId, dstBuffer } = e.data;
+			if (this.#workerCallbacks.has(jobId)) {
+				this.#workerCallbacks.get(jobId)(dstBuffer);
+				this.#workerCallbacks.delete(jobId);
+			}
+		};
+	}
+
+	// =========================================================================
+	// DOM / DOM-Events
+	// =========================================================================
 
 	getImgElement(
 		x,
@@ -64,42 +159,33 @@ class ImgRenderer {
 		nocache,
 		crossoriginProp,
 		svgimageInfo,
-		commonQuery,
+		commonQuery
 	) {
 		var img = document.createElement("img");
 
 		if (pixelated) {
-			// Disable anti-alias http://dachou.daa.jp/tanaka_parsonal/pixelart-topics/  Edgeが・・・
 			img.style.imageRendering = "pixelated";
-			//		img.style.imageRendering="crisp-edges";
 			img.style.imageRendering = "-moz-crisp-edges";
 			img.style.msInterpolationMode = "nearest-neighbor";
 			img.style.imageRendering = "optimize-contrast";
 			img.dataset.pixelated = "true";
 		}
 
-		if (href_fragment) {
-			// 2015.7.3 spatial fragment
-			img.setAttribute("href_fragment", href_fragment);
-		}
-
-		if (nocache) {
-			// ビットイメージにもnocacheを反映させてみる 2019.3.18
-			href = UtilFuncs.getNoCacheRequest(href);
-		}
-
-		if (commonQuery) {
-			// 認証キーなどに用いるレイヤー(もしくはフレームワーク共通)クエリストリング設置
+		// 2015.7.3 spatial fragment
+		if (href_fragment) img.setAttribute("href_fragment", href_fragment);
+		// ビットイメージにもnocacheを反映させてみる 2019.3.18
+		if (nocache) href = UtilFuncs.getNoCacheRequest(href);
+		// 認証キーなどに用いるレイヤー(もしくはフレームワーク共通)クエリストリング設置
+		if (commonQuery)
 			href = UtilFuncs.addCommonQueryAtQueryString(href, commonQuery);
-		}
 
 		var imgAinf = this.#proxyManager.getImageAccessInfo(
 			href,
 			this.#needsNonLinearImageTransformation(
 				this.#svgImagesProps[svgimageInfo.docId].CRS,
-				svgimageInfo.svgNode,
+				svgimageInfo.svgNode
 			),
-			crossoriginProp,
+			crossoriginProp
 		);
 		this.#setLoadingImagePostProcessing(
 			img,
@@ -108,78 +194,36 @@ class ImgRenderer {
 			false,
 			svgimageInfo,
 			imgAinf.crossOriginFlag,
-			imgAinf.hasNonLinearImageTransformation,
+			imgAinf.hasNonLinearImageTransformation
 		);
 
-		if (opacity) {
-			//		img.setAttribute("style" , "Filter: Alpha(Opacity=" + opacity * 100 + ");opacity:" + opacity + ";"); // 2021/11/15
-			//		img.style.filter="Alpha(Opacity=" + opacity * 100 + ")";
-			img.style.opacity = opacity;
-		}
-		if (imageFilter) {
-			//		console.log("imageFilter:",imageFilter);
-			img.style.filter += imageFilter;
-		}
+		if (opacity) img.style.opacity = opacity;
+		if (imageFilter) img.style.filter += imageFilter;
 		img.style.left = x + "px";
 		img.style.top = y + "px";
-		img.style.display = "none"; // for Safari
+		img.style.display = "none"; // for Safari  
 		img.style.position = "absolute";
-		img.style.maxWidth = "initial"; // patch for Angular default CSS 2021/6
-		img.style.height = height + "px"; // patch for other CSS fw 2021/10/28
+		img.style.maxWidth = "initial"; // patch for Angular default CSS 2021/6 
+		img.style.height = height + "px"; // patch for other CSS fw 2021/10/28  
 		img.style.width = width + "px";
 		img.width = width;
 		img.height = height;
 		img.id = id;
+
 		if (transform) {
-			// ま、とりあえず 2014.6.18
-			img.style.transform =
-				"matrix(" +
-				transform.a +
-				"," +
-				transform.b +
-				"," +
-				transform.c +
-				"," +
-				transform.d +
-				"," +
-				transform.e +
-				"," +
-				transform.f +
-				")";
+			img.style.transform = `matrix(${transform.a},${transform.b},${transform.c},${transform.d},${transform.e},${transform.f})`;
 			img.style.transformOrigin = "0 0";
-			img.style.webkitTransform =
-				"matrix(" +
-				transform.a +
-				"," +
-				transform.b +
-				"," +
-				transform.c +
-				"," +
-				transform.d +
-				"," +
-				transform.e +
-				"," +
-				transform.f +
-				")";
+			img.style.webkitTransform = img.style.transform;
 			img.style.webkitTransformOrigin = "0 0";
 		}
 
 		if (category == SvgMapElementType.POI) {
-			// POI (set Event Handler)
 			img.style.zIndex = "10"; // POIがcanvasより下だとクリックできない問題への対策(POIの重ね順が間違ったことになる場当たり対策だが・・ 2013.9.12) 　ヒットテストを独自実装したので、2018.3.2コメント マウスオーバー時のticker表示がないがクリックできるようにはなりました
-
-			//		addEvent(img,"mousedown",testClick); // このイベントハンドラは廃止(かなり大きな変更) 2018.2.2
-
 			img.style.cursor = "pointer";
 			img.setAttribute("content", meta);
-			if (title) {
-				img.setAttribute("title", title);
-			} else {
-				img.setAttribute("title", imgAinf.href);
-			}
+			img.setAttribute("title", title || imgAinf.href);
 		} else {
 			img.setAttribute("title", "");
-			//		img.setAttribute("alt", "" );
 		}
 		return img;
 	}
@@ -202,37 +246,65 @@ class ImgRenderer {
 		id,
 		opacity,
 		crossoriginProp,
-		svgimageInfo,
+		svgimageInfo
 	) {
-		if (!cdx) {
-			cdx = 0;
-		}
-		if (!cdy) {
-			cdy = 0;
-		}
+		if (!cdx) cdx = 0;
+		if (!cdy) cdy = 0;
 
-		img.style.left = cdx + x + "px";
+		// 位置の計算
+		var layoutTop = cdy + y;
 		if (txtFlg) {
-			if (!txtNonScaling) {
-				img.style.fontSize = height + "px";
-			}
+			if (!txtNonScaling) img.style.fontSize = height + "px";
 			var fontS = parseInt(img.style.fontSize);
-
 			const txtHeight = this.#getTextHeight(
 				svgimageInfo.svgNode.textContent,
-				fontS,
+				fontS
+			);
+			layoutTop = y + cdy - txtHeight; // 2025/9/26 topに統一(filterで不具合が生じるため)  
+		}
+		var layoutLeft = cdx + x;
+		var layoutTransform = transform
+			? `matrix(${transform.a},${transform.b},${transform.c},${transform.d},${transform.e},${transform.f})`
+			: null;
+
+		// 非線形変換（LUT）が必要かどうかの判定
+		var needsNonLinear =
+			!txtFlg &&
+			this.#needsNonLinearImageTransformation(
+				this.#svgImagesProps[svgimageInfo.docId].CRS,
+				svgimageInfo.svgNode
 			);
 
-			img.style.top = y + cdy - txtHeight + "px"; // 2025/9/26 topに統一(filterで不具合が生じるため)
+		if (needsNonLinear) {
+			// LUT適用が入る場合は、変換完了まで位置とサイズの適用を遅延させる（要素に退避）
+			img._nextLutLayout = {
+				left: layoutLeft,
+				top: layoutTop,
+				width: width,
+				height: height,
+				transform: layoutTransform,
+			};
 		} else {
-			img.style.top = cdy + y + "px";
-		}
-		//	img.style.position = "absolute";
-		if (!txtFlg) {
-			img.width = width;
-			img.height = height;
-			img.style.width = width + "px";
-			img.style.height = height + "px";
+			// 通常通り即座に適用する
+			img.style.left = layoutLeft + "px";
+			img.style.top = layoutTop + "px";
+
+			if (!txtFlg) {
+				img.width = width;
+				img.height = height;
+				img.style.width = width + "px";
+				img.style.height = height + "px";
+			}
+
+			if (layoutTransform) {
+				img.style.transform = layoutTransform;
+				img.style.transformOrigin = "0 0";
+				img.style.webkitTransform = layoutTransform;
+				img.style.webkitTransformOrigin = "0 0";
+			} else {
+				img.style.transform = "";
+				img.style.webkitTransform = "";
+			}
 		}
 
 		// 2022/05/30 : pixelated, opacity,filterのDOM操作を反映させる
@@ -245,35 +317,25 @@ class ImgRenderer {
 			img.dataset.pixelated = "true";
 		} else {
 			img.style.imageRendering = "";
-			img.style.imageRendering = "";
 			img.style.msInterpolationMode = "";
-			img.style.imageRendering = "";
 			img.dataset.pixelated = "true";
 		}
-		if (opacity) {
-			img.style.opacity = opacity;
-		} else {
-			img.style.opacity = "";
-		}
-		if (imageFilter) {
-			img.style.filter = imageFilter;
-		} else {
-			img.style.filter = "";
-		}
+		img.style.opacity = opacity || "";
+		img.style.filter = imageFilter || "";
 
 		var imgAinf = this.#proxyManager.getImageAccessInfo(
 			href,
 			this.#needsNonLinearImageTransformation(
 				this.#svgImagesProps[svgimageInfo.docId].CRS,
-				svgimageInfo.svgNode,
+				svgimageInfo.svgNode
 			),
-			crossoriginProp,
+			crossoriginProp
 		);
 
-		var imgSrc = img.getAttribute("data-preTransformedHref");
-		if (!imgSrc) {
-			imgSrc = img.getAttribute("src");
-		}
+		var isPreTransformed = img.hasAttribute("data-preTransformedHref");
+		var imgSrc =
+			img.getAttribute("data-preTransformedHref") || img.getAttribute("src");
+
 		if (
 			!txtFlg &&
 			img.src &&
@@ -290,49 +352,21 @@ class ImgRenderer {
 				true,
 				svgimageInfo,
 				imgAinf.crossOriginFlag,
-				imgAinf.hasNonLinearImageTransformation,
+				imgAinf.hasNonLinearImageTransformation
 			);
-		}
-		if (transform) {
-			// ま、とりあえず 2014.6.18
-			img.style.transform =
-				"matrix(" +
-				transform.a +
-				"," +
-				transform.b +
-				"," +
-				transform.c +
-				"," +
-				transform.d +
-				"," +
-				transform.e +
-				"," +
-				transform.f +
-				")";
-			img.style.transformOrigin = "0 0";
-			img.style.webkitTransform =
-				"matrix(" +
-				transform.a +
-				"," +
-				transform.b +
-				"," +
-				transform.c +
-				"," +
-				transform.d +
-				"," +
-				transform.e +
-				"," +
-				transform.f +
-				")";
-			img.style.webkitTransformOrigin = "0 0";
+		} else if (isPreTransformed) {
+			var hiddenImg = new Image();
+			if (imgAinf.crossOriginFlag) hiddenImg.crossOrigin = "anonymous";
+			hiddenImg.onload = () => {
+				this.#imageTransform(img, svgimageInfo, hiddenImg);
+			};
+			hiddenImg.src = imgSrc;
 		}
 		//	img.style.display =""; // hideAllTileImgs()用だったが、読み込み途中でスクロールと化すると豆腐が出現するバグになっていたので、それはvisibilityでの制御に変更
-		img.style.visibility = ""; // debug
+		img.style.visibility = "";
 
-		if (href_fragment) {
-			// added 2015.7.8
-			this.#setImgViewport(img, href_fragment);
-		}
+		// added 2015.7.8
+		if (href_fragment) this.#setImgViewport(img, href_fragment);
 	}
 
 	#setLoadingImagePostProcessing(
@@ -342,87 +376,120 @@ class ImgRenderer {
 		forceSrcIE,
 		svgimageInfo,
 		crossOriginFlag,
-		hasNonLinearImageTransformation,
+		hasNonLinearImageTransformation
 	) {
 		var timeout = this.#loadingTransitionTimeout;
-		var that = this;
-		if (hasNonLinearImageTransformation == true) {
-			timeout = this.#loadingTransitionTimeout * 3; // 2022/3/26 NonLinearImageTransformationのあるimgはtimeoutを3倍に延ばす・・(場当たりだね)
+		// 2022/3/26 NonLinearImageTransformationのあるimgはtimeoutを3倍に延ばす・・(場当たりだね)  
+		if (hasNonLinearImageTransformation == true) timeout *= 3;
+
+		if (hasNonLinearImageTransformation) {
+			img.setAttribute("data-loadingHref", href);
+			var hiddenImg = new Image();
+			if (crossOriginFlag) hiddenImg.crossOrigin = "anonymous";
+
+			var timerId = setTimeout(() => {
+				this.#timeoutLoadingImg({ id: id });
+			}, timeout);
+
+			hiddenImg.onload = () => {
+				clearTimeout(timerId);
+				if (img.getAttribute("href_fragment")) {
+					var href_fragment = img.getAttribute("href_fragment");
+					this.#setImgViewport(img, href_fragment);
+					img.removeAttribute("href_fragment");
+				}
+
+				// Workerの処理完了を待ってから、画像の表示と完了通知を行う
+				this.#imageTransform(img, svgimageInfo, hiddenImg).then(() => {
+					img.style.display = "";
+					img.style.visibility = "";
+					delete this.#loadingImgs[id];
+					this.#checkLoadCompleted(); // これで古いタイルが消去される
+				});
+			};
+
+			hiddenImg.onerror = () => {
+				clearTimeout(timerId);
+				this.#timeoutLoadingImg({ id: id });
+			};
+
+			hiddenImg.src = href;
+			this.#loadingImgs[id] = svgimageInfo;
+			return;
 		}
+
+		// 以下は通常の画像（変換不要）のための従来処理
 		if (this.#mapViewerProps.uaProps.verIE > 8) {
-			img.addEventListener("load", this.#handleLoadSuccess); // for Safari
-			img.addEventListener("error", this.#timeoutLoadingImg); // 2016.10.28 for ERR403,404 imgs (especially for sloppy tiled maps design)
+			img.addEventListener("load", this.#handleLoadSuccess); // for Safari 
+			img.addEventListener("error", this.#timeoutLoadingImg); // 2016.10.28 for ERR403,404 imgs (especially for sloppy tiled maps design)  
 			img.src = href;
-			if (crossOriginFlag) {
-				// crossOrigin属性はsrc書き換えと同タイミングとする。2021.6.9 crossOrigin特性だけ変更するケースはない(Imageのproxy設定と一体)という想定でいる・・
-				img.crossOrigin = "anonymous";
-			} else {
-				img.crossOrigin = null; // 2021/09/16 debug   Note: crossOrigin anonymousを設定していると、CORSがついていないhttp respがそもそも読み込めなくなるので、普通のimgは設定されるとまずい
-			}
+			// crossOrigin属性はsrc書き換えと同タイミングとする。2021.6.9 crossOrigin特性だけ変更するケースはない(Imageのproxy設定と一体)という想定でいる・・  
+			img.crossOrigin = crossOriginFlag ? "anonymous" : null;
 		} else {
-			// for IE  to be obsoluted..
+			// for IE  to be obsoluted.. 
 			img.attachEvent("onload", this.#handleLoadSuccess);
-			if (crossOriginFlag) {
-				// これは意味あるのか？
-				img.crossOrigin = "anonymous";
-			} else {
-				img.crossOrigin = null; // 2021/09/16 debug
-			}
-			if (forceSrcIE) {
-				img.src = href;
-			} else {
-				img.setAttribute("href", href); // IE8のバグの対策のため・・hrefはDOM追加後につけるんです
-			}
-			img.style.filter = "inherit"; // 同上 (http://www.jacklmoore.com/notes/ie-opacity-inheritance/)
+			// これは意味あるのか？  
+			img.crossOrigin = crossOriginFlag ? "anonymous" : null;
+			if (forceSrcIE) img.src = href;
+			else img.setAttribute("href", href); // IE8のバグの対策のため・・hrefはDOM追加後につけるんです  
+			img.style.filter = "inherit"; // 同上 (http://www.jacklmoore.com/notes/ie-opacity-inheritance/)  
 		}
 		setTimeout(this.#timeoutLoadingImg, timeout, img);
-		this.#loadingImgs[id] = svgimageInfo; // // 2021/1/26 loadingImgsには画像の場合booleanではなくsvgimageInfoを入れ、ビットイメージ非線形変換を容易にした
+		this.#loadingImgs[id] = svgimageInfo; // 2021/1/26 loadingImgsには画像の場合booleanではなくsvgimageInfoを入れ、ビットイメージ非線形変換を容易にした
 	}
 
 	#handleLoadSuccess = function (obj) {
-		// (bitImage)画像の読み込み完了処理
+		// (bitImage)画像の読み込み完了処理  
 		var target = obj.target || obj.srcElement;
-
 		target.removeEventListener("load", this.#handleLoadSuccess);
 
-		var href = target.src;
-
 		if (target.getAttribute("href_fragment")) {
-			// 2015.7.3 spatial fragment
+			// 2015.7.3 spatial fragment  
 			var href_fragment = target.getAttribute("href_fragment");
 			this.#setImgViewport(target, href_fragment);
-			target.removeAttribute("href_fragment"); // もう不要なので削除する（大丈夫？）2015.7.8
+			target.removeAttribute("href_fragment"); // もう不要なので削除する（大丈夫？）2015.7.8  
 		}
 
-		target.style.display = "";
-		target.style.visibility = "";
-		var svgimageInfo = this.#loadingImgs[target.id]; // 2021/1/26 loadingImgsには画像の場合booleanではなくcrs等を入れるようにした。
-		delete this.#loadingImgs[target.id];
-		this.#imageTransform(target, svgimageInfo);
-		this.#checkLoadCompleted();
+		var svgimageInfo = this.#loadingImgs[target.id]; // 2021/1/26 loadingImgsには画像の場合booleanではなくcrs等を入れるようにした。  
+
+		// 同様に処理の完了を待つ
+		this.#imageTransform(target, svgimageInfo).then(() => {
+			target.style.display = "";
+			target.style.visibility = "";
+			delete this.#loadingImgs[target.id]; 
+			this.#checkLoadCompleted();
+		});
 	}.bind(this);
 
 	#needsNonLinearImageTransformation(crs, imageElem) {
-		// その画像が非線形変換が必要なものかどうかを判別する 2021/08/10関数化
-		//console.log(crs,imageElem);
-		if (!crs.transform && !this.#mapViewerProps.rootCrs.transform) {
+		// その画像が非線形変換が必要なものかどうかを判別する 2021/08/10関数化  
+		const rootCrs = this.#mapViewerProps.rootCrs;
+		
+		// ルートとレイヤーそれぞれの非線形性チェック（LUT対応版）
+		const isRootNonLinear =
+			!!rootCrs.lut ||
+			typeof rootCrs.transform === "function" ||
+			!!rootCrs.mercator;
+		const isLayerNonLinear =
+			!!crs.lut || typeof crs.transform === "function" || !!crs.mercator;
+		// どちらも非線形でないなら不要
+		if (!isRootNonLinear && !isLayerNonLinear) return false;
+		
+		// メルカトルタイルの特殊処理 2021/08/10
+		const layerHasTransform = !!crs.lut || typeof crs.transform === "function";
+		if (
+			imageElem.getAttribute("data-mercator-tile") === "true" &&
+			!layerHasTransform && 
+			!!rootCrs.mercator
+		) {
 			return false;
-		} else {
-			if (
-				imageElem.getAttribute("data-mercator-tile") == "true" &&
-				!crs.transform &&
-				this.#mapViewerProps.rootCrs.mercator
-			) {
-				// ビットイメージの各image要素にdata-mercatorTileがtrueで設定され、しかもrootのCRSにmercator属性があったら不要とする特殊処理 2021/08/10
-				return false;
-			}
-			var tfv = imageElem.getAttribute("transform");
-			if (tfv && tfv.indexOf("ref") == 0) {
-				// ビットイメージのtransformがref(svg..)の場合は不要とする特殊処理 2023/6/29
-				return false;
-			}
-			return true;
 		}
+		
+		// ビットイメージのtransformがref(svg..)の場合は不要とする特殊処理 2023/6/29  
+		var tfv = imageElem.getAttribute("transform");
+		if (tfv && tfv.indexOf("ref") == 0) return false;
+		
+		return true;
 	}
 
 	#timeoutLoadingImg = function (obj) {
@@ -439,51 +506,53 @@ class ImgRenderer {
 		}
 		if (this.#loadingImgs[target.id]) {
 			console.warn("LoadImg TimeOut!!!!!");
-			if (timeout) {
-				++this.#loadErrorStatistics.timeoutBitImagesCount;
-			}
+			if (timeout) ++this.#loadErrorStatistics.timeoutBitImagesCount;
 			delete this.#loadingImgs[target.id];
 			this.#checkLoadCompleted();
 		}
 	}.bind(this);
 
-	#imageTransform(imgElem, svgimageInfo) {
-		// ビットイメージタイルの内部について、任意の図法変換を加える機構 2020/08- まだまだ現在開発中だからいろいろ怪しい状態です2020/09/18
-		// 2021/01/26 実用ユースケースが出てきたので、ブラッシュアップし、本流に載せることにする
-		if (!svgimageInfo) {
-			//console.log("NO image Element...");
-			return;
+	// =======================================
+	// #imageTransform (Web Worker + Grid-Interpolated 版)
+	// =======================================
+	#imageTransform(imgElem, svgimageInfo, sourceImgOverride) {
+		if (!svgimageInfo) return Promise.resolve();
+
+		if (!imgElem.getAttribute("data-preTransformedHref")) {
+			// data-loadingHref もチェック対象に含める
+			var origHref =
+				imgElem.getAttribute("data-loadingHref") ||
+				imgElem.getAttribute("src") ||
+				imgElem.getAttribute("href") ||
+				imgElem.getAttribute("xlink:href");
+			if (origHref) {
+				imgElem.setAttribute("data-preTransformedHref", origHref);
+				imgElem.removeAttribute("data-loadingHref"); // 不要になったら消す
+			}
 		}
+
 		var imageElem = svgimageInfo.svgNode;
-
 		var tf = imageElem.getAttribute("transform");
-		if (tf && tf.indexOf("ref") == 0) {
-			// transform ref属性が付いている場合はスキップする(TBD)
-			return;
-		}
+		// transform ref属性が付いている場合はスキップする(TBD)
+		if (tf && tf.indexOf("ref") == 0) return Promise.resolve();
+
 		var tfm = UtilFuncs.parseTransformMatrix(tf);
-		//console.log(svgimageInfo.docId,this.#svgImagesProps[svgimageInfo.docId],imgElem);
 		var crs = this.#svgImagesProps[svgimageInfo.docId].CRS; // 長い過程を経て、直接取れるようにした・・
-		if (this.#needsNonLinearImageTransformation(crs, imageElem) == false) {
-			// 2021/08/10
-			return;
-		}
-		var sc = document.getElementById("imageTransformCanvas");
-		if (!sc) {
-			sc = document.createElement("canvas");
-			sc.id = "imageTransformCanvas";
-		}
+		if (this.#needsNonLinearImageTransformation(crs, imageElem) == false)
+			return Promise.resolve(); // 2021/08/10
 
-		var ciw = imgElem.naturalWidth;
-		var cih = imgElem.naturalHeight;
+		var srcImg = sourceImgOverride || imgElem;
+		var ciw = srcImg.naturalWidth || imgElem.naturalWidth;
+		var cih = srcImg.naturalHeight || imgElem.naturalHeight;
 
-		var sctx = sc.getContext("2d");
-		sc.width = ciw;
-		sc.height = cih;
-		sctx.drawImage(imgElem, 0, 0);
+		if (!ciw || !cih) return Promise.resolve(); // ★変更
 
-		var srcData = sctx.getImageData(0, 0, ciw, cih);
-		var dstData = sctx.createImageData(ciw, cih);
+		const currentJobId = String(++this.#jobCounter);
+		imgElem.dataset.transformJobId = currentJobId;
+
+		var overSample = 1.5;
+		var diw = Math.floor(ciw * overSample);
+		var dih = Math.floor(cih * overSample);
 
 		// ソースのイメージローカルsvg座標系におけるソース画像の座標(transform前)
 		var csix = Number(imageElem.getAttribute("x"));
@@ -491,134 +560,186 @@ class ImgRenderer {
 		var csiw = Number(imageElem.getAttribute("width"));
 		var csih = Number(imageElem.getAttribute("height"));
 
-		var ci2cs = {
-			// ソース画像系->ソースSVG系変換行列
-			a: csiw / ciw,
-			b: 0,
-			c: 0,
-			d: csih / cih,
-			e: csix,
-			f: csiy,
-		};
-		if (tfm) {
-			// x',y' = m2(m1(x,y)) : matMul( m1 , m2 )
-			ci2cs = this.#matUtil.matMul(ci2cs, tfm);
-		}
+		// ソース画像系->ソースSVG系変換行列
+		var ci2cs = { a: csiw / ciw, b: 0, c: 0, d: csih / cih, e: csix, f: csiy };
+		if (tfm) ci2cs = this.#matUtil.matMul(ci2cs, tfm);
 
-		var cs2ci = this.#matUtil.getInverseMatrix(ci2cs); // ソースSVG系->ソース画像系変換行列
-
-		var rs2cs = this.#matUtil.getConversionMatrixViaGCS(
-			this.#mapViewerProps.rootCrs,
-			crs,
-		); // ルートSVG->ソース(個々のコンテンツ)SVG変換
+		// ソースSVG系->ソース画像系変換行列
+		var cs2ci = this.#matUtil.getInverseMatrix(ci2cs);
+		// ソース(個々のコンテンツ)SVG->ルートSVG変換
 		var cs2rs = this.#matUtil.getConversionMatrixViaGCS(
 			crs,
-			this.#mapViewerProps.rootCrs,
-		); // ソース(個々のコンテンツ)SVG->ルートSVG変換
-
+			this.#mapViewerProps.rootCrs
+		);
+		// ソースSVGにおける画像領域
 		var cib = this.#matUtil.transformRect(
 			{ x: 0, y: 0, width: ciw, height: cih },
-			ci2cs,
-		); // ソースSVGにおける画像領域
+			ci2cs
+		);
+		// ルートSVG座標系における該当イメージの領域
+		var rib = this.#matUtil.transformRect(cib, cs2rs);
 
-		/**
-		if ( !rs2cs.transform ){
-			// 非線形変換関数がないのでピクセル変換は不要
-			return;
-		}
-		**/
-		if (imgElem.getAttribute("data-preTransformedHref")) {
-			console.log("Already Transformed image");
-			return;
-		}
-
-		var rib = this.#matUtil.transformRect(cib, cs2rs); // ルートSVG座標系における該当イメージの領域
-
-		//var rib=transformRect({x:csix,y:csiy,width:csiw,height:csih},cs2rs); //ルートSVG座標系における該当イメージの領域 "image bounds on root"
-		// var cib=transformRect(rib,rs2cs); // 今のところ使ってない・・
-		// ルート(画面表示)系上のビットイメージも、ひとまずソースと同一サイズで作ることにする
-
+		// ルートSVG系上のイメージ画像系->ルートSVG
 		var ri2rs = {
-			// ルートSVG系上のイメージ画像系->ルートSVG
-			a: rib.width / ciw,
+			a: rib.width / diw,
 			b: 0,
 			c: 0,
-			d: rib.height / cih,
+			d: rib.height / dih,
 			e: rib.x,
 			f: rib.y,
 		};
 
-		// ピクセルごとに座標変換実行　重すぎれば離散的なアンカーを選んで線形補間するというのもありだが、今は全ピクセル変換
-		var prevRowHasData = [];
-		var prow = ciw * 4;
-		for (var riy = 0; riy < cih; riy++) {
-			var prevColHasData = false;
-			for (var rix = 0; rix < ciw; rix++) {
-				// ルートSVGにおける画像の座標
-				var daddr = (rix + riy * ciw) * 4;
+		const rootCrs = this.#mapViewerProps.rootCrs;
+		const layerNeedsLut =
+			crs &&
+			(crs.transformFunctionName ||
+				typeof crs.transform === "function" ||
+				crs.mercator);
+		const rootNeedsLut =
+			rootCrs &&
+			(rootCrs.transformFunctionName ||
+				typeof rootCrs.transform === "function" ||
+				rootCrs.mercator);
 
-				var rsxy = this.#matUtil.transform(rix, riy, ri2rs); // ルートのSVG系の座標
-				var csxy = this.#matUtil.transform(rsxy.x, rsxy.y, rs2cs); // コンテンツSVG系の座標 (この変換が非線形になることがある)
-				var cixy;
-				if (csxy) {
-					cixy = this.#matUtil.transform(csxy.x, csxy.y, cs2ci); // コンテンツSVGにおける画像の座標
-				}
+		// LUTがない場合は潔くエラーとして処理を打ち切る
+		if ((layerNeedsLut && !crs.lut) || (rootNeedsLut && !rootCrs.lut)) {
+			console.error(
+				`[ImgRenderer] LUT is required but not found for image: ${imgElem.id || "unknown"}. Aborting transform.`
+			);
+			return Promise.resolve();
+		}
 
-				if (
-					cixy &&
-					cixy.x >= 0 &&
-					cixy.x < ciw &&
-					cixy.y >= 0 &&
-					cixy.y < cih
-				) {
-					var saddr = (Math.floor(cixy.x) + Math.floor(cixy.y) * ciw) * 4;
-					dstData.data[daddr] = srcData.data[saddr]; // r
-					dstData.data[daddr + 1] = srcData.data[saddr + 1]; // g
-					dstData.data[daddr + 2] = srcData.data[saddr + 2]; // b
-					dstData.data[daddr + 3] = srcData.data[saddr + 3]; // a
-					prevColHasData = true;
-					prevRowHasData[rix] = true;
-				} else {
-					if (prevColHasData) {
-						// prevColHasData
-						// サブピクセルオーダーの継ぎ目を消す処理(X方向)
-						// x方向ひとつ前のピクセルに値があればその値をコピーする
-						// キャンバスの完全に隅にある継ぎ目は消えない。これも気にするなら1ピクセル大きいキャンバス作れば良いと思うね。
-						dstData.data[daddr] = dstData.data[daddr - 4]; // r
-						dstData.data[daddr + 1] = dstData.data[daddr - 4 + 1]; // g
-						dstData.data[daddr + 2] = dstData.data[daddr - 4 + 2]; // b
-						dstData.data[daddr + 3] = dstData.data[daddr - 4 + 3]; // a
-					} else if (prevRowHasData[rix]) {
-						// サブピクセルオーダーの継ぎ目を消す処理(Y方向)
-						// y方向ひとつ前のピクセルに値があればその値をコピーする
-						dstData.data[daddr] = dstData.data[daddr - prow]; // r
-						dstData.data[daddr + 1] = dstData.data[daddr - prow + 1]; // g
-						dstData.data[daddr + 2] = dstData.data[daddr - prow + 2]; // b
-						dstData.data[daddr + 3] = dstData.data[daddr - prow + 3]; // a
+		const rootInverseFunc = rootCrs.lut ? rootCrs.lut.inverse : null;
+		const rootInverseMat = !rootInverseFunc
+			? this.#matUtil.getInverseMatrix(rootCrs)
+			: null;
+		const layerTransformFunc = crs.lut ? crs.lut.transform : null;
+
+		var sc = document.createElement("canvas");
+		var sctx = sc.getContext("2d");
+		sc.width = diw;
+		sc.height = dih;
+
+		sctx.drawImage(srcImg, 0, 0, ciw, cih);
+		var srcData = sctx.getImageData(0, 0, ciw, cih);
+
+		const STEP = 2;
+		const gridW = Math.ceil(diw / STEP) + 1;
+		const gridH = Math.ceil(dih / STEP) + 1;
+
+		const mapGridX = new Float32Array(gridW * gridH);
+		const mapGridY = new Float32Array(gridW * gridH);
+
+		for (let gy = 0; gy < gridH; gy++) {
+			let riy = Math.min(gy * STEP, dih - 1);
+			for (let gx = 0; gx < gridW; gx++) {
+				let rix = Math.min(gx * STEP, diw - 1);
+				let gIdx = gy * gridW + gx;
+
+				var rsCrd = MatrixUtil.linearTransform(rix, riy, ri2rs);
+				var gxCrd, gyCrd;
+
+				if (rootInverseFunc) {
+					var gCrd = rootInverseFunc(rsCrd);
+					if (!gCrd) {
+						mapGridX[gIdx] = -1;
+						mapGridY[gIdx] = -1;
+						continue;
 					}
-					prevColHasData = false;
-					prevRowHasData[rix] = false;
+					gxCrd = gCrd.x;
+					gyCrd = gCrd.y;
+				} else {
+					var gCrdLin = MatrixUtil.linearTransform(
+						rsCrd.x,
+						rsCrd.y,
+						rootInverseMat
+					);
+					gxCrd = gCrdLin.x;
+					gyCrd = gCrdLin.y;
 				}
+
+				var csx, csy;
+				if (layerTransformFunc) {
+					var csCrd = layerTransformFunc({ x: gxCrd, y: gyCrd });
+					if (!csCrd) {
+						mapGridX[gIdx] = -1;
+						mapGridY[gIdx] = -1;
+						continue;
+					}
+					csx = csCrd.x;
+					csy = csCrd.y;
+				} else {
+					var csCrdLin = MatrixUtil.linearTransform(gxCrd, gyCrd, crs);
+					csx = csCrdLin.x;
+					csy = csCrdLin.y;
+				}
+
+				var ciCrd = MatrixUtil.linearTransform(csx, csy, cs2ci);
+				mapGridX[gIdx] = ciCrd.x;
+				mapGridY[gIdx] = ciCrd.y;
 			}
 		}
-		sctx.putImageData(dstData, 0, 0);
-		var iuri = sc.toDataURL("image/png");
-		imgElem.setAttribute(
-			"data-preTransformedHref",
-			imgElem.getAttribute("src"),
-		);
-		imgElem.setAttribute("src", iuri);
+
+		// Worker部分をPromiseで包んで返す
+		return new Promise((resolve) => {
+			this.#workerCallbacks.set(currentJobId, (dstBuffer) => {
+				if (imgElem.dataset.transformJobId === currentJobId) {
+					const dstData = new ImageData(
+						new Uint8ClampedArray(dstBuffer),
+						diw,
+						dih
+					);
+					sctx.putImageData(dstData, 0, 0);
+					imgElem.setAttribute("src", sc.toDataURL("image/png"));
+					// 退避していた位置・サイズ情報があれば、画像更新と同時に適用する
+					if (imgElem._nextLutLayout) {
+						const layout = imgElem._nextLutLayout;
+						imgElem.style.left = layout.left + "px";
+						imgElem.style.top = layout.top + "px";
+						imgElem.width = layout.width;
+						imgElem.height = layout.height;
+						imgElem.style.width = layout.width + "px";
+						imgElem.style.height = layout.height + "px";
+
+						if (layout.transform) {
+							imgElem.style.transform = layout.transform;
+							imgElem.style.webkitTransform = layout.transform;
+							imgElem.style.transformOrigin = "0 0";
+							imgElem.style.webkitTransformOrigin = "0 0";
+						} else {
+							imgElem.style.transform = "";
+							imgElem.style.webkitTransform = "";
+						}
+						delete imgElem._nextLutLayout;
+					}
+				}
+				resolve(); // 処理が終わったら解決
+			});
+
+			this.#worker.postMessage(
+				{
+					jobId: currentJobId,
+					srcBuffer: srcData.data.buffer,
+					mapGridXBuffer: mapGridX.buffer,
+					mapGridYBuffer: mapGridY.buffer,
+					ciw,
+					cih,
+					diw,
+					dih,
+					STEP,
+					gridW,
+					gridH,
+				},
+				[srcData.data.buffer, mapGridX.buffer, mapGridY.buffer]
+			);
+		});
 	}
 
-	// 以下基本staticな関数
-
-	// ビットイメージのspatial fragmentに応じて、img要素の処理を実装 2015.7.3実装,2015.7.8 改修
+	// 補助関数群
 	#setImgViewport(target, href_fragment) {
 		var imgBox = href_fragment.split(/\s*,\s*|\s/);
-
 		var iScaleX = target.width / Number(imgBox[2]);
 		var iScaleY = target.height / Number(imgBox[3]);
-
 		var clipX = parseFloat(target.style.left) - iScaleX * Number(imgBox[0]);
 		var clipY = parseFloat(target.style.top) - iScaleY * Number(imgBox[1]);
 		var clipWidth = target.naturalWidth * iScaleX;
@@ -629,35 +750,17 @@ class ImgRenderer {
 		target.height = clipHeight;
 		target.style.width = clipWidth + "px";
 		target.style.height = clipHeight + "px";
-		target.style.clip =
-			"rect(" +
-			Number(imgBox[1]) * iScaleY +
-			"px," +
-			(Number(imgBox[0]) + Number(imgBox[2])) * iScaleX +
-			"px," +
-			(Number(imgBox[1]) + Number(imgBox[3])) * iScaleY +
-			"px," +
-			Number(imgBox[0]) * iScaleX +
-			"px)";
+		target.style.clip = `rect(${Number(imgBox[1]) * iScaleY}px,${(Number(imgBox[0]) + Number(imgBox[2])) * iScaleX}px,${(Number(imgBox[1]) + Number(imgBox[3])) * iScaleY}px,${Number(imgBox[0]) * iScaleX}px)`;
 	}
 
 	#isHrefChanged(htmlSrc, svgHref) {
-		var ans = true;
-		if (htmlSrc == svgHref) {
-			return false;
-		}
-
+		if (htmlSrc == svgHref) return false;
 		if (htmlSrc.indexOf(svgHref) == 0) {
 			var difS = htmlSrc.substring(svgHref.length);
-			if (difS.indexOf("unixTime=") > 0 && difS.length < 24) {
-				// たぶん、unixTimeが追加されているだけだと考える
-				ans = false;
-			}
-		} else {
-			// case -1 , >0
-			// ans = true
+			// たぶん、unixTimeが追加されているだけだと考える  
+			if (difS.indexOf("unixTime=") > 0 && difS.length < 24) return false;
 		}
-		return ans;
+		return true;
 	}
 
 	// To be obsoluted
@@ -672,13 +775,6 @@ class ImgRenderer {
 			for (var i = 0; i < imgs.length; i++) {
 				if (imgs[i].dataset.pixelated) {
 					var parentDiv = imgs[i].parentNode;
-					console.log(
-						"should be pixelated img : ",
-						imgs[i].id,
-						"  style:",
-						imgs[i].style.top,
-						imgs[i].style.left,
-					);
 					imgs[i].style.visibility = "hidden";
 					var canvas = document.createElement("canvas");
 					canvas.dataset.pixelate4Edge = "true";
@@ -710,38 +806,27 @@ class ImgRenderer {
 		transform,
 		style,
 		areaHeight,
-		nonScaling,
+		nonScaling
 	) {
 		// この関数はメインクラスからImgRendererに移した2025/10/09
 		// 2014.7.22
-		var img = document.createElement("span"); // spanで良い？ divだと挙動がおかしくなるので・・
-		if (opacity) {
-			//		img.setAttribute("style" , "Filter: Alpha(Opacity=" + opacity * 100 + ");opacity:" + opacity + ";");
-			img.style.opacity = opacity;
-		}
-		if (style.fill) {
-			img.style.color = style.fill;
-		}
-		var fontS = 0;
-		if (style["font-size"] && nonScaling) {
-			fontS = Number(style["font-size"]);
-		} else if (nonScaling) {
-			fontS = 16; // default size but not set..?
-			// do nothing?
-		} else {
-			fontS = areaHeight;
-		}
+		var img = document.createElement("span");  // spanで良い？ divだと挙動がおかしくなるので・・
+		if (opacity) img.style.opacity = opacity;
+		if (style.fill) img.style.color = style.fill;
 
+		var fontS =
+			style["font-size"] && nonScaling
+				? Number(style["font-size"])
+				: nonScaling
+					? 16
+					: areaHeight;
 		const txtHeight = this.#getTextHeight(text, fontS);
 
 		img.style.fontSize = fontS + "px";
-
 		img.innerHTML = text;
 		img.style.left = x + cdx + "px";
-		img.style.top = y + cdy - txtHeight + "px"; // 2025/9/26 topに統一(filterで不具合が生じるため)
+		img.style.top = y + cdy - txtHeight + "px"; // 2025/9/26 topに統一(filterで不具合が生じるため)  
 		img.style.position = "absolute";
-		//	img.width = width;
-		//	img.height = height;
 		img.id = id;
 		img.setAttribute("title", "");
 		return img;
@@ -762,10 +847,7 @@ class ImgRenderer {
 	#getTextHeight(htmlContent, fontSize) {
 		const txtHeight = this.#getFontHeight(fontSize);
 		const brs = this.#countBr(htmlContent);
-
-		const finalHeight = txtHeight * (brs + 1);
-		// console.log("getTextHeight:",htmlContent,fontSize,finalHeight,this.#fontSizes);
-		return finalHeight;
+		return txtHeight * (brs + 1);
 	}
 
 	/**
@@ -776,7 +858,6 @@ class ImgRenderer {
 	#getFontHeight(fontSize) {
 		const sizeStr = String(fontSize); // キーを文字列化
 		let txtHeight = this.#fontSizes.height[sizeStr];
-
 		if (txtHeight === undefined || txtHeight === null) {
 			// 補間・外挿の計算中に sizeStr が 0 以外で txtHeight が 0 になる可能性は低いが、
 			// 念のため、0の場合は再計算を試みるロジックも組み込む場合はこの if 文を調整する
@@ -784,13 +865,11 @@ class ImgRenderer {
 			const currentLength = Object.keys(this.#fontSizes.height).length;
 			if (currentLength < this.#MAX_FONTSIZECACHE) {
 				const txtSize = this.#measureTextSize("TEXT", fontSize + "px");
-				//console.log({fontSize,txtSize});
 				txtHeight = txtSize.height;
 				this.#fontSizes.height[sizeStr] = txtHeight;
 			} else {
 				// サイズ上限を超えた場合、推定
 				txtHeight = this.#textSizeLinearInterpolate(fontSize);
-				// console.log("Calc by textSizeLinearInterpolate:",fontSize,"=>",txtHeight,);
 			}
 		}
 		return txtHeight;
@@ -809,7 +888,7 @@ class ImgRenderer {
 				Object.keys(this.#fontSizes.height).length
 		) {
 			this.#fontSizes.fsArray = Object.keys(this.#fontSizes.height)
-				.map((key) => parseFloat(key)) // キーを数値に変換
+				.map((key) => parseFloat(key))  // キーを数値に変換
 				.filter((key) => key !== 0) // 0:0 の初期値を除外するほうが安定しやすい
 				.sort((a, b) => a - b); // 昇順ソート
 		}
@@ -821,13 +900,12 @@ class ImgRenderer {
 			return refHeight * (size / refSize); // 比例計算で代替
 		}
 		// ソートされたサイズを基に、x1とx2を特定
-		let x1 = null; // size未満で最大の点
-		let x2 = null; // sizeより大きく最小の点
+		let x1 = null, // size未満で最大の点
+			x2 = null; // sizeより大きく最小の点
 		for (let i = 0; i < dataPoints.length; i++) {
 			const currentX = dataPoints[i];
-			if (currentX < size) {
-				x1 = currentX;
-			} else if (currentX > size) {
+			if (currentX < size) x1 = currentX;
+			else if (currentX > size) {
 				x2 = currentX;
 				break; // x2が見つかったら終了
 			}
@@ -838,31 +916,24 @@ class ImgRenderer {
 			// 補間 (Interpolation): x1 < size < x2 の場合
 			x_min = x1;
 			x_max = x2;
-			// console.log(`  - 補間対象: (${x_min}, ${this.#fontSizes.height[String(x_min)]}) と (${x_max}, ${this.#fontSizes.height[String(x_max)]})`,);
 		} else if (x1 === null && x2 !== null) {
 			// 外挿 (Extrapolation) - 最小値より小さい場合 (size < x_min)
 			// 最小の2点を使用
 			x_min = dataPoints[0];
 			x_max = dataPoints[1];
-			// console.log(`  - 外挿対象(下限): (${x_min}, ${this.#fontSizes.height[String(x_min)]}) と (${x_max}, ${this.#fontSizes.height[String(x_max)]})`,);
 		} else if (x1 !== null && x2 === null) {
 			// 外挿 (Extrapolation) - 最大値より大きい場合 (size > x_max)
 			// 最大の2点を使用
 			const len = dataPoints.length;
 			x_min = dataPoints[len - 2];
 			x_max = dataPoints[len - 1];
-			// console.log(`  - 外挿対象(上限): (${x_min}, ${this.#fontSizes.height[String(x_min)]}) と (${x_max}, ${this.#fontSizes.height[String(x_max)]})`,);
-		} else {
-			// x1=null, x2=null: 全てのデータが同じ値、またはデータが1点以下
-			// 上部の dataPoints.length < 2 で処理されるはずだが、念のため。
-			return 0;
-		}
+		} else return 0;
+
 		// y_min, y_max を取得
 		y_min = this.#fontSizes.height[String(x_min)];
 		y_max = this.#fontSizes.height[String(x_max)];
 		// 線形補間/外挿の計算
-		const result = y_min + (y_max - y_min) * ((size - x_min) / (x_max - x_min));
-		return result;
+		return y_min + (y_max - y_min) * ((size - x_min) / (x_max - x_min));
 	}
 
 	#measureTextSize(htmlContent, fontSize, fontFamily = "sans-serif") {
@@ -877,18 +948,11 @@ class ImgRenderer {
 
 		// DOMに追加
 		document.body.appendChild(tempElement);
-
 		// サイズを取得
 		const rect = tempElement.getBoundingClientRect();
-		const width = rect.width;
-		const height = rect.height;
-
 		// DOMから削除
 		document.body.removeChild(tempElement);
-
-		//console.log("measureTextSize:",htmlContent, fontSize, fontFamily);
-
-		return { width, height };
+		return { width: rect.width, height: rect.height };
 	}
 
 	#countBr(str) {
@@ -896,4 +960,5 @@ class ImgRenderer {
 		return matches ? matches.length : 0;
 	}
 }
+
 export { ImgRenderer };

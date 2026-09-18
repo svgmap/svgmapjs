@@ -189,6 +189,7 @@
 // 2024/08/06 : コンテナ差分ファイル指定機能：(#customLayers=customLayer0.json
 // 2026/04/02 : Rev17のリファクタリング時に任意図法描画サポートが外れてしまっていたものを復活
 // 2026/04/16 : S-LaWA (別オリジンのままsvgmapjsインスタンスと隔離されたLaWA)を実装
+// 2027/08/19 : CRS transformが関数のケースで、LUTベース座標変換を実装、S-LaWA対応と高速化
 //
 // Issues:
 // 2022/03/17 getVectorObjectsAtPointの作法が良くない
@@ -245,6 +246,7 @@ import { SvgMapCesiumWrapper } from "./3D_extension/SVGMapLv0.1_CesiumWrapper_r4
 // coreJsの部品群
 import { LayerSpecificWebAppHandler } from "./libs/LayerSpecificWebAppHandler.js";
 import { MatrixUtil, Mercator } from "./libs/TransformLib.js";
+import { CrsLutManager } from "./libs/CrsLutManager.js";
 import { ZoomPanManager } from "./libs/ZoomPanManager.js";
 import { UAtester } from "./libs/UAtester.js";
 import { GeometryCapture, SVGMapGISgeometry } from "./libs/GeometryCapture.js";
@@ -319,6 +321,7 @@ class SvgMap {
 	#imgRenderer;
 	#essentialUIs;
 	#resourceLoadingObserver;
+	#crsLutManager;
 
 	constructor() {
 		this.#mapViewerProps = new MapViewerProps();
@@ -360,6 +363,7 @@ class SvgMap {
 			this.#svgMapAuthoringTool,
 			this.#getLayerStatus,
 			this.#proxyManager,
+			this.#setupRootMapProperties.bind(this)
 		);
 		this.#svgMapLayerUI = new SvgMapLayerUI(
 			this,
@@ -462,6 +466,12 @@ class SvgMap {
 			this.#matUtil,
 			this.#hideAllTileImgs,
 			this.#getRootSvg2Canvas,
+		);
+		this.#crsLutManager = new CrsLutManager(
+			this.#mapViewerProps,
+			this.#svgImagesProps,
+			this.#essentialUIs,
+			this.#layerSpecificWebAppHandler
 		);
 
 		var rootSVGpath = this.#essentialUIs.initMapCanvas();
@@ -1020,31 +1030,28 @@ class SvgMap {
 
 	#prevRootViewBox = {}; // ワンステップ前のrootViewBoxが設定される。
 
-	#viewBoxChanged = function (docId) {
-		//  2020/6/8 修正 ただ、この関数、あまり筋が良いとは言えないので改修すべき・・
-		if (!docId) {
-			docId = "allMaps";
-		}
-		var ans;
+	// 2027/07/27 状態を変更しない判定メソッド ===
+	#isViewBoxChanged(docId) {
+		if (!docId) docId = "allMaps";
 		if (
 			!this.#prevRootViewBox[docId] ||
-			this.#prevRootViewBox[docId].width !=
-				this.#mapViewerProps.rootViewBox.width ||
-			this.#prevRootViewBox[docId].height !=
-				this.#mapViewerProps.rootViewBox.height
+			this.#prevRootViewBox[docId].width !== this.#mapViewerProps.rootViewBox.width ||
+			this.#prevRootViewBox[docId].height !== this.#mapViewerProps.rootViewBox.height
 		) {
-			ans = "zoom";
+			return "zoom";
 		} else if (
-			this.#prevRootViewBox[docId].x != this.#mapViewerProps.rootViewBox.x ||
-			this.#prevRootViewBox[docId].y != this.#mapViewerProps.rootViewBox.y
+			this.#prevRootViewBox[docId].x !== this.#mapViewerProps.rootViewBox.x ||
+			this.#prevRootViewBox[docId].y !== this.#mapViewerProps.rootViewBox.y
 		) {
-			ans = "scroll";
+			return "scroll";
 		} else {
-			ans = false;
+			return false;
 		}
-		if (this.#prevRootViewBox[docId]) {
-			//		console.log( "comp:" , prevRootViewBox[docId].width != rootViewBox.width , prevRootViewBox[docId].height != rootViewBox.height);
-		}
+	}
+
+	#viewBoxChanged = function (docId) {
+		if (!docId) docId = "allMaps";
+		var ans = this.#isViewBoxChanged(docId);
 		this.#prevRootViewBox[docId] = {
 			x: this.#mapViewerProps.rootViewBox.x,
 			y: this.#mapViewerProps.rootViewBox.y,
@@ -2462,6 +2469,14 @@ class SvgMap {
 			console.log("Is refreshScreen retry queue:: SKIP this Call");
 			return;
 		}
+		
+		// --- LUT解決の安全弁ゲート ---
+		// viewBoxの変更やCRSの解決状況をシグネチャで検知し、LUT更新が必要か判定
+		if (this.#crsLutManager.isLutUpdateNeeded()) {
+			// 非同期でLUTを更新し、完了後に再入する
+			this.#updateCrsAndRefresh(noRetry, parentCaller);
+			return; // 同期描画サイクルはここで一旦中断
+		}
 
 		var rsCaller;
 		/**
@@ -2470,7 +2485,7 @@ class SvgMap {
 			this.#resourceLoadingObserver.getLoadCompleted() ? "" : " : now loading"
 		);
 		**/
-		if (this.#resourceLoadingObserver.getLoadCompleted() == false) {
+		if (this.#resourceLoadingObserver.getLoadCompleted() == false ) {
 			// loadCompletedしてないときに実行すると破綻するのを回避 2019/11/14
 			if (!noRetry) {
 				//				console.log( "NOW LOADING:: delay and retry refreshScreen" );
@@ -2489,9 +2504,31 @@ class SvgMap {
 		} else {
 			this.#retryingRefreshScreen = false;
 		}
+		
+		// 描画実行
 		this.#resourceLoadingObserver.setLoadCompleted(false); // 2016.11.24 debug この関数が呼ばれるときは少なくとも(描画に変化がなくとも) loadCompletedをfalseにしてスタートさせないと、あらゆるケースでの描画完了を検知できない
 		this.#dynamicLoad("root", this.#mapViewerProps.mapCanvas); // 以前はrefreshScreenのためにこの関数を生で呼んでいたが、上のいろんな処理が加わったので、それは廃止している（はず）
 	}.bind(this);
+
+	/**
+	 * LUTの更新を待機し、完了後に同期描画フローへ復帰する非同期ヘルパー
+	 */
+	async #updateCrsAndRefresh(noRetry, parentCaller) {
+		this.#resourceLoadingObserver.setLoadCompleted(false);
+		this.#retryingRefreshScreen = true; // LUT構築中は他の再描画をブロック
+		
+		try {
+			await this.#crsLutManager.updateAllLuts();
+		} catch (e) {
+			console.error("[RS-HELPER] LUT Update ERROR:", e);
+		} finally {
+			this.#resourceLoadingObserver.setLoadCompleted(true);
+			this.#retryingRefreshScreen = false;
+
+			// LUT更新が完了したので、再度refreshScreenをキックして同期フローに流す
+			this.#refreshScreen(noRetry, parentCaller, false); 
+		}
+	}
 
 	#setLayerUI;
 	#updateLayerListUIint;

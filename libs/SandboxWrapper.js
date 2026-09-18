@@ -125,8 +125,19 @@ export class SandboxWrapper {
 			return;
 		}
 
-		const targetOrigin = sLaWAurl.origin;
+		let targetOrigin = sLaWAurl.origin;
 		// console.log("sLaWAurl:", sLaWAurl, " targetOrigin:", targetOrigin);
+
+		// 同一オリジンでありながら、sandbox属性によってOpaque Origin化が強制されている場合の特別処理
+		if (targetOrigin === window.location.origin) {
+			const sandboxAttr = this.sandboxFrame.getAttribute("sandbox");
+			// sandbox属性が付与されており、かつ 'allow-same-origin' が含まれていない場合、
+			// iframe内は Opaque Origin ("null") となるため、ホストからの送信先を "*" にフォールバックする
+			if (sandboxAttr !== null && !sandboxAttr.includes("allow-same-origin")) {
+				targetOrigin = "*";
+				console.info(`[S-LaWA ${this.layerID}] Same Origin URL is forced to Opaque Origin. Falling back targetOrigin to "*".`);
+			}
+		}
 
 		// 通信チャネルの確立
 		this.#establishChannel(targetOrigin, sLaWASVGurl);
@@ -179,9 +190,17 @@ export class SandboxWrapper {
 							// ダミーDOMを本物に差し替え
 							this.#replaceSvgContent(this.svgImage, msg.svgImageXml);
 
-							// キャッシュを破棄して再評価させる
-							this.svgImageProps.CRS = { unresolved: true };
+							// transformFunctionName を保持し、特殊引数を外す
+							const oldCrs = this.svgImageProps.CRS;
+							const tfName = oldCrs ? oldCrs.transformFunctionName : null;
+							this.svgImageProps.CRS = { 
+								unresolved: true, 
+								transformFunctionName: tfName 
+							};
 							this.svgImageProps.metaSchema = ""; // スキーマも再読み込みさせる
+							
+							// S-LaWAの通信・DOM準備が完了したという状態変化を記録する
+							this.svgImageProps.slawaReady = true;
 
 							// コアに再描画（再パース）させる
 							this.svgMap.refreshScreen();
@@ -240,6 +259,35 @@ export class SandboxWrapper {
 		});
 	}
 
+	// 2026/7/22 S-LaWAへのLUTデータ要求メソッド ===
+	async requestLutData(sourceBox, sourceBoxType, grid = 16) {
+		if (!this.messaging) {
+			console.warn(`[S-LaWA ${this.layerID}] messaging is not ready.`);
+			return null;
+		}
+
+		try {
+			// 親が保持している最新の CRS オブジェクトを取得してメッセージに同封
+			const parentCrs = this.svgImageProps ? this.svgImageProps.CRS : null;
+			// S-LaWA側でLUT計算をしてArrayBufferをtransferrablesで受け取る
+			const response = await this.messaging.callRemoteFunc("requestLutData", {
+				sourceBox,
+				sourceBoxType,
+				grid,
+				parentCrs // メッセージに同封して送信
+			});
+
+			if (response && response.buffer) {
+				// 受信した ArrayBuffer をLUTとして返す
+				return response.buffer;
+			}
+			return null;
+		} catch (e) {
+			console.error(`[S-LaWA ${this.layerID}] LUT request failed:`, e);
+			return null;
+		}
+	}
+	
 	// -----------------------------------------------------------------
 	// 内部処理メソッド群（旧コードからの移植）
 	// -----------------------------------------------------------------
@@ -291,6 +339,11 @@ export class SandboxWrapper {
 			layerID: this.layerID,
 			svgImageXml,
 		});
+		
+		this.svgImageProps.slawaReady = true;
+		
+		// Level 1の準備完了時も、LUT待機ルートをキックする
+		this.svgMap.refreshScreen();
 	}
 
 	// 静的DOMの既存要素すべてに対して再帰的に自動付番を行う（Lv1用）  
