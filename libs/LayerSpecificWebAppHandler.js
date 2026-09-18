@@ -96,7 +96,7 @@ class LayerSpecificWebAppHandler {
 		svgMapAuthoringToolObj,
 		getLayerStatusFunc,
 		proxyManagerObj,
-		setupRootMapPropertiesFunc,
+		setupRootMapPropertiesFunc
 	) {
 		this.#svgMap = svgMapObj;
 		this.#proxyManager = proxyManagerObj;
@@ -120,7 +120,7 @@ class LayerSpecificWebAppHandler {
 			"construct layerUI: svgMapGIStool:",
 			this.#svgMapGIStool,
 			" svgMapAuthoringTool:",
-			this.#svgMapAuthoringTool,
+			this.#svgMapAuthoringTool
 		);
 		window.initSvgMapWebAppLayer = this.initSvgMapWebAppLayer; // 2024/07/23
 	}
@@ -149,7 +149,7 @@ class LayerSpecificWebAppHandler {
 						layerProps[layerID].svgImageProps,
 						layerProps[layerID].id,
 						true,
-						cbf,
+						cbf
 					);
 				}
 			} else {
@@ -291,7 +291,7 @@ class LayerSpecificWebAppHandler {
 			// 要素をpreDefinedTargetUiElementで明示してあった場合は、それで初期化する(assignLayerSpecificUiElement()があらかじめ呼ばれている)
 			console.log(
 				"Found preDefinedTargetUiElement! : ",
-				this.#preDefinedTargetUi,
+				this.#preDefinedTargetUi
 			);
 			this.#layerSpecificUI = this.#preDefinedTargetUi.element;
 			if (this.#preDefinedTargetUi.isInline) {
@@ -313,7 +313,7 @@ class LayerSpecificWebAppHandler {
 
 			this.#layerSpecificUI.setAttribute(
 				"style",
-				"right :10px; top: 40px; width:400px;height:400px; position: absolute; background-color: white;opacity:0.8;display:none;zIndex:20;",
+				"right :10px; top: 40px; width:400px;height:400px; position: absolute; background-color: white;opacity:0.8;display:none;zIndex:20;"
 			);
 
 			document.body.appendChild(this.#layerSpecificUI);
@@ -359,7 +359,7 @@ class LayerSpecificWebAppHandler {
 				function (event) {
 					this.#layerSpecificUIhide(event);
 				}.bind(this),
-				false,
+				false
 			);
 		}
 
@@ -441,7 +441,7 @@ class LayerSpecificWebAppHandler {
 		layerId,
 		controllerURL,
 		hiddenOnLaunch,
-		callBackFunction,
+		callBackFunction
 	) {
 		// 2024/2/5全部evebtに入れている汚い実装なので、整理した
 		var lsuiDoc = this.#layerSpecificUI.ownerDocument;
@@ -506,7 +506,7 @@ class LayerSpecificWebAppHandler {
 			// hiddenOnLaunchでない場合で、ターゲットとは別の表示中のLayerUIがあればそれを隠す
 			this.#dispatchCutomIframeEvent(
 				LayerSpecificWebAppHandler.#hideFrame,
-				visibleIframeId,
+				visibleIframeId
 			);
 			lsuiDoc.getElementById(visibleIframeId).style.display = "none";
 		}
@@ -520,7 +520,7 @@ class LayerSpecificWebAppHandler {
 				this.#imgResize(
 					trgIframe,
 					lsuiDoc.getElementById("layerSpecificUI"),
-					reqSize,
+					reqSize
 				);
 			} else {
 				trgIframe.style.display = "block";
@@ -528,7 +528,7 @@ class LayerSpecificWebAppHandler {
 			}
 			this.#dispatchCutomIframeEvent(
 				LayerSpecificWebAppHandler.#appearFrame,
-				targetIframeId,
+				targetIframeId
 			);
 		} else {
 			//		console.log("create new iframe");
@@ -545,21 +545,21 @@ class LayerSpecificWebAppHandler {
 					function (event) {
 						UtilFuncs.MouseWheelListenerFunc(event);
 					}.bind(this),
-					false,
+					false
 				);
 				resLayerSpecificUI.addEventListener(
 					"mousewheel",
 					function (event) {
 						UtilFuncs.MouseWheelListenerFunc(event);
 					}.bind(this),
-					false,
+					false
 				);
 				resLayerSpecificUI.addEventListener(
 					"DOMMouseScroll",
 					function (event) {
 						UtilFuncs.MouseWheelListenerFunc(event);
 					}.bind(this),
-					false,
+					false
 				);
 				this.#lsUIbdy.appendChild(img);
 				//				document.getElementById("layerSpecificUIbody").appendChild(img);
@@ -570,14 +570,14 @@ class LayerSpecificWebAppHandler {
 					100,
 					img,
 					resLayerSpecificUI,
-					reqSize,
+					reqSize
 				);
 				setTimeout(
 					function (targetElem, isRetry) {
 						this.#setLsUIbtnOffset(targetElem, isRetry);
 					}.bind(this),
 					100,
-					img,
+					img
 				);
 			} else {
 				this.#initIframe(
@@ -585,7 +585,7 @@ class LayerSpecificWebAppHandler {
 					controllerURL,
 					reqSize,
 					hiddenOnLaunch,
-					callBackFunction,
+					callBackFunction
 				);
 			}
 		}
@@ -683,7 +683,7 @@ class LayerSpecificWebAppHandler {
 			iframeParam.lid,
 			iframeParam.reqSize,
 			iframeParam.controllerURL,
-			iframeParam.cbf,
+			iframeParam.cbf
 		);
 		delete this.#iframeOnLoadProcessQueue[iframeParam.lid];
 	}.bind(this);
@@ -727,7 +727,7 @@ class LayerSpecificWebAppHandler {
 			const adapter = new IframeAdapter4SLaWA(
 				this.#svgMap,
 				lid,
-				this.#layerSpecificUiDefaultStyle,
+				this.#layerSpecificUiDefaultStyle
 			);
 			iframe = adapter.create(controllerURL); // 内部で SandboxWrapper も起動する
 			this.#slawaAdapters.set(lid, adapter);
@@ -766,7 +766,7 @@ class LayerSpecificWebAppHandler {
 				this.#iframeOnLoadProcess(iframe, lid, reqSize, controllerURL, cbf);
 				delete this.#iframeOnLoadProcessQueue[lid];
 			}.bind(this),
-			false,
+			false
 		);
 
 		if (!useSLaWA) {
@@ -802,7 +802,7 @@ class LayerSpecificWebAppHandler {
 				if (legendImage) {
 					// 画像のケース
 					sourceDoc = this.#getEmptyHtmlSrc(
-						'<img src="' + controllerURL + '">',
+						'<img src="' + controllerURL + '">'
 					);
 				} else if (this.#svgMap.getSvgImagesProps()[lid].controller) {
 					// controller-srcに直接ソースが書かれているケース
@@ -877,7 +877,7 @@ class LayerSpecificWebAppHandler {
 		**/
 		this.#dispatchCutomIframeEvent(
 			LayerSpecificWebAppHandler.#openFrame,
-			iframeId,
+			iframeId
 		);
 		/** showLayerSpecificUIに移動してデバッグしたつもり
 		if (this.#layerSpecificUiMaxHeight == 0) {
@@ -901,7 +901,7 @@ class LayerSpecificWebAppHandler {
 			iframe.contentWindow.svgMapAuthoringTool =
 				LaWAauthoringToolsPatch.getLayerSpecificAuthoringTools(
 					this.#svgMapAuthoringTool,
-					lid,
+					lid
 				); // 2026/01/29 オーサリングツールバグパッチ
 		}
 		if (typeof svgMapPWA != "undefined") {
@@ -922,17 +922,17 @@ class LayerSpecificWebAppHandler {
 			document.removeEventListener(
 				"zoomPanMap",
 				this.#transferCustomEvent2iframe[lid],
-				false,
+				false
 			);
 			document.removeEventListener(
 				"screenRefreshed",
 				this.#transferCustomEvent2iframe[lid],
-				false,
+				false
 			);
 			document.removeEventListener(
 				"zoomPanMapCompleted",
 				this.#transferCustomEvent2iframe[lid],
-				false,
+				false
 			);
 		} else {
 			this.#transferCustomEvent2iframe[lid] =
@@ -969,19 +969,19 @@ class LayerSpecificWebAppHandler {
 		document.addEventListener(
 			"zoomPanMap",
 			this.#transferCustomEvent2iframe[lid],
-			false,
+			false
 		);
 		document.addEventListener(
 			"screenRefreshed",
 			this.#transferCustomEvent2iframe[lid],
-			false,
+			false
 		);
 		document.addEventListener(
 			"zoomPanMapCompleted",
 			this.#transferCustomEvent2iframe[lid],
-			false,
+			false
 		);
-		
+
 		this.#resolveDeferredCrs(lid, iframe.contentWindow);
 
 		setTimeout(
@@ -990,7 +990,7 @@ class LayerSpecificWebAppHandler {
 			}.bind(this),
 			1000,
 			iframe,
-			reqSize,
+			reqSize
 		);
 		if (cbf) {
 			cbf(iframe.contentWindow);
@@ -1186,12 +1186,12 @@ class LayerSpecificWebAppHandler {
 			controllerWindow.preRenderFunction =
 				controllerWindow.svgImageProps.script.preRenderFunction;
 		}
-		
+
 		// *2RS : スクリプトの評価完了（CRS関数の準備完了）をフックし、保留された初期化を回収する　2026/04/27
 		this.#resolveDeferredCrs(controllerWindow.layerID, controllerWindow);
-		
+
 		controllerWindow.svgImageProps.script.onloadFunction(
-			this.#getLayerStatus(controllerWindow.layerID),
+			this.#getLayerStatus(controllerWindow.layerID)
 		);
 	}
 
@@ -1202,7 +1202,10 @@ class LayerSpecificWebAppHandler {
 			let resolved = false;
 
 			// 1. svgScript経由の関数の解決
-			if (props.script && typeof props.script.transformFunction === 'function') {
+			if (
+				props.script &&
+				typeof props.script.transformFunction === "function"
+			) {
 				const genericCRS = props.script.transformFunction();
 				if (genericCRS) {
 					genericCRS.isSVG2 = props.CRS.isSVG2;
@@ -1216,7 +1219,7 @@ class LayerSpecificWebAppHandler {
 				if (tfName.startsWith("controller.")) {
 					tfName = tfName.substring(11);
 				}
-				if (typeof controllerWindow[tfName] === 'function') {
+				if (typeof controllerWindow[tfName] === "function") {
 					const genericCRS = controllerWindow[tfName]();
 					if (genericCRS) {
 						genericCRS.isSVG2 = props.CRS.isSVG2;
@@ -1229,11 +1232,14 @@ class LayerSpecificWebAppHandler {
 			if (resolved) {
 				//console.log(`[LayerSpecificWebAppHandler] CRS resolved for layer ${layerID}. Triggering refreshScreen.`);
 				// ★Rootの場合は保持したメソッドを呼び出してシステム全体の基準を再計算させる
-				if (layerID === "root" && typeof this.#setupRootMapProperties === 'function') {
+				if (
+					layerID === "root" &&
+					typeof this.#setupRootMapProperties === "function"
+				) {
 					//console.log("[LayerSpecificWebAppHandler] Re-setup root map properties.");
 					this.#setupRootMapProperties();
 				}
-				
+
 				this.#svgMap.refreshScreen(); // 解決後、LUT生成ゲートへ向かわせる
 			}
 		}
@@ -1331,7 +1337,7 @@ class LayerSpecificWebAppHandler {
 			--sip[layerId].xhrLoading;
 		} else {
 			console.error(
-				"svgImagesProps[" + layerId + "].xhrLoading flag is inconsistent.",
+				"svgImagesProps[" + layerId + "].xhrLoading flag is inconsistent."
 			);
 		}
 		//console.log("releaseLoadingFlag: id:",layerId,"  count:",sip[layerId].xhrLoading);
@@ -1359,7 +1365,7 @@ class LayerSpecificWebAppHandler {
 				function () {
 					this.#fireXHRCevent();
 				}.bind(this),
-				LayerSpecificWebAppHandler.#totalLoadCompletedGuardTime,
+				LayerSpecificWebAppHandler.#totalLoadCompletedGuardTime
 			);
 		} else {
 			// console.log("reject toFireXHRCevent");
@@ -1412,7 +1418,7 @@ class LayerSpecificWebAppHandler {
 			// この場合も、極力<head>の最初に入れる形にする
 			sourceDoc = sourceDoc.replace(
 				/<html[^>]*>/,
-				"$&" + `<head>${baseHtml}</head>`,
+				"$&" + `<head>${baseHtml}</head>`
 			);
 		}
 
@@ -1476,7 +1482,7 @@ class LayerSpecificWebAppHandler {
 				}.bind(this),
 				1000,
 				targetElem,
-				true,
+				true
 			);
 		}
 	}
@@ -1582,7 +1588,7 @@ class LayerSpecificWebAppHandler {
 
 		this.#dispatchCutomIframeEvent(
 			LayerSpecificWebAppHandler.#hideFrame,
-			visibleIframeId,
+			visibleIframeId
 		);
 		lsuiDoc.getElementById(visibleIframeId).style.display = "none";
 
@@ -1613,22 +1619,22 @@ class LayerSpecificWebAppHandler {
 			document.removeEventListener(
 				"zoomPanMap",
 				this.#transferCustomEvent2iframe[layerId],
-				false,
+				false
 			);
 			document.removeEventListener(
 				"screenRefreshed",
 				this.#transferCustomEvent2iframe[layerId],
-				false,
+				false
 			);
 			document.removeEventListener(
 				"zoomPanMapCompleted",
 				this.#transferCustomEvent2iframe[layerId],
-				false,
+				false
 			);
 			delete this.#transferCustomEvent2iframe[layerId];
 			this.#dispatchCutomIframeEvent(
 				LayerSpecificWebAppHandler.#closeFrame,
-				targetIframeId,
+				targetIframeId
 			);
 			this.#globalMessageDisplay.clearGlobalMessage(layerId);
 			setTimeout(function () {
@@ -1690,21 +1696,21 @@ class LayerSpecificWebAppHandler {
 			function (event) {
 				this.#unloadedLayersUIupdate(event);
 			}.bind(this),
-			false,
+			false
 		); // 2020/2/13
 		addEventListener(
 			"zoomPanMap",
 			function (event) {
 				this.#zpm_checkLoadingFlag(event);
 			}.bind(this),
-			false,
+			false
 		); // 2021/6/21
 		addEventListener(
 			"screenRefreshed",
 			function (event) {
 				this.#unloadedLayersUIupdate(event);
 			}.bind(this),
-			false,
+			false
 		); // ^
 		this.#checkLayerListAndRegistLayerUI(); // 2017.9.8 この関数の先にあるcheckControllerで#loadTiming=layerLoad|uiAppear(default) を起動時処理する
 	}
@@ -1745,14 +1751,14 @@ class LayerSpecificWebAppHandler {
 			path,
 			id,
 			parentElem,
-			parentSvgDocId,
+			parentSvgDocId
 		);
 	}
 
 	// 【S-LaWA】 LUTデータRPC要求をIframeAdapter4SLaWAに委譲する
 	async requestLutDataForLayer(docId, sourceBox, sourceBoxType, grid = 16) {
 		const adapter = this.#slawaAdapters.get(docId);
-		if (!adapter) return null; 
+		if (!adapter) return null;
 		return adapter.requestLutData(sourceBox, sourceBoxType, grid);
 	}
 

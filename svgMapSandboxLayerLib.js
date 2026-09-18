@@ -90,12 +90,12 @@ function initSandboxLayer() {
 				callCustomShowPoiPropertyFunc(msg);
 			},
 			// 2027/7/22  LUTデータ要求用RPC
-			requestLutData: async function(msg) {
+			requestLutData: async function (msg) {
 				const { sourceBox, sourceBoxType, grid, parentCrs } = msg;
-				
+
 				// CRSオブジェクトの取得 (S-LaWAコンテキストの変数を使用)
-				let crsObj = window.svgImageProps.CRS; 
-				
+				let crsObj = window.svgImageProps.CRS;
+
 				// 親から届いた parentCrs を使って、手元の crsObj の関数名と変換関数（順変換・逆変換）を補完
 				if (parentCrs && parentCrs.transformFunctionName) {
 					if (!crsObj) {
@@ -103,7 +103,7 @@ function initSandboxLayer() {
 						window.svgImageProps.CRS = crsObj;
 					}
 					crsObj.transformFunctionName = parentCrs.transformFunctionName;
-					
+
 					const tfName = crsObj.transformFunctionName;
 					if (typeof window[tfName] === "function") {
 						const crsResult = window[tfName](); // 関数を実行して {transform, inverse} を取得
@@ -114,16 +114,21 @@ function initSandboxLayer() {
 						}
 					}
 				}
-				
+
 				// TransformLib の共通メソッドで生成
-				const f32Lut = LUTGenerator.generateFloat32Array(crsObj, sourceBox, sourceBoxType, grid);
+				const f32Lut = LUTGenerator.generateFloat32Array(
+					crsObj,
+					sourceBox,
+					sourceBoxType,
+					grid
+				);
 				if (!f32Lut) return null;
 				// InterWindowMessaging の拡張仕様に従い、transferablesを返却
 				return {
 					data: { buffer: f32Lut.buffer },
-					transferables: [f32Lut.buffer]
+					transferables: [f32Lut.buffer],
 				};
-			}
+			},
 		},
 		window.parent,
 		"negotiation" //2025/09/02 セキュリティ改善
@@ -160,7 +165,8 @@ async function readyInitialization() {
 
 function assignSlawaIds(node) {
 	if (!node) return;
-	if (node.nodeType === 1) { // Node.ELEMENT_NODE
+	if (node.nodeType === 1) {
+		// Node.ELEMENT_NODE
 		if (!node.getAttribute(CUSTOM_ID_ATTR)) {
 			node.setAttribute(CUSTOM_ID_ATTR, `slawa-id-${nextId++}`);
 		}
@@ -197,20 +203,23 @@ function setSvgImageProps(receivedPropsJSONtext) {
 		if (key == "hash") {
 			window.svgImageProps._int_hashVal = receivedProps[key];
 		} else if (key === "CRS") {
-			if (window.svgImageProps.CRS && typeof window.svgImageProps.CRS.transform === "function") {
-				continue; 
+			if (
+				window.svgImageProps.CRS &&
+				typeof window.svgImageProps.CRS.transform === "function"
+			) {
+				continue;
 			}
 			window.svgImageProps[key] = receivedProps[key];
 		} else {
 			window.svgImageProps[key] = receivedProps[key]; // あ、これhashをセットするとセッターが動いてえらいことにならない？
 		}
 	}
-	
+
 	// コアから受け取った関数名を使って、S-LaWA自身のwindow上でCRSを解決する
 	const crs = window.svgImageProps.CRS;
 	if (crs && crs.unresolved && crs.transformFunctionName) {
-		const tfName = crs.transformFunctionName.startsWith("controller.") 
-			? crs.transformFunctionName.substring(11) 
+		const tfName = crs.transformFunctionName.startsWith("controller.")
+			? crs.transformFunctionName.substring(11)
 			: crs.transformFunctionName;
 
 		if (typeof window[tfName] === "function") {
@@ -610,8 +619,8 @@ async function loadSlawaConfig() {
 
 	try {
 		// すべてのフェッチを同時に開始。エラー時はnullを返してPromise.allが全体でクラッシュするのを防ぐ
-		const fetchPromises = urlsToFetch.map(url => 
-			fetch(url).catch(err => null)
+		const fetchPromises = urlsToFetch.map((url) =>
+			fetch(url).catch((err) => null)
 		);
 
 		// 並列で待機
@@ -622,7 +631,7 @@ async function loadSlawaConfig() {
 		// 優先順位 1: ディレクトリ相対パス (responses[0])
 		if (responses[0] && responses[0].ok) {
 			targetResponse = responses[0];
-		} 
+		}
 		// 優先順位 2: オリジンルートパス (responses[1])
 		else if (responses.length > 1 && responses[1] && responses[1].ok) {
 			targetResponse = responses[1];
@@ -631,25 +640,36 @@ async function loadSlawaConfig() {
 		// 取得成功時のみテキストとして読み取り
 		if (targetResponse) {
 			const text = await targetResponse.text();
-			
+
 			// 完全に空(空白のみ含む)の場合は、明示的に素通し(null)として適用
 			if (text.trim() === "") {
 				window.svgMap.setCORSproxy(null, false);
-				console.log("[S-LaWA] Config applied from:", targetResponse.url, "(bypass proxy / empty file)");
+				console.log(
+					"[S-LaWA] Config applied from:",
+					targetResponse.url,
+					"(bypass proxy / empty file)"
+				);
 			} else {
 				const config = JSON.parse(text);
-				
+
 				// フラットなキー名で取得
 				const pPath = config.proxyPath !== undefined ? config.proxyPath : null;
 				const pEncodeUri = !!config.proxyEncodeUri; // proxyEncodeUri一択
-				
+
 				window.svgMap.setCORSproxy(pPath, pEncodeUri);
-				console.log("[S-LaWA] Config applied from:", targetResponse.url, pPath ? `(proxy path: ${pPath})` : "(bypass proxy)");
+				console.log(
+					"[S-LaWA] Config applied from:",
+					targetResponse.url,
+					pPath ? `(proxy path: ${pPath})` : "(bypass proxy)"
+				);
 			}
 		}
 	} catch (e) {
 		// JSONパースエラー等時のフェイルセーフ
-		console.warn("[S-LaWA] Failed to apply config, continuing with defaults.", e);
+		console.warn(
+			"[S-LaWA] Failed to apply config, continuing with defaults.",
+			e
+		);
 	}
 }
 

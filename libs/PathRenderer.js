@@ -71,7 +71,7 @@ class PathRenderer {
 		clickable,
 		category,
 		cStyle,
-		GISgeometry,
+		GISgeometry
 	) {
 		var cx = Number(pathNode.getAttribute("cx"));
 		var cy = Number(pathNode.getAttribute("cy"));
@@ -120,7 +120,7 @@ class PathRenderer {
 			clickable,
 			repld,
 			cStyle,
-			GISgeometry,
+			GISgeometry
 		);
 		if (cStyle.nonScalingOffset) {
 			// non scaling circle support 2018.3.6
@@ -140,7 +140,7 @@ class PathRenderer {
 		child2canvas,
 		clickable,
 		cStyle,
-		GISgeometry,
+		GISgeometry
 	) {
 		var rx = Number(pathNode.getAttribute("x"));
 		var ry = Number(pathNode.getAttribute("y"));
@@ -180,7 +180,7 @@ class PathRenderer {
 			clickable,
 			repld,
 			cStyle,
-			GISgeometry,
+			GISgeometry
 		);
 		return ret;
 	}
@@ -192,7 +192,7 @@ class PathRenderer {
 		clickable,
 		nodeType,
 		cStyle,
-		GISgeometry,
+		GISgeometry
 	) {
 		var pp = pathNode.getAttribute("points");
 		if (pp) {
@@ -220,7 +220,7 @@ class PathRenderer {
 					clickable,
 					repld,
 					cStyle,
-					GISgeometry,
+					GISgeometry
 				);
 				return ret;
 			}
@@ -243,7 +243,7 @@ class PathRenderer {
 		clickable,
 		repld,
 		cStyle,
-		GISgeometry,
+		GISgeometry
 	) {
 		var vectorEffectOffset = cStyle.nonScalingOffset;
 		if (vectorEffectOffset) {
@@ -343,7 +343,7 @@ class PathRenderer {
 						sy,
 						child2canvas,
 						false,
-						vectorEffectOffset,
+						vectorEffectOffset
 					);
 					mx = cp.x;
 					my = cp.y;
@@ -366,7 +366,7 @@ class PathRenderer {
 						sy,
 						child2canvas,
 						false,
-						vectorEffectOffset,
+						vectorEffectOffset
 					);
 					mx = cp.x;
 					my = cp.y;
@@ -388,7 +388,7 @@ class PathRenderer {
 						sy,
 						child2canvas,
 						false,
-						vectorEffectOffset,
+						vectorEffectOffset
 					);
 					//			hitPoint = getHitPoint(hitPoint, cp);
 					context.lineTo(cp.x, cp.y);
@@ -406,7 +406,7 @@ class PathRenderer {
 						sy,
 						child2canvas,
 						false,
-						vectorEffectOffset,
+						vectorEffectOffset
 					);
 					//			hitPoint = getHitPoint(hitPoint, cp);
 					context.lineTo(cp.x, cp.y);
@@ -468,7 +468,7 @@ class PathRenderer {
 								Math.pow(rx, 2) * Math.pow(currp.y, 2) -
 								Math.pow(ry, 2) * Math.pow(currp.x, 2)) /
 								(Math.pow(rx, 2) * Math.pow(currp.y, 2) +
-									Math.pow(ry, 2) * Math.pow(currp.x, 2)),
+									Math.pow(ry, 2) * Math.pow(currp.x, 2))
 						);
 					if (isNaN(s)) s = 0;
 					var cpp = {
@@ -526,7 +526,7 @@ class PathRenderer {
 						centp.y,
 						child2canvas,
 						false,
-						vectorEffectOffset,
+						vectorEffectOffset
 					); // こっちはvectoreffect効いている
 					var tsc;
 					if (vectorEffectOffset) {
@@ -555,7 +555,7 @@ class PathRenderer {
 						sy,
 						child2canvas,
 						false,
-						vectorEffectOffset,
+						vectorEffectOffset
 					);
 					break;
 				case "Z":
@@ -617,11 +617,11 @@ class PathRenderer {
 			if (
 				context.isPointInPath(
 					this.#mapTicker.pathHitTester.x,
-					this.#mapTicker.pathHitTester.y,
+					this.#mapTicker.pathHitTester.y
 				) ||
 				context.isPointInStroke(
 					this.#mapTicker.pathHitTester.x,
-					this.#mapTicker.pathHitTester.y,
+					this.#mapTicker.pathHitTester.y
 				)
 			) {
 				// テストしヒットしてたら目立たせる isPointInStrokeも実施してみる
@@ -674,7 +674,7 @@ class PathRenderer {
 				if (
 					context.isPointInStroke(
 						this.#mapTicker.pathHitTester.x,
-						this.#mapTicker.pathHitTester.y,
+						this.#mapTicker.pathHitTester.y
 					)
 				) {
 					// テストしヒットしてたら目立たせる isPointInStrokeに変更し線上なら」どこでもヒット可能にしてみる
@@ -717,7 +717,7 @@ class PathRenderer {
 		}
 
 		var vabs = Math.sqrt(
-			(endX - prevX) * (endX - prevX) + (endY - prevY) * (endY - prevY),
+			(endX - prevX) * (endX - prevX) + (endY - prevY) * (endY - prevY)
 		);
 		if (vabs) {
 			endCos = (endX - prevX) / vabs;

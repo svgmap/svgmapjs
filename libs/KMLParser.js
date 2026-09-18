@@ -35,7 +35,7 @@ class KMLParser {
 		// 補足: オリジナルの querySelectorAll("Folder") を再帰内で使うと、
 		// 孫フォルダまで重複して拾うリスクがあるため、直下の子要素(children)だけを安全に見ていきます。
 		const folders = Array.from(node.children || []).filter(
-			(n) => n.tagName === "Folder" || n.tagName === "Document",
+			(n) => n.tagName === "Folder" || n.tagName === "Document"
 		);
 
 		if (folders.length > 0) {

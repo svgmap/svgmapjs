@@ -68,7 +68,7 @@ class SvgStyleEditor {
 			});
 
 			input.addEventListener("input", () =>
-				targetSvgElement.setAttribute(attr, input.value),
+				targetSvgElement.setAttribute(attr, input.value)
 			);
 
 			label.appendChild(select);
@@ -89,8 +89,8 @@ class SvgStyleEditor {
 			input.addEventListener("input", () =>
 				targetSvgElement.setAttribute(
 					attr,
-					input.value + (type === "number" ? "px" : ""),
-				),
+					input.value + (type === "number" ? "px" : "")
+				)
 			);
 
 			label.appendChild(input);
@@ -113,7 +113,7 @@ class SvgStyleEditor {
 			createColorInput(
 				`${isTextElement ? "Text" : "Fill"} Color: `,
 				"fill",
-				"black",
+				"black"
 			);
 		}
 		if (!isTextElement) {
@@ -133,7 +133,7 @@ class SvgStyleEditor {
 				checkbox.addEventListener("change", () => {
 					targetSvgElement.setAttribute(
 						attr,
-						checkbox.checked ? value : "normal",
+						checkbox.checked ? value : "normal"
 					);
 				});
 				label.appendChild(checkbox);

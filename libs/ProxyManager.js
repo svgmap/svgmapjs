@@ -88,7 +88,7 @@ class ProxyManager {
 		imageCrossOriginAnonymous,
 		imageURLviaProxyFunctionForNonlinearTransformation,
 		imageCrossOriginAnonymousForNonlinearTransformation,
-		LaWAfetchviaProxyFunction,
+		LaWAfetchviaProxyFunction
 	) {
 		// 2020/1/30 proxyURL生成のsetterを設けるとともに、ビットイメージに対するproxyも設定できるように
 		// 2021/1/27 ビットイメージの非線形変換のためだけに用いるプロキシを別設定可能にした。 APIの仕様がイケてない・・
@@ -142,7 +142,7 @@ class ProxyManager {
 			imageURLviaProxyFunction,
 			imageCrossOriginAnonymous,
 			imageURLviaProxyFunctionForNonlinearTransformation,
-			imageCrossOriginAnonymousForNonlinearTransformation,
+			imageCrossOriginAnonymousForNonlinearTransformation
 		);
 	}
 
@@ -156,7 +156,7 @@ class ProxyManager {
 			) {
 				return {
 					url: this.#contentProxyParams.getNonlinearTransformationProxyUrl(
-						originalURL,
+						originalURL
 					),
 					crossorigin: this.#contentProxyParams.crossOriginAnonymousNonlinearTF,
 				};
@@ -172,7 +172,7 @@ class ProxyManager {
 				"function"
 			) {
 				return this.#contentProxyParams.getNonlinearTransformationProxyUrl(
-					originalURL,
+					originalURL
 				);
 				//} else if ( typeof (this.#contentProxyParams.getUrlViaImageProxy)=="function"){
 				//	return ( this.#contentProxyParams.getUrlViaImageProxy(originalURL));

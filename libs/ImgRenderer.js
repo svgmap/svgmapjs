@@ -201,10 +201,10 @@ class ImgRenderer {
 		if (imageFilter) img.style.filter += imageFilter;
 		img.style.left = x + "px";
 		img.style.top = y + "px";
-		img.style.display = "none"; // for Safari  
+		img.style.display = "none"; // for Safari
 		img.style.position = "absolute";
-		img.style.maxWidth = "initial"; // patch for Angular default CSS 2021/6 
-		img.style.height = height + "px"; // patch for other CSS fw 2021/10/28  
+		img.style.maxWidth = "initial"; // patch for Angular default CSS 2021/6
+		img.style.height = height + "px"; // patch for other CSS fw 2021/10/28
 		img.style.width = width + "px";
 		img.width = width;
 		img.height = height;
@@ -260,7 +260,7 @@ class ImgRenderer {
 				svgimageInfo.svgNode.textContent,
 				fontS
 			);
-			layoutTop = y + cdy - txtHeight; // 2025/9/26 topに統一(filterで不具合が生じるため)  
+			layoutTop = y + cdy - txtHeight; // 2025/9/26 topに統一(filterで不具合が生じるため)
 		}
 		var layoutLeft = cdx + x;
 		var layoutTransform = transform
@@ -379,7 +379,7 @@ class ImgRenderer {
 		hasNonLinearImageTransformation
 	) {
 		var timeout = this.#loadingTransitionTimeout;
-		// 2022/3/26 NonLinearImageTransformationのあるimgはtimeoutを3倍に延ばす・・(場当たりだね)  
+		// 2022/3/26 NonLinearImageTransformationのあるimgはtimeoutを3倍に延ばす・・(場当たりだね)
 		if (hasNonLinearImageTransformation == true) timeout *= 3;
 
 		if (hasNonLinearImageTransformation) {
@@ -420,51 +420,51 @@ class ImgRenderer {
 
 		// 以下は通常の画像（変換不要）のための従来処理
 		if (this.#mapViewerProps.uaProps.verIE > 8) {
-			img.addEventListener("load", this.#handleLoadSuccess); // for Safari 
-			img.addEventListener("error", this.#timeoutLoadingImg); // 2016.10.28 for ERR403,404 imgs (especially for sloppy tiled maps design)  
+			img.addEventListener("load", this.#handleLoadSuccess); // for Safari
+			img.addEventListener("error", this.#timeoutLoadingImg); // 2016.10.28 for ERR403,404 imgs (especially for sloppy tiled maps design)
 			img.src = href;
-			// crossOrigin属性はsrc書き換えと同タイミングとする。2021.6.9 crossOrigin特性だけ変更するケースはない(Imageのproxy設定と一体)という想定でいる・・  
+			// crossOrigin属性はsrc書き換えと同タイミングとする。2021.6.9 crossOrigin特性だけ変更するケースはない(Imageのproxy設定と一体)という想定でいる・・
 			img.crossOrigin = crossOriginFlag ? "anonymous" : null;
 		} else {
-			// for IE  to be obsoluted.. 
+			// for IE  to be obsoluted..
 			img.attachEvent("onload", this.#handleLoadSuccess);
-			// これは意味あるのか？  
+			// これは意味あるのか？
 			img.crossOrigin = crossOriginFlag ? "anonymous" : null;
 			if (forceSrcIE) img.src = href;
-			else img.setAttribute("href", href); // IE8のバグの対策のため・・hrefはDOM追加後につけるんです  
-			img.style.filter = "inherit"; // 同上 (http://www.jacklmoore.com/notes/ie-opacity-inheritance/)  
+			else img.setAttribute("href", href); // IE8のバグの対策のため・・hrefはDOM追加後につけるんです
+			img.style.filter = "inherit"; // 同上 (http://www.jacklmoore.com/notes/ie-opacity-inheritance/)
 		}
 		setTimeout(this.#timeoutLoadingImg, timeout, img);
 		this.#loadingImgs[id] = svgimageInfo; // 2021/1/26 loadingImgsには画像の場合booleanではなくsvgimageInfoを入れ、ビットイメージ非線形変換を容易にした
 	}
 
 	#handleLoadSuccess = function (obj) {
-		// (bitImage)画像の読み込み完了処理  
+		// (bitImage)画像の読み込み完了処理
 		var target = obj.target || obj.srcElement;
 		target.removeEventListener("load", this.#handleLoadSuccess);
 
 		if (target.getAttribute("href_fragment")) {
-			// 2015.7.3 spatial fragment  
+			// 2015.7.3 spatial fragment
 			var href_fragment = target.getAttribute("href_fragment");
 			this.#setImgViewport(target, href_fragment);
-			target.removeAttribute("href_fragment"); // もう不要なので削除する（大丈夫？）2015.7.8  
+			target.removeAttribute("href_fragment"); // もう不要なので削除する（大丈夫？）2015.7.8
 		}
 
-		var svgimageInfo = this.#loadingImgs[target.id]; // 2021/1/26 loadingImgsには画像の場合booleanではなくcrs等を入れるようにした。  
+		var svgimageInfo = this.#loadingImgs[target.id]; // 2021/1/26 loadingImgsには画像の場合booleanではなくcrs等を入れるようにした。
 
 		// 同様に処理の完了を待つ
 		this.#imageTransform(target, svgimageInfo).then(() => {
 			target.style.display = "";
 			target.style.visibility = "";
-			delete this.#loadingImgs[target.id]; 
+			delete this.#loadingImgs[target.id];
 			this.#checkLoadCompleted();
 		});
 	}.bind(this);
 
 	#needsNonLinearImageTransformation(crs, imageElem) {
-		// その画像が非線形変換が必要なものかどうかを判別する 2021/08/10関数化  
+		// その画像が非線形変換が必要なものかどうかを判別する 2021/08/10関数化
 		const rootCrs = this.#mapViewerProps.rootCrs;
-		
+
 		// ルートとレイヤーそれぞれの非線形性チェック（LUT対応版）
 		const isRootNonLinear =
 			!!rootCrs.lut ||
@@ -474,21 +474,21 @@ class ImgRenderer {
 			!!crs.lut || typeof crs.transform === "function" || !!crs.mercator;
 		// どちらも非線形でないなら不要
 		if (!isRootNonLinear && !isLayerNonLinear) return false;
-		
+
 		// メルカトルタイルの特殊処理 2021/08/10
 		const layerHasTransform = !!crs.lut || typeof crs.transform === "function";
 		if (
 			imageElem.getAttribute("data-mercator-tile") === "true" &&
-			!layerHasTransform && 
+			!layerHasTransform &&
 			!!rootCrs.mercator
 		) {
 			return false;
 		}
-		
-		// ビットイメージのtransformがref(svg..)の場合は不要とする特殊処理 2023/6/29  
+
+		// ビットイメージのtransformがref(svg..)の場合は不要とする特殊処理 2023/6/29
 		var tfv = imageElem.getAttribute("transform");
 		if (tfv && tfv.indexOf("ref") == 0) return false;
-		
+
 		return true;
 	}
 
@@ -757,7 +757,7 @@ class ImgRenderer {
 		if (htmlSrc == svgHref) return false;
 		if (htmlSrc.indexOf(svgHref) == 0) {
 			var difS = htmlSrc.substring(svgHref.length);
-			// たぶん、unixTimeが追加されているだけだと考える  
+			// たぶん、unixTimeが追加されているだけだと考える
 			if (difS.indexOf("unixTime=") > 0 && difS.length < 24) return false;
 		}
 		return true;
@@ -810,7 +810,7 @@ class ImgRenderer {
 	) {
 		// この関数はメインクラスからImgRendererに移した2025/10/09
 		// 2014.7.22
-		var img = document.createElement("span");  // spanで良い？ divだと挙動がおかしくなるので・・
+		var img = document.createElement("span"); // spanで良い？ divだと挙動がおかしくなるので・・
 		if (opacity) img.style.opacity = opacity;
 		if (style.fill) img.style.color = style.fill;
 
@@ -825,7 +825,7 @@ class ImgRenderer {
 		img.style.fontSize = fontS + "px";
 		img.innerHTML = text;
 		img.style.left = x + cdx + "px";
-		img.style.top = y + cdy - txtHeight + "px"; // 2025/9/26 topに統一(filterで不具合が生じるため)  
+		img.style.top = y + cdy - txtHeight + "px"; // 2025/9/26 topに統一(filterで不具合が生じるため)
 		img.style.position = "absolute";
 		img.id = id;
 		img.setAttribute("title", "");
@@ -888,7 +888,7 @@ class ImgRenderer {
 				Object.keys(this.#fontSizes.height).length
 		) {
 			this.#fontSizes.fsArray = Object.keys(this.#fontSizes.height)
-				.map((key) => parseFloat(key))  // キーを数値に変換
+				.map((key) => parseFloat(key)) // キーを数値に変換
 				.filter((key) => key !== 0) // 0:0 の初期値を除外するほうが安定しやすい
 				.sort((a, b) => a - b); // 昇順ソート
 		}

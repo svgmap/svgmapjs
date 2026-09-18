@@ -16,7 +16,6 @@
 // 2026/08/03 初期実装
 // 2026/08/18 TLaWA, SLaWA(lv1,2)に対応
 
-
 import { LUTGenerator, LUTMatrix, MatrixUtil } from "./TransformLib.js";
 
 class CrsLutManager {
@@ -24,11 +23,16 @@ class CrsLutManager {
 	#svgImagesProps;
 	#essentialUIs;
 	#layerSpecificWebAppHandler;
-	
+
 	#lastLutSignature = "";
 	#updateToken = 0; // 多重実行時のレースコンディション対策
 
-	constructor(mapViewerProps, svgImagesProps, essentialUIs, layerSpecificWebAppHandler) {
+	constructor(
+		mapViewerProps,
+		svgImagesProps,
+		essentialUIs,
+		layerSpecificWebAppHandler
+	) {
 		this.#mapViewerProps = mapViewerProps;
 		this.#svgImagesProps = svgImagesProps;
 		this.#essentialUIs = essentialUIs;
@@ -39,7 +43,7 @@ class CrsLutManager {
 	#getLutSignature() {
 		const vb = this.#mapViewerProps.rootViewBox;
 		let sig = `${vb.x}_${vb.y}_${vb.width}_${vb.height}`;
-		
+
 		const rootCrs = this.#mapViewerProps.rootCrs;
 		const rUnres = rootCrs ? !!rootCrs.unresolved : false;
 		const rHasLut = rootCrs ? !!rootCrs.lut : false;
@@ -50,15 +54,15 @@ class CrsLutManager {
 			if (docId === "root") continue;
 			const props = this.#svgImagesProps[docId];
 			const crs = props ? props.CRS : null;
-			
+
 			const isUnres = crs ? !!crs.unresolved : false;
 			const hasLut = crs ? !!crs.lut : false;
-			const ready = props ? !!props.slawaReady : false; 
+			const ready = props ? !!props.slawaReady : false;
 			sig += `|${docId}:needs=${this.#needsLut(crs)}_unres=${isUnres}_hasLut=${hasLut}_ready=${ready}`;
 		}
 		return sig;
 	}
-	
+
 	// LUTの更新が必要かどうか判定（安全弁ゲートから呼ばれる）
 	isLutUpdateNeeded() {
 		const newSig = this.#getLutSignature();
@@ -69,12 +73,12 @@ class CrsLutManager {
 		}
 		return false;
 	}
-	
+
 	async updateAllLuts() {
 		//console.log("updateAllLuts");
 		const targetSignature = this.#getLutSignature();
 		const currentToken = ++this.#updateToken; // この実行セッションのトークンを取得
-		
+
 		const rootViewBox = this.#mapViewerProps.rootViewBox;
 		const rootCrs = this.#mapViewerProps.rootCrs;
 		const root2Geo = this.#mapViewerProps.root2Geo;
@@ -82,17 +86,21 @@ class CrsLutManager {
 		// 1. ルートLUTの生成と geoViewBox の確定
 		if (this.#needsLut(rootCrs)) {
 			// 'actual' (画面座標系=rootViewBox) からLUTを生成し、geoViewBoxを自律的に確定させる
-			const rootF32 = LUTGenerator.generateFloat32Array(rootCrs, rootViewBox, 'actual');
+			const rootF32 = LUTGenerator.generateFloat32Array(
+				rootCrs,
+				rootViewBox,
+				"actual"
+			);
 			if (rootF32) {
 				// CRSオブジェクト内に lut プロパティとして格納
 				rootCrs.lut = new LUTMatrix(rootF32);
-				
+
 				// LUTから算出された geoViewBox を抽出 (インデックス2〜5)
 				this.#essentialUIs.setGeoViewBox({
 					x: rootF32[2],
 					y: rootF32[3],
 					width: rootF32[4],
-					height: rootF32[5]
+					height: rootF32[5],
 				});
 			}
 		} else {
@@ -100,7 +108,7 @@ class CrsLutManager {
 				rootCrs.lut.dispose();
 				rootCrs.lut = null;
 			}
-			
+
 			// 線形関数を利用して geoViewBox を確定する
 			this.#essentialUIs.setGeoViewBox(
 				new MatrixUtil().getTransformedBox(rootViewBox, root2Geo)
@@ -109,7 +117,9 @@ class CrsLutManager {
 
 		// 2. 各レイヤーLUTの生成（並列処理）
 		const geoViewBox = this.#essentialUIs.geoViewBox;
-		const layerIds = Object.keys(this.#svgImagesProps).filter(id => id !== "root");
+		const layerIds = Object.keys(this.#svgImagesProps).filter(
+			(id) => id !== "root"
+		);
 
 		const layerPromises = layerIds.map(async (docId) => {
 			const props = this.#svgImagesProps[docId];
@@ -117,19 +127,28 @@ class CrsLutManager {
 
 			if (this.#needsLut(props.CRS)) {
 				let f32Buffer = null;
-				
+
 				//console.log(`[原因究明 1] docId: ${docId} LUT生成直前.`,`unresolved: ${props.CRS.unresolved},`,`typeof transform: ${typeof props.CRS.transform}`);
 
 				//const sandboxWrapper = this.#layerSpecificWebAppHandler?.getSandboxWrapper?.(docId);
 				//console.log(`[テスト] S-LaWAルートへLUT要求開始: docId=${docId}`);
-				const buffer = await this.#layerSpecificWebAppHandler?.requestLutDataForLayer?.(docId, geoViewBox, 'geo');
+				const buffer =
+					await this.#layerSpecificWebAppHandler?.requestLutDataForLayer?.(
+						docId,
+						geoViewBox,
+						"geo"
+					);
 				//console.log(`[テスト] S-LaWAルートからの返答 buffer:`, buffer);
-				
+
 				if (buffer) {
 					f32Buffer = new Float32Array(buffer);
 				} else {
 					// ローカルレイヤー および Tight-LaWA: 'geo' を基準に同期計算でフォールバック
-					f32Buffer = LUTGenerator.generateFloat32Array(props.CRS, geoViewBox, 'geo');
+					f32Buffer = LUTGenerator.generateFloat32Array(
+						props.CRS,
+						geoViewBox,
+						"geo"
+					);
 				}
 
 				if (f32Buffer) {
@@ -150,7 +169,10 @@ class CrsLutManager {
 					}
 
 					props.getActualViewBox = () => ({
-						x: f32Buffer[6], y: f32Buffer[7], width: f32Buffer[8], height: f32Buffer[9]
+						x: f32Buffer[6],
+						y: f32Buffer[7],
+						width: f32Buffer[8],
+						height: f32Buffer[9],
 					});
 				}
 			} else {
@@ -163,7 +185,7 @@ class CrsLutManager {
 		});
 
 		await Promise.all(layerPromises);
-		
+
 		// 非同期処理完了後、自身が最新のセッションである場合のみシグネチャを更新
 		if (this.#updateToken === currentToken) {
 			this.#lastLutSignature = targetSignature;
@@ -174,9 +196,12 @@ class CrsLutManager {
 		if (!crsObj) return false;
 		if (crsObj.isLUT) return false;
 		// transform関数を持つ場合だけでなく、mercator等も含め非線形図法であればすべてLUT生成対象とする
-		return typeof crsObj.transform === 'function' || !!crsObj.transformFunctionName || !!crsObj.mercator;
+		return (
+			typeof crsObj.transform === "function" ||
+			!!crsObj.transformFunctionName ||
+			!!crsObj.mercator
+		);
 	}
-	
 }
 
 export { CrsLutManager };

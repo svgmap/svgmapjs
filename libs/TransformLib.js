@@ -55,7 +55,7 @@ class MatrixUtil {
 					var pt = this.transform(
 						inBox.x + (ix * inBox.width) / iPart,
 						inBox.y + (iy * inBox.height) / iPart,
-						matrix,
+						matrix
 					);
 					ptx.push(pt.x);
 					pty.push(pt.y);
@@ -372,7 +372,7 @@ class MatrixUtil {
 			}
 		}
 	}
-	
+
 	/**
 	 * 単純なアフィン線形変換
 	 * @param {number} x
@@ -383,7 +383,7 @@ class MatrixUtil {
 	static linearTransform(x, y, mat) {
 		return {
 			x: mat.a * x + mat.c * y + mat.e,
-			y: mat.b * x + mat.d * y + mat.f
+			y: mat.b * x + mat.d * y + mat.f,
 		};
 	}
 }
@@ -490,23 +490,35 @@ class LUTMatrix {
 		if (type !== 1) console.warn("LUTMatrix: Unsupported type:", type);
 
 		this.grid = lutFloat32Array[1];
-		this.fwdBox = { x: lutFloat32Array[2], y: lutFloat32Array[3], w: lutFloat32Array[4], h: lutFloat32Array[5] };
-		this.invBox = { x: lutFloat32Array[6], y: lutFloat32Array[7], w: lutFloat32Array[8], h: lutFloat32Array[9] };
+		this.fwdBox = {
+			x: lutFloat32Array[2],
+			y: lutFloat32Array[3],
+			w: lutFloat32Array[4],
+			h: lutFloat32Array[5],
+		};
+		this.invBox = {
+			x: lutFloat32Array[6],
+			y: lutFloat32Array[7],
+			w: lutFloat32Array[8],
+			h: lutFloat32Array[9],
+		};
 
 		const dataLength = (this.grid + 1) * (this.grid + 1) * 2;
-		
+
 		this.fwd = lutFloat32Array.subarray(10, 10 + dataLength);
 		this.inv = lutFloat32Array.subarray(10 + dataLength, 10 + dataLength * 2);
 
 		if (this.fwdBox.w > 0 && this.fwdBox.h > 0) {
 			const px1 = this.fwdBox.x + this.fwdBox.w / 3;
 			const py1 = this.fwdBox.y + this.fwdBox.h / 3;
-			const px2 = this.fwdBox.x + this.fwdBox.w * 2 / 3;
-			const py2 = this.fwdBox.y + this.fwdBox.h * 2 / 3;
+			const px2 = this.fwdBox.x + (this.fwdBox.w * 2) / 3;
+			const py2 = this.fwdBox.y + (this.fwdBox.h * 2) / 3;
 			const tp1 = this.#bilinearInterpolate(px1, py1, this.fwdBox, this.fwd);
 			const tp2 = this.#bilinearInterpolate(px2, py2, this.fwdBox, this.fwd);
 			const distIn = Math.sqrt(Math.pow(px2 - px1, 2) + Math.pow(py2 - py1, 2));
-			const distOut = Math.sqrt(Math.pow(tp2.x - tp1.x, 2) + Math.pow(tp2.y - tp1.y, 2));
+			const distOut = Math.sqrt(
+				Math.pow(tp2.x - tp1.x, 2) + Math.pow(tp2.y - tp1.y, 2)
+			);
 			this.scale = distIn > 0 ? distOut / distIn : 1;
 		} else {
 			this.scale = 1;
@@ -535,8 +547,8 @@ class LUTMatrix {
 		if (iy < 0) iy = 0;
 		if (iy >= grid) iy = grid - 1;
 
-		const fx = (rx * grid) - ix;
-		const fy = (ry * grid) - iy;
+		const fx = rx * grid - ix;
+		const fy = ry * grid - iy;
 		const stride = grid + 1;
 		const getVal = (idx_x, idx_y) => {
 			const base = (idx_y * stride + idx_x) * 2;
@@ -548,12 +560,20 @@ class LUTMatrix {
 		const p01 = getVal(ix, iy + 1);
 		const p11 = getVal(ix + 1, iy + 1);
 
-		const outX = p00.x * (1 - fx) * (1 - fy) + p10.x * fx * (1 - fy) + p01.x * (1 - fx) * fy + p11.x * fx * fy;
-		const outY = p00.y * (1 - fx) * (1 - fy) + p10.y * fx * (1 - fy) + p01.y * (1 - fx) * fy + p11.y * fx * fy;
+		const outX =
+			p00.x * (1 - fx) * (1 - fy) +
+			p10.x * fx * (1 - fy) +
+			p01.x * (1 - fx) * fy +
+			p11.x * fx * fy;
+		const outY =
+			p00.y * (1 - fx) * (1 - fy) +
+			p10.y * fx * (1 - fy) +
+			p01.y * (1 - fx) * fy +
+			p11.y * fx * fy;
 
 		return { x: outX, y: outY };
 	}
-	
+
 	// 明示的なメモリ解放メソッド(念のため)
 	dispose() {
 		// TypedArray のビューおよび関連オブジェクトの参照を切る
@@ -570,10 +590,16 @@ class LUTGenerator {
 	 */
 	static generateFloat32Array(crsObj, sourceBox, sourceBoxType, grid = 16) {
 		//console.log("Called generateFloat32Array");
-		if (!crsObj || typeof crsObj.transform !== 'function' || typeof crsObj.inverse !== 'function'){
-			console.warn(`generateFloat32Array: 関数が不足しているためLUT生成を放棄します。`);
-			return null
-		};
+		if (
+			!crsObj ||
+			typeof crsObj.transform !== "function" ||
+			typeof crsObj.inverse !== "function"
+		) {
+			console.warn(
+				`generateFloat32Array: 関数が不足しているためLUT生成を放棄します。`
+			);
+			return null;
+		}
 		if (!sourceBox || sourceBox.width === 0) return null;
 
 		const stride = grid + 1;
@@ -582,27 +608,39 @@ class LUTGenerator {
 		const invData = new Float32Array(pointsCount * 2);
 
 		let geoViewBox, actualViewBox;
-		let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+		let minX = Infinity,
+			minY = Infinity,
+			maxX = -Infinity,
+			maxY = -Infinity;
 
-		if (sourceBoxType === 'actual') {
+		if (sourceBoxType === "actual") {
 			actualViewBox = sourceBox;
 			for (let iy = 0; iy <= grid; iy++) {
 				for (let ix = 0; ix <= grid; ix++) {
 					const ivx = actualViewBox.x + (ix / grid) * actualViewBox.width;
 					const ivy = actualViewBox.y + (iy / grid) * actualViewBox.height;
 					const iRes = crsObj.inverse({ x: ivx, y: ivy });
-					
+
 					const idx = (iy * stride + ix) * 2;
 					if (iRes) {
-						invData[idx] = iRes.x; invData[idx+1] = iRes.y;
-						if (iRes.x < minX) minX = iRes.x; if (iRes.x > maxX) maxX = iRes.x;
-						if (iRes.y < minY) minY = iRes.y; if (iRes.y > maxY) maxY = iRes.y;
+						invData[idx] = iRes.x;
+						invData[idx + 1] = iRes.y;
+						if (iRes.x < minX) minX = iRes.x;
+						if (iRes.x > maxX) maxX = iRes.x;
+						if (iRes.y < minY) minY = iRes.y;
+						if (iRes.y > maxY) maxY = iRes.y;
 					} else {
-						invData[idx] = 0; invData[idx+1] = 0;
+						invData[idx] = 0;
+						invData[idx + 1] = 0;
 					}
 				}
 			}
-			geoViewBox = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+			geoViewBox = {
+				x: minX,
+				y: minY,
+				width: maxX - minX,
+				height: maxY - minY,
+			};
 
 			for (let iy = 0; iy <= grid; iy++) {
 				for (let ix = 0; ix <= grid; ix++) {
@@ -611,31 +649,42 @@ class LUTGenerator {
 					const fRes = crsObj.transform({ x: fx, y: fy });
 					const idx = (iy * stride + ix) * 2;
 					if (fRes) {
-						fwdData[idx] = fRes.x; fwdData[idx+1] = fRes.y;
+						fwdData[idx] = fRes.x;
+						fwdData[idx + 1] = fRes.y;
 					} else {
-						fwdData[idx] = 0; fwdData[idx+1] = 0;
+						fwdData[idx] = 0;
+						fwdData[idx + 1] = 0;
 					}
 				}
 			}
-		} else if (sourceBoxType === 'geo') {
+		} else if (sourceBoxType === "geo") {
 			geoViewBox = sourceBox;
 			for (let iy = 0; iy <= grid; iy++) {
 				for (let ix = 0; ix <= grid; ix++) {
 					const fx = geoViewBox.x + (ix / grid) * geoViewBox.width;
 					const fy = geoViewBox.y + (iy / grid) * geoViewBox.height;
 					const fRes = crsObj.transform({ x: fx, y: fy });
-					
+
 					const idx = (iy * stride + ix) * 2;
 					if (fRes) {
-						fwdData[idx] = fRes.x; fwdData[idx+1] = fRes.y;
-						if (fRes.x < minX) minX = fRes.x; if (fRes.x > maxX) maxX = fRes.x;
-						if (fRes.y < minY) minY = fRes.y; if (fRes.y > maxY) maxY = fRes.y;
+						fwdData[idx] = fRes.x;
+						fwdData[idx + 1] = fRes.y;
+						if (fRes.x < minX) minX = fRes.x;
+						if (fRes.x > maxX) maxX = fRes.x;
+						if (fRes.y < minY) minY = fRes.y;
+						if (fRes.y > maxY) maxY = fRes.y;
 					} else {
-						fwdData[idx] = 0; fwdData[idx+1] = 0;
+						fwdData[idx] = 0;
+						fwdData[idx + 1] = 0;
 					}
 				}
 			}
-			actualViewBox = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+			actualViewBox = {
+				x: minX,
+				y: minY,
+				width: maxX - minX,
+				height: maxY - minY,
+			};
 
 			for (let iy = 0; iy <= grid; iy++) {
 				for (let ix = 0; ix <= grid; ix++) {
@@ -644,9 +693,11 @@ class LUTGenerator {
 					const iRes = crsObj.inverse({ x: ivx, y: ivy });
 					const idx = (iy * stride + ix) * 2;
 					if (iRes) {
-						invData[idx] = iRes.x; invData[idx+1] = iRes.y;
+						invData[idx] = iRes.x;
+						invData[idx + 1] = iRes.y;
 					} else {
-						invData[idx] = 0; invData[idx+1] = 0;
+						invData[idx] = 0;
+						invData[idx + 1] = 0;
 					}
 				}
 			}
@@ -656,12 +707,18 @@ class LUTGenerator {
 
 		const totalFloats = 10 + pointsCount * 4;
 		const f32 = new Float32Array(totalFloats);
-		
+
 		f32[0] = 1; // type
 		f32[1] = grid;
-		f32[2] = geoViewBox.x; f32[3] = geoViewBox.y; f32[4] = geoViewBox.width; f32[5] = geoViewBox.height;
-		f32[6] = actualViewBox.x; f32[7] = actualViewBox.y; f32[8] = actualViewBox.width; f32[9] = actualViewBox.height;
-		
+		f32[2] = geoViewBox.x;
+		f32[3] = geoViewBox.y;
+		f32[4] = geoViewBox.width;
+		f32[5] = geoViewBox.height;
+		f32[6] = actualViewBox.x;
+		f32[7] = actualViewBox.y;
+		f32[8] = actualViewBox.width;
+		f32[9] = actualViewBox.height;
+
 		f32.set(fwdData, 10);
 		f32.set(invData, 10 + pointsCount * 2);
 

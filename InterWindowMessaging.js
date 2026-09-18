@@ -60,7 +60,7 @@ class InterWindowMessaging {
 			functionSet,
 			targetWindow,
 			InterWindowMessaging.#NEGOTIATION,
-			options,
+			options
 		);
 	}
 
@@ -177,10 +177,10 @@ class InterWindowMessaging {
 			const timerId = setTimeout(() => {
 				// タイムアウト時にリストから自身を除去してreject
 				this.#readyResolvers = this.#readyResolvers.filter(
-					(entry) => entry.resolve !== resolve,
+					(entry) => entry.resolve !== resolve
 				);
 				reject(
-					new Error(`InterWindowMessaging: getReady() timed out after ${ms}ms`),
+					new Error(`InterWindowMessaging: getReady() timed out after ${ms}ms`)
 				);
 			}, ms);
 
@@ -218,8 +218,8 @@ class InterWindowMessaging {
 						this.#pendingResponses.delete(id);
 						reject(
 							new Error(
-								`InterWindowMessaging: callRemoteFunc("${command}") timed out after ${ms}ms`,
-							),
+								`InterWindowMessaging: callRemoteFunc("${command}") timed out after ${ms}ms`
+							)
 						);
 					}
 				}, ms);
@@ -242,7 +242,7 @@ class InterWindowMessaging {
 			if (msg.response === "error") {
 				throw new Error(
 					msg.error ??
-						`InterWindowMessaging: remote error on command "${command}"`,
+						`InterWindowMessaging: remote error on command "${command}"`
 				);
 			}
 			return msg.content;
@@ -318,7 +318,7 @@ class InterWindowMessaging {
 						"Ignoring message during negotiation phase from:",
 						origin,
 						" msg:",
-						msg,
+						msg
 					);
 				}
 				return;
@@ -327,7 +327,7 @@ class InterWindowMessaging {
 			if (this.#targetOrigin !== "*" && this.#targetOrigin !== origin) {
 				console.warn(
 					`Message from disallowed origin: ${origin} (Allowed targetOrigin:${this.#targetOrigin}), location=${window.location.origin}, msg:`,
-					msg,
+					msg
 				);
 				return;
 			}
@@ -381,11 +381,14 @@ class InterWindowMessaging {
 						transferables = result.transferables;
 						result = result.data; // 実データのみを抽出
 					}
-					this.#postMessage({
-						id: msg.id || null,
-						response: msg.command,
-						content: result,
-					}, transferables);
+					this.#postMessage(
+						{
+							id: msg.id || null,
+							response: msg.command,
+							content: result,
+						},
+						transferables
+					);
 				} else {
 					console.warn(`Unknown command: ${msg.command}`);
 					this.#postMessage({
@@ -400,7 +403,7 @@ class InterWindowMessaging {
 
 	#completeConnection() {
 		console.log(
-			`Connection successful. Target origin set to: ${this.#targetOrigin}`,
+			`Connection successful. Target origin set to: ${this.#targetOrigin}`
 		);
 		this.#readyState = true;
 		this.#submitReady();

@@ -52,10 +52,10 @@ class SVGMapVectorFileRenderer {
 		poiTitle,
 		metadata,
 		parentElm,
-		styleData,
+		styleData
 	) {
 		console.log(
-			"SVGMapVectorFileRenderer: drawKml called. Converting to GeoJSON...",
+			"SVGMapVectorFileRenderer: drawKml called. Converting to GeoJSON..."
 		);
 
 		// KMLParserを使ってKML DOMをGeoJSON(FeatureCollection)に変換
@@ -73,7 +73,7 @@ class SVGMapVectorFileRenderer {
 			metadata,
 			parentElm,
 			styleData,
-			{ multiGeometryGrouping: true }, // 元の挙動に合わせるためのオプション
+			{ multiGeometryGrouping: true } // 元の挙動に合わせるためのオプション
 		);
 	}
 
@@ -91,7 +91,7 @@ class SVGMapVectorFileRenderer {
 		parentMetadata,
 		parentElm,
 		metaDictionary,
-		options,
+		options
 	) {
 		if (!options) {
 			options = {};
@@ -131,7 +131,7 @@ class SVGMapVectorFileRenderer {
 					metadata,
 					parentElm,
 					metaDictionary,
-					options,
+					options
 				);
 			}
 		} else if (geojson.type == "FeatureCollection") {
@@ -148,7 +148,7 @@ class SVGMapVectorFileRenderer {
 					metadata,
 					parentElm,
 					metaDictionary,
-					options,
+					options
 				);
 			}
 		} else if (geojson.type == "Feature") {
@@ -163,7 +163,7 @@ class SVGMapVectorFileRenderer {
 				metadata,
 				parentElm,
 				metaDictionary,
-				options,
+				options
 			);
 		} else if (geojson.type == "GeometryCollection") {
 			var geoms = geojson.geometries;
@@ -179,7 +179,7 @@ class SVGMapVectorFileRenderer {
 					metadata,
 					parentElm,
 					metaDictionary,
-					options,
+					options
 				);
 			}
 		} else if (geojson.type == "MultiPolygon") {
@@ -191,7 +191,7 @@ class SVGMapVectorFileRenderer {
 						svgImage,
 						geojson.type,
 						metadata,
-						metaDictionary,
+						metaDictionary
 					);
 				}
 				for (var i = 0; i < geojson.coordinates.length; i++) {
@@ -203,7 +203,7 @@ class SVGMapVectorFileRenderer {
 						metadata,
 						colletionParent,
 						metaDictionary,
-						options,
+						options
 					);
 				}
 			}
@@ -216,7 +216,7 @@ class SVGMapVectorFileRenderer {
 				metadata,
 				parentElm,
 				metaDictionary,
-				options,
+				options
 			);
 		} else if (geojson.type == "MultiLineString") {
 			if (geojson.coordinates.length > 0) {
@@ -227,7 +227,7 @@ class SVGMapVectorFileRenderer {
 						svgImage,
 						geojson.type,
 						metadata,
-						metaDictionary,
+						metaDictionary
 					);
 				}
 				for (var i = 0; i < geojson.coordinates.length; i++) {
@@ -240,7 +240,7 @@ class SVGMapVectorFileRenderer {
 						metadata,
 						colletionParent,
 						metaDictionary,
-						options,
+						options
 					);
 				}
 			}
@@ -254,7 +254,7 @@ class SVGMapVectorFileRenderer {
 				metadata,
 				parentElm,
 				metaDictionary,
-				options,
+				options
 			);
 		} else if (geojson.type == "MultiPoint") {
 			if (geojson.coordinates.length > 0) {
@@ -265,7 +265,7 @@ class SVGMapVectorFileRenderer {
 						svgImage,
 						geojson.type,
 						metadata,
-						metaDictionary,
+						metaDictionary
 					);
 				}
 				for (var i = 0; i < geojson.coordinates.length; i++) {
@@ -278,7 +278,7 @@ class SVGMapVectorFileRenderer {
 						metadata,
 						colletionParent,
 						metaDictionary,
-						options,
+						options
 					);
 				}
 			}
@@ -292,7 +292,7 @@ class SVGMapVectorFileRenderer {
 				metadata,
 				parentElm,
 				metaDictionary,
-				options,
+				options
 			);
 		}
 	}
@@ -309,7 +309,7 @@ class SVGMapVectorFileRenderer {
 		poiTitle,
 		metadata,
 		parentElm,
-		metaDictionary,
+		metaDictionary
 	) {
 		var metastyle = this.#getSvgMapSimpleMeta(metadata, metaDictionary);
 		var metaString = this.#array2string(metastyle.normalized);
@@ -379,7 +379,7 @@ class SVGMapVectorFileRenderer {
 		strokeWidth,
 		metadata,
 		parentElm,
-		metaDictionary,
+		metaDictionary
 	) {
 		var metastyle = this.#getSvgMapSimpleMeta(metadata, metaDictionary);
 		var metaString = this.#array2string(metastyle.normalized);
@@ -427,7 +427,7 @@ class SVGMapVectorFileRenderer {
 		fillColor,
 		metadata,
 		parentElm,
-		metaDictionary,
+		metaDictionary
 	) {
 		var metastyle = this.#getSvgMapSimpleMeta(metadata, metaDictionary);
 		var metaString = this.#array2string(metastyle.normalized);

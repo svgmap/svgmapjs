@@ -53,7 +53,7 @@ export class IframeAdapter4SLaWA {
 		//		this.#realIframe.style.height = "calc(100% - 50px)";
 		this.#realIframe.style.border = "none";
 		this.#realIframe.style.display = "block";
-		
+
 		// --- S-LaWA強制(isolated)時のサンドボックス化処理 ---
 		// このアダプタが呼ばれている時点でS-LaWAとしての動作が確定している。
 		// その上で対象URLが同一オリジンである場合、isolated指定による強制S-LaWAと自己判定し、
@@ -65,9 +65,12 @@ export class IframeAdapter4SLaWA {
 				// console.info(`[S-LaWA ${this.#layerID}] Same-origin S-LaWA detected. Applied sandbox='allow-scripts'.`);
 			}
 		} catch (e) {
-			console.warn(`[S-LaWA ${this.#layerID}] Invalid URL for sandbox check:`, e);
+			console.warn(
+				`[S-LaWA ${this.#layerID}] Invalid URL for sandbox check:`,
+				e
+			);
 		}
-		
+
 		this.#virtualIframe.appendChild(this.#realIframe);
 
 		// 実際のS-LaWA処理を担当する SandboxWrapper を初期化
@@ -75,7 +78,7 @@ export class IframeAdapter4SLaWA {
 			this.#svgMap,
 			this.#layerID,
 			this.#realIframe,
-			crossOriginUrl,
+			crossOriginUrl
 		);
 
 		// コアフレームワークに対してiframeに見せるためのモックをセットアップ
@@ -192,7 +195,7 @@ export class IframeAdapter4SLaWA {
 
 		// コアの #iFrameReady で監視している load イベントを即座に発火
 		const originalAddEventListener = this.#virtualIframe.addEventListener.bind(
-			this.#virtualIframe,
+			this.#virtualIframe
 		);
 		this.#virtualIframe.addEventListener = function (type, listener, options) {
 			if (type === "load") {

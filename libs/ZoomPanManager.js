@@ -42,7 +42,7 @@ class ZoomPanManager {
 		getIntValueFunc,
 		getRootSvg2CanvasFunc,
 		mapViewerProps,
-		svgMapObj,
+		svgMapObj
 	) {
 		// Set Func
 		this.#hideTicker = hideTickerFunc;
@@ -68,7 +68,7 @@ class ZoomPanManager {
 					" : " +
 					evt.touches[1].pageX +
 					"," +
-					evt.touches[1].pageY,
+					evt.touches[1].pageY
 			);
 			//				zoomingTransitionFactor = 1;
 		}
@@ -175,7 +175,7 @@ class ZoomPanManager {
 			} else {
 				this.#timerID = setTimeout(
 					this.#shiftZoomingAnim,
-					this.#smoothZoomInterval,
+					this.#smoothZoomInterval
 				); // not use string param ( eval )
 			}
 		} else {
@@ -215,7 +215,7 @@ class ZoomPanManager {
 					gxy0.lat,
 					gxy0.lng,
 					gxy1.lat - gxy0.lat,
-					gxy1.lng - gxy0.lng,
+					gxy1.lng - gxy0.lng
 				);
 			} else if (this.#difX != 0 || this.#difY != 0) {
 				// 変化分があるときはpan/zoom処理
@@ -320,7 +320,7 @@ class ZoomPanManager {
 				if (this.#initialTouchDisance == 0) {
 					this.#zoomingTransitionFactor =
 						Math.exp(
-							this.#difY / (this.#mapViewerProps.mapCanvasSize.height / 2),
+							this.#difY / (this.#mapViewerProps.mapCanvasSize.height / 2)
 						) / Math.exp(0);
 				}
 				if (this.#zoomingTransitionFactor < 0.1) {
@@ -369,7 +369,7 @@ class ZoomPanManager {
 			} else {
 				this.#timerID = setTimeout(
 					this.#shiftZoomingAnim,
-					this.#smoothZoomInterval,
+					this.#smoothZoomInterval
 				);
 			}
 		}
@@ -569,7 +569,7 @@ class ZoomPanManager {
 				if (this.#smoothZooming && this.#smoothZooming != zoomPanMode) {
 					// 異種モードの連呼は無視する
 					console.warn(
-						"Now performing different type of smooth zoom/pan action. Exit.",
+						"Now performing different type of smooth zoom/pan action. Exit."
 					);
 					return;
 				}
@@ -607,7 +607,7 @@ class ZoomPanManager {
 					requestAnimationFrame(
 						function () {
 							that.#smoothZoom(zoomFactor, startDate, false, startZoom);
-						}.bind(this),
+						}.bind(this)
 					);
 				} else {
 					setTimeout(
@@ -618,7 +618,7 @@ class ZoomPanManager {
 						zoomFactor,
 						startDate,
 						false,
-						startZoom,
+						startZoom
 					);
 				}
 			} else {
@@ -632,7 +632,7 @@ class ZoomPanManager {
 					requestAnimationFrame(
 						function () {
 							that.#smoothZoom(zoomFactor, startDate, true, startZoom);
-						}.bind(this),
+						}.bind(this)
 					);
 				} else {
 					setTimeout(
@@ -643,7 +643,7 @@ class ZoomPanManager {
 						zoomFactor,
 						startDate,
 						true,
-						startZoom,
+						startZoom
 					); //フィニッシュ処理へ
 				}
 			}
@@ -675,7 +675,7 @@ class ZoomPanManager {
 						azf,
 						new Date(),
 						false,
-						zoomFactor,
+						zoomFactor
 					);
 				}
 				this.#additionalZoom = 0;
@@ -733,13 +733,13 @@ class ZoomPanManager {
 					(il - mapCanvasSize.width * 0.5) * zoomFactor +
 						mapCanvasSize.width * 0.5 +
 						sftX,
-					iw * zoomFactor,
+					iw * zoomFactor
 				);
 				yds[i] = this.#getIntValue(
 					(it - mapCanvasSize.height * 0.5) * zoomFactor +
 						mapCanvasSize.height * 0.5 +
 						sftY,
-					ih * zoomFactor,
+					ih * zoomFactor
 				);
 			}
 			for (var i = mapElements.length - 1; i >= 0; i--) {
@@ -778,13 +778,13 @@ class ZoomPanManager {
 				(il - mapCanvasSize.width * 0.5) * zoomFactor +
 					mapCanvasSize.width * 0.5 +
 					sftX,
-				iw * zoomFactor,
+				iw * zoomFactor
 			);
 			var yd = this.#getIntValue(
 				(it - mapCanvasSize.height * 0.5) * zoomFactor +
 					mapCanvasSize.height * 0.5 +
 					sftY,
-				ih * zoomFactor,
+				ih * zoomFactor
 			);
 			el.style.left = xd.p0 + "px";
 			el.style.top = yd.p0 + "px";

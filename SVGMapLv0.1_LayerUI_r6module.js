@@ -98,7 +98,7 @@ class SvgMapLayerUI {
 			// 第二引数に、レイヤーリストUIを更新する関数を設置
 			function () {
 				this.#updateLayerTable();
-			}.bind(this),
+			}.bind(this)
 		);
 		this.#layerSpecificWebAppHandler = layerSpecificWebAppHandlerObj;
 		// console.log("construct layerUI:");
@@ -193,12 +193,18 @@ class SvgMapLayerUI {
 			if (this.#layerListOptions.hiddenFilter) {
 				if (lps[i].visible) {
 					// フィルタ有効中に表示状態のレイヤーがあれば、非表示にした後も残るように維持リストに追加する
-					if (this.#layerListOptions.filteredVisibleLayerIds && !this.#layerListOptions.filteredVisibleLayerIds.includes(lps[i].id)) {
+					if (
+						this.#layerListOptions.filteredVisibleLayerIds &&
+						!this.#layerListOptions.filteredVisibleLayerIds.includes(lps[i].id)
+					) {
 						this.#layerListOptions.filteredVisibleLayerIds.push(lps[i].id);
 					}
 				} else {
 					// 非表示のレイヤーは、維持リストに含まれていなければスキップ（隠す）
-					if (this.#layerListOptions.filteredVisibleLayerIds && this.#layerListOptions.filteredVisibleLayerIds.includes(lps[i].id)) {
+					if (
+						this.#layerListOptions.filteredVisibleLayerIds &&
+						this.#layerListOptions.filteredVisibleLayerIds.includes(lps[i].id)
+					) {
 						// そのままリストに表示させるため continue しない
 					} else {
 						continue;
@@ -210,7 +216,7 @@ class SvgMapLayerUI {
 				lps[i].id,
 				lps[i].visible,
 				false,
-				lps[i].groupName,
+				lps[i].groupName
 			);
 			if (lps[i].groupName) {
 				// グループがある場合の処理
@@ -258,7 +264,7 @@ class SvgMapLayerUI {
 			function () {
 				this.#setLayerTableStep2();
 			}.bind(this),
-			30,
+			30
 		);
 	}
 
@@ -328,7 +334,7 @@ class SvgMapLayerUI {
 			"change",
 			function (event) {
 				this.#toggleLayer(event);
-			}.bind(this),
+			}.bind(this)
 		);
 		lcbtd.appendChild(lcb);
 		tr.appendChild(lcbtd);
@@ -372,7 +378,7 @@ class SvgMapLayerUI {
 				var layerId = this.#getLayerId(event);
 				this.#layerSpecificWebAppHandler.showLayerSpecificUI(layerId); // hiddenもcbfも不要でレイヤ固有UI表示
 			}.bind(this),
-			false,
+			false
 		);
 		if (visible) {
 			btn.disabled = false;
@@ -406,11 +412,11 @@ class SvgMapLayerUI {
 			function (event) {
 				console.log(
 					"レイヤスタイルカスタマイザを起動するイベントが出ました : id:",
-					id,
+					id
 				);
 				this.#layerStyleCustomizer.openCustomizerUI(id);
 			}.bind(this),
-			false,
+			false
 		);
 		lscBtn.addEventListener("mouseover", () => {
 			lscBtn.style.backgroundColor = "#ddd";
@@ -436,7 +442,7 @@ class SvgMapLayerUI {
 		} else {
 			console.log(
 				"Could not find launcher button: setLayerSpecificWebAppLaunchUiEnable:",
-				layerId,
+				layerId
 			);
 		}
 	}
@@ -499,7 +505,7 @@ class SvgMapLayerUI {
 				function (event) {
 					this.#toggleBatch(event);
 				}.bind(this),
-				false,
+				false
 			);
 
 			batchCheckBoxTd.appendChild(batchCheckBox);
@@ -526,7 +532,7 @@ class SvgMapLayerUI {
 			function (event) {
 				this.#toggleGroupFold(event);
 			}.bind(this),
-			false,
+			false
 		);
 		if (!gfolded) {
 			foldButton.innerHTML =
@@ -638,7 +644,8 @@ class SvgMapLayerUI {
 					this.#layerListOptions.initHiddenFilter = true; // 起動時に有効化するフラグ
 				}
 				if (initOptions.filterKeepLayerIds) {
-					this.#layerListOptions.filterKeepLayerIds = initOptions.filterKeepLayerIds;
+					this.#layerListOptions.filterKeepLayerIds =
+						initOptions.filterKeepLayerIds;
 				}
 			}
 
@@ -675,7 +682,7 @@ class SvgMapLayerUI {
 				}
 			}.bind(this),
 			30,
-			llUItop,
+			llUItop
 		);
 	}
 
@@ -685,7 +692,7 @@ class SvgMapLayerUI {
 		uiOpenBtn.disabled = true;
 		uiOpenBtn.style.display = "none";
 		var layersCustomizerBtn = document.getElementById(
-			"layersCustomizerImageButton",
+			"layersCustomizerImageButton"
 		);
 		layersCustomizerBtn.style.right = "5px";
 	}
@@ -696,21 +703,21 @@ class SvgMapLayerUI {
 			function (event) {
 				UtilFuncs.MouseWheelListenerFunc(event);
 			}.bind(this),
-			false,
+			false
 		); // added 2019/04/15
 		this.#layerList.addEventListener(
 			"mousewheel",
 			function (event) {
 				UtilFuncs.MouseWheelListenerFunc(event);
 			}.bind(this),
-			false,
+			false
 		);
 		this.#layerList.addEventListener(
 			"DOMMouseScroll",
 			function (event) {
 				UtilFuncs.MouseWheelListenerFunc(event);
 			}.bind(this),
-			false,
+			false
 		);
 		this.#layerList.style.zIndex = "20";
 		this.#layerListMaxHeightStyle = this.#layerList.style.height;
@@ -751,7 +758,7 @@ class SvgMapLayerUI {
 			"click",
 			function (event) {
 				this.#layerListOpenClose(event);
-			}.bind(this),
+			}.bind(this)
 		);
 		layerListUiTopElem.appendChild(llUIbutton);
 	}
@@ -772,9 +779,9 @@ class SvgMapLayerUI {
 					this.#layersCustomizer = window.open(
 						layersCustomizerPath,
 						"layersCustomizer",
-						"toolbar=yes,menubar=yes,scrollbars=yes",
+						"toolbar=yes,menubar=yes,scrollbars=yes"
 					);
-				}.bind(this),
+				}.bind(this)
 			);
 			layersCustomizerIcon.addEventListener("mouseover", () => {
 				layersCustomizerIcon.style.backgroundColor = "#ddd";
@@ -905,7 +912,11 @@ class SvgMapLayerUI {
 			}
 			// フィルタ有効時でも非表示のままリストに残すレイヤーをマージ
 			if (this.#layerListOptions.filterKeepLayerIds) {
-				for (let j = 0; j < this.#layerListOptions.filterKeepLayerIds.length; j++) {
+				for (
+					let j = 0;
+					j < this.#layerListOptions.filterKeepLayerIds.length;
+					j++
+				) {
 					const keepId = this.#layerListOptions.filterKeepLayerIds[j];
 					if (!visibleIds.includes(keepId)) {
 						visibleIds.push(keepId);
@@ -920,13 +931,16 @@ class SvgMapLayerUI {
 		}
 		this.#updateLayerTable();
 	}
-	
+
 	// 現在のUI状態をパーマリンク用のハッシュ文字列として取得するメソッド
 	#getLayerListHashOptions() {
 		let hashStr = "";
 		// ① layerListが開いているかどうかの判定
 		// 折りたたみ時の高さと現在の高さが異なれば「開いている」と判定
-		if (this.#layerList && this.#layerList.style.height !== (this.#layerListFoldedHeight + "px")) { 
+		if (
+			this.#layerList &&
+			this.#layerList.style.height !== this.#layerListFoldedHeight + "px"
+		) {
 			hashStr += "&layerListOpen=true";
 		}
 		// ② & ③ hiddenFilterの状態と維持されている非表示レイヤーの抽出
@@ -936,9 +950,13 @@ class SvgMapLayerUI {
 			if (this.#layerListOptions.filteredVisibleLayerIds) {
 				const lps = this.#svgMap.getRootLayersProps();
 				const keepNames = [];
-				for (let i = 0; i < this.#layerListOptions.filteredVisibleLayerIds.length; i++) {
+				for (
+					let i = 0;
+					i < this.#layerListOptions.filteredVisibleLayerIds.length;
+					i++
+				) {
 					const layerId = this.#layerListOptions.filteredVisibleLayerIds[i];
-					const layerProp = lps.find(l => l.id === layerId);
+					const layerProp = lps.find((l) => l.id === layerId);
 					// フィルタ維持リストに存在しているが、実際は非表示(visible = false)のレイヤー ＝ 維持レイヤー
 					if (layerProp && !layerProp.visible) {
 						// パーマリンクには name を最優先とし、なければ title を使用
@@ -948,24 +966,27 @@ class SvgMapLayerUI {
 				}
 				if (keepNames.length > 0) {
 					// 名前をURLエンコードしてカンマ区切りで結合
-					hashStr += "&filterKeepLayer=" + keepNames.map(encodeURIComponent).join(",");
+					hashStr +=
+						"&filterKeepLayer=" + keepNames.map(encodeURIComponent).join(",");
 				}
 			}
 		}
 		return hashStr;
 	}
-	
+
 	#toggleHiddenFilter(forceEnable) {
 		const img = document.getElementById("svgMapHiddenFilterButton");
 		if (!img) return;
 
 		if (forceEnable) {
 			img.src = BuiltinIcons.hiddenIcon;
-			img.title = "Toggling layers in this mode will not change the list items."; 
+			img.title =
+				"Toggling layers in this mode will not change the list items.";
 			this.#applyListFilter({ hidden: true });
 		} else {
 			img.src = BuiltinIcons.visibleIcon;
-			img.title = "Toggle between showing only the layer currently displayed or all layers";
+			img.title =
+				"Toggle between showing only the layer currently displayed or all layers";
 			this.#applyListFilter({});
 		}
 	}

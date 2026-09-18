@@ -44,7 +44,7 @@ const MODAL_MAX_SIZE = {
 const CUSTOM_ID_ATTR = "data-slawa-id";
 
 export class SandboxWrapper {
-	#nextStaticId = 0;  
+	#nextStaticId = 0;
 	constructor(svgMap, layerID, targetIframe, crossOriginUrl) {
 		this.svgMap = svgMap;
 		this.layerID = layerID;
@@ -135,7 +135,9 @@ export class SandboxWrapper {
 			// iframe内は Opaque Origin ("null") となるため、ホストからの送信先を "*" にフォールバックする
 			if (sandboxAttr !== null && !sandboxAttr.includes("allow-same-origin")) {
 				targetOrigin = "*";
-				console.info(`[S-LaWA ${this.layerID}] Same Origin URL is forced to Opaque Origin. Falling back targetOrigin to "*".`);
+				console.info(
+					`[S-LaWA ${this.layerID}] Same Origin URL is forced to Opaque Origin. Falling back targetOrigin to "*".`
+				);
 			}
 		}
 
@@ -193,12 +195,12 @@ export class SandboxWrapper {
 							// transformFunctionName を保持し、特殊引数を外す
 							const oldCrs = this.svgImageProps.CRS;
 							const tfName = oldCrs ? oldCrs.transformFunctionName : null;
-							this.svgImageProps.CRS = { 
-								unresolved: true, 
-								transformFunctionName: tfName 
+							this.svgImageProps.CRS = {
+								unresolved: true,
+								transformFunctionName: tfName,
 							};
 							this.svgImageProps.metaSchema = ""; // スキーマも再読み込みさせる
-							
+
 							// S-LaWAの通信・DOM準備が完了したという状態変化を記録する
 							this.svgImageProps.slawaReady = true;
 
@@ -274,7 +276,7 @@ export class SandboxWrapper {
 				sourceBox,
 				sourceBoxType,
 				grid,
-				parentCrs // メッセージに同封して送信
+				parentCrs, // メッセージに同封して送信
 			});
 
 			if (response && response.buffer) {
@@ -287,7 +289,7 @@ export class SandboxWrapper {
 			return null;
 		}
 	}
-	
+
 	// -----------------------------------------------------------------
 	// 内部処理メソッド群（旧コードからの移植）
 	// -----------------------------------------------------------------
@@ -327,9 +329,9 @@ export class SandboxWrapper {
 	}
 
 	async #setSvgImageToSandbox() {
-		// Lv1: 静的SVGの既存要素にもIDを事前付番し、以後の差分同期漏れを防ぐ 
+		// Lv1: 静的SVGの既存要素にもIDを事前付番し、以後の差分同期漏れを防ぐ
 		this.#assignSlawaIds(this.svgImage.documentElement);
-		
+
 		const sip = this.#createSerializableSvgImageProps(this.svgImageProps);
 		const serializer = new XMLSerializer();
 		const svgImageXml = serializer.serializeToString(this.svgImage);
@@ -339,31 +341,31 @@ export class SandboxWrapper {
 			layerID: this.layerID,
 			svgImageXml,
 		});
-		
+
 		this.svgImageProps.slawaReady = true;
-		
+
 		// Level 1の準備完了時も、LUT待機ルートをキックする
 		this.svgMap.refreshScreen();
 	}
 
-	// 静的DOMの既存要素すべてに対して再帰的に自動付番を行う（Lv1用）  
-	// 子側(slawa-id-N)とプレフィックスを分け、ID衝突を防ぐ  
-	#assignSlawaIds(node) {  
-		if (!node) return;  
-		if (node.nodeType === Node.ELEMENT_NODE) {  
-			if (!node.getAttribute(CUSTOM_ID_ATTR)) {  
-				node.setAttribute(  
-					CUSTOM_ID_ATTR,  
-					`slawa-parent-id-${this.#nextStaticId++}`  
-				);  
-			}  
-		}  
-		let child = node.firstElementChild;  
-		while (child) {  
-			this.#assignSlawaIds(child);  
-			child = child.nextElementSibling;  
-		}  
-	}  
+	// 静的DOMの既存要素すべてに対して再帰的に自動付番を行う（Lv1用）
+	// 子側(slawa-id-N)とプレフィックスを分け、ID衝突を防ぐ
+	#assignSlawaIds(node) {
+		if (!node) return;
+		if (node.nodeType === Node.ELEMENT_NODE) {
+			if (!node.getAttribute(CUSTOM_ID_ATTR)) {
+				node.setAttribute(
+					CUSTOM_ID_ATTR,
+					`slawa-parent-id-${this.#nextStaticId++}`
+				);
+			}
+		}
+		let child = node.firstElementChild;
+		while (child) {
+			this.#assignSlawaIds(child);
+			child = child.nextElementSibling;
+		}
+	}
 
 	async #getSvgImageFromSandbox(sLaWASVGurl) {
 		// S-LaWA Lv2用に改善
@@ -460,7 +462,12 @@ export class SandboxWrapper {
 						if (payload.attr === "textContent") {
 							node.textContent = payload.value;
 						} else {
-							if (payload.value === null || payload.value === undefined || payload.value === "null" || payload.value === "undefined") {
+							if (
+								payload.value === null ||
+								payload.value === undefined ||
+								payload.value === "null" ||
+								payload.value === "undefined"
+							) {
 								node.removeAttribute(payload.attr);
 							} else {
 								node.setAttribute(payload.attr, payload.value);
