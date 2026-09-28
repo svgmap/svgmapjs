@@ -137,6 +137,13 @@ class SVGMapVectorFileRenderer {
 		} else if (geojson.type == "FeatureCollection") {
 			var features = geojson.features;
 			for (var i = 0; i < features.length; i++) {
+				if (
+					!features[i] ||
+					(features[i].type == "Feature" && !features[i].geometry)
+				) {
+					console.warn("Skipping invalid feature at index", i);
+					continue;
+				}
 				this.drawGeoJson(
 					features[i],
 					targetSvgDocId,
