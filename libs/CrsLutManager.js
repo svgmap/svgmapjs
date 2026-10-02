@@ -94,6 +94,7 @@ class CrsLutManager {
 			if (rootF32) {
 				// CRSオブジェクト内に lut プロパティとして格納
 				rootCrs.lut = new LUTMatrix(rootF32);
+				rootCrs.lut.signature = currentToken;
 
 				// LUTから算出された geoViewBox を抽出 (インデックス2〜5)
 				this.#essentialUIs.setGeoViewBox({
@@ -154,6 +155,7 @@ class CrsLutManager {
 				if (f32Buffer) {
 					if (props.CRS.lut) props.CRS.lut.dispose();
 					props.CRS.lut = new LUTMatrix(f32Buffer);
+					props.CRS.lut.signature = currentToken;
 
 					// 初回のみ: S-LaWAの場合「代役フラグ」を立てる
 					if (props.CRS.unresolved) {

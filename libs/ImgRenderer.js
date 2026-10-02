@@ -355,6 +355,16 @@ class ImgRenderer {
 				imgAinf.hasNonLinearImageTransformation
 			);
 		} else if (isPreTransformed) {
+			// シグネチャを生成して前回のものと比較
+			var currentSignature = this.#getDrawSignature(img, svgimageInfo.docId);
+			
+			if (img._lastDrawSignature === currentSignature) {
+				img.style.visibility = "";
+				if (href_fragment) this.#setImgViewport(img, href_fragment);
+				console.log("[[ ReUse LUT Transformed Image ]]", img);
+				return; // スキップ
+			}
+			// console.log(`[Tile-Trace Debug] isPreTransformedブロック突入 (バックグラウンドロード発火): id=${id}, src=${imgSrc}`);
 			var hiddenImg = new Image();
 			if (imgAinf.crossOriginFlag) hiddenImg.crossOrigin = "anonymous";
 			hiddenImg.onload = () => {
@@ -518,6 +528,18 @@ class ImgRenderer {
 	#imageTransform(imgElem, svgimageInfo, sourceImgOverride) {
 		if (!svgimageInfo) return Promise.resolve();
 
+		var imageElem = svgimageInfo.svgNode;
+		var tf = imageElem.getAttribute("transform");
+		// transform ref属性が付いている場合はスキップする(TBD)
+		if (tf && tf.indexOf("ref") == 0) return Promise.resolve();
+
+		var crs = this.#svgImagesProps[svgimageInfo.docId].CRS; // 長い過程を経て、直接取れるようにした・・
+
+		// 属性を付与する前に、まず非線形変換が必要かどうかを判定し、不要なら即座に抜ける
+		if (this.#needsNonLinearImageTransformation(crs, imageElem) == false) {
+			return Promise.resolve(); // 2021/08/10
+		}
+		// 変換が必要な場合のみ、元のhrefを data-preTransformedHref に退避する
 		if (!imgElem.getAttribute("data-preTransformedHref")) {
 			// data-loadingHref もチェック対象に含める
 			var origHref =
@@ -530,16 +552,7 @@ class ImgRenderer {
 				imgElem.removeAttribute("data-loadingHref"); // 不要になったら消す
 			}
 		}
-
-		var imageElem = svgimageInfo.svgNode;
-		var tf = imageElem.getAttribute("transform");
-		// transform ref属性が付いている場合はスキップする(TBD)
-		if (tf && tf.indexOf("ref") == 0) return Promise.resolve();
-
 		var tfm = UtilFuncs.parseTransformMatrix(tf);
-		var crs = this.#svgImagesProps[svgimageInfo.docId].CRS; // 長い過程を経て、直接取れるようにした・・
-		if (this.#needsNonLinearImageTransformation(crs, imageElem) == false)
-			return Promise.resolve(); // 2021/08/10
 
 		var srcImg = sourceImgOverride || imgElem;
 		var ciw = srcImg.naturalWidth || imgElem.naturalWidth;
@@ -712,6 +725,8 @@ class ImgRenderer {
 						}
 						delete imgElem._nextLutLayout;
 					}
+					// 自分が今適用したLUTのシグネチャと座標を記録しておく
+					imgElem._lastDrawSignature = this.#getDrawSignature(imgElem, svgimageInfo.docId);
 				}
 				resolve(); // 処理が終わったら解決
 			});
@@ -958,6 +973,23 @@ class ImgRenderer {
 	#countBr(str) {
 		const matches = str.match(/<br>/gi); // iフラグを追加して大文字小文字を区別しない
 		return matches ? matches.length : 0;
+	}
+	
+	// LUTのバージョンと画像レイアウト状態から、現在の描画シグネチャを生成する共通関数
+	#getDrawSignature(imgElem, docId) {
+		var crs = this.#svgImagesProps[docId] ? this.#svgImagesProps[docId].CRS : null;
+		var rootCrs = this.#mapViewerProps.rootCrs;
+		
+		var layerLutSig = (crs && crs.lut && crs.lut.signature) ? crs.lut.signature : "none";
+		var rootLutSig = (rootCrs && rootCrs.lut && rootCrs.lut.signature) ? rootCrs.lut.signature : "none";
+		
+		// DOMから現在の座標とサイズを取得（生成時・比較時で完全に同一の値を担保）
+		var left = imgElem.style.left || "0px";
+		var top = imgElem.style.top || "0px";
+		var w = imgElem.width || 0;
+		var h = imgElem.height || 0;
+		
+		return `${layerLutSig}_${rootLutSig}_${left}_${top}_${w}_${h}`;
 	}
 }
 
