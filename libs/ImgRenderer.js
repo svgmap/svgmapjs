@@ -28,6 +28,9 @@ class ImgRenderer {
 	#worker;
 	#workerCallbacks;
 	#jobCounter;
+	
+	// エッジの継ぎ目防止継ぎ足し幅
+	#EDGE_BLEED = 1.5;
 
 	constructor(
 		svgMapObj,
@@ -111,7 +114,7 @@ class ImgRenderer {
 							const srcX = (cx00 * invU + cx10 * u) * invV + (cx01 * invU + cx11 * u) * v;
 							const srcY = (cy00 * invU + cy10 * u) * invV + (cy01 * invU + cy11 * u) * v;
 
-							if (srcX >= -0.5 && srcX < ciw + 0.5 && srcY >= -0.5 && srcY < cih + 0.5) {
+							if (srcX >= -${this.#EDGE_BLEED} && srcX < ciw + ${this.#EDGE_BLEED} && srcY >= -${this.#EDGE_BLEED} && srcY < cih + ${this.#EDGE_BLEED}) {
 								const ix = Math.floor(srcX);
 								const iy = Math.floor(srcY);
 								dstData32[rowStart + px] = getSrcPixel(ix, iy);
