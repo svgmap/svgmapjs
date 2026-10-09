@@ -28,9 +28,10 @@ class ImgRenderer {
 	#worker;
 	#workerCallbacks;
 	#jobCounter;
-	
+
 	// エッジの継ぎ目防止継ぎ足し幅
-	#EDGE_BLEED = 1.5;
+	#EDGE_BLEED = 1.5; // イメージの透明部分に塗を広げる
+	#LUT_OV = 0.8; // LUTによるイメージ領域自体を広げる
 
 	constructor(
 		svgMapObj,
@@ -202,15 +203,26 @@ class ImgRenderer {
 
 		if (opacity) img.style.opacity = opacity;
 		if (imageFilter) img.style.filter += imageFilter;
+
+		// 非線形変換が必要かどうかの判定を追加
+		var needsNonLinear = this.#needsNonLinearImageTransformation(
+			this.#svgImagesProps[svgimageInfo.docId].CRS,
+			svgimageInfo.svgNode
+		);
+		// LUT画像なら意図的にLUT_OVpx広げる
+		var layoutWidth = needsNonLinear ? width + this.#LUT_OV : width;
+		var layoutHeight = needsNonLinear ? height + this.#LUT_OV : height;
+
 		img.style.left = x + "px";
 		img.style.top = y + "px";
 		img.style.display = "none"; // for Safari
 		img.style.position = "absolute";
 		img.style.maxWidth = "initial"; // patch for Angular default CSS 2021/6
-		img.style.height = height + "px"; // patch for other CSS fw 2021/10/28
-		img.style.width = width + "px";
-		img.width = width;
-		img.height = height;
+		// 算出したlayoutWidth/Heightを適用
+		img.style.height = layoutHeight + "px";
+		img.style.width = layoutWidth + "px";
+		img.width = layoutWidth;
+		img.height = layoutHeight;
 		img.id = id;
 
 		if (transform) {
@@ -283,8 +295,8 @@ class ImgRenderer {
 			img._nextLutLayout = {
 				left: layoutLeft,
 				top: layoutTop,
-				width: width,
-				height: height,
+				width: width + this.#LUT_OV,
+				height: height + this.#LUT_OV,
 				transform: layoutTransform,
 			};
 		} else {
@@ -360,7 +372,7 @@ class ImgRenderer {
 		} else if (isPreTransformed) {
 			// シグネチャを生成して前回のものと比較
 			var currentSignature = this.#getDrawSignature(img, svgimageInfo.docId);
-			
+
 			if (img._lastDrawSignature === currentSignature) {
 				img.style.visibility = "";
 				if (href_fragment) this.#setImgViewport(img, href_fragment);
@@ -729,7 +741,10 @@ class ImgRenderer {
 						delete imgElem._nextLutLayout;
 					}
 					// 自分が今適用したLUTのシグネチャと座標を記録しておく
-					imgElem._lastDrawSignature = this.#getDrawSignature(imgElem, svgimageInfo.docId);
+					imgElem._lastDrawSignature = this.#getDrawSignature(
+						imgElem,
+						svgimageInfo.docId
+					);
 				}
 				resolve(); // 処理が終わったら解決
 			});
@@ -977,21 +992,27 @@ class ImgRenderer {
 		const matches = str.match(/<br>/gi); // iフラグを追加して大文字小文字を区別しない
 		return matches ? matches.length : 0;
 	}
-	
+
 	// LUTのバージョンと画像レイアウト状態から、現在の描画シグネチャを生成する共通関数
 	#getDrawSignature(imgElem, docId) {
-		var crs = this.#svgImagesProps[docId] ? this.#svgImagesProps[docId].CRS : null;
+		var crs = this.#svgImagesProps[docId]
+			? this.#svgImagesProps[docId].CRS
+			: null;
 		var rootCrs = this.#mapViewerProps.rootCrs;
-		
-		var layerLutSig = (crs && crs.lut && crs.lut.signature) ? crs.lut.signature : "none";
-		var rootLutSig = (rootCrs && rootCrs.lut && rootCrs.lut.signature) ? rootCrs.lut.signature : "none";
-		
+
+		var layerLutSig =
+			crs && crs.lut && crs.lut.signature ? crs.lut.signature : "none";
+		var rootLutSig =
+			rootCrs && rootCrs.lut && rootCrs.lut.signature
+				? rootCrs.lut.signature
+				: "none";
+
 		// DOMから現在の座標とサイズを取得（生成時・比較時で完全に同一の値を担保）
 		var left = imgElem.style.left || "0px";
 		var top = imgElem.style.top || "0px";
 		var w = imgElem.width || 0;
 		var h = imgElem.height || 0;
-		
+
 		return `${layerLutSig}_${rootLutSig}_${left}_${top}_${w}_${h}`;
 	}
 }
